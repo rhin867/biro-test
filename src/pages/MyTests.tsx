@@ -1,0 +1,211 @@
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { MainLayout, PageHeader } from '@/components/layout/MainLayout';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { getTests, getResultsByTestId, deleteTest } from '@/lib/storage';
+import { formatTimeMinutes } from '@/lib/exam-utils';
+import {
+  Plus,
+  Play,
+  BarChart3,
+  Trash2,
+  Clock,
+  FileText,
+  Target,
+  MoreVertical,
+} from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
+
+export default function MyTests() {
+  const [tests, setTests] = React.useState(getTests());
+
+  const handleDeleteTest = (testId: string) => {
+    deleteTest(testId);
+    setTests(getTests());
+    toast.success('Test deleted');
+  };
+
+  return (
+    <MainLayout>
+      <PageHeader
+        title="My Tests"
+        description={`${tests.length} tests available`}
+      >
+        <Link to="/create">
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            Create New Test
+          </Button>
+        </Link>
+      </PageHeader>
+
+      {tests.length === 0 ? (
+        <Card className="text-center py-12">
+          <CardContent>
+            <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">No Tests Yet</h3>
+            <p className="text-muted-foreground mb-4">
+              Create your first test by uploading a PDF
+            </p>
+            <Link to="/create">
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Create Test
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {tests.map((test) => {
+            const results = getResultsByTestId(test.id);
+            const bestResult = results.length > 0
+              ? results.reduce((best, r) => r.score > best.score ? r : best, results[0])
+              : null;
+
+            return (
+              <Card key={test.id} className="group hover:border-primary/50 transition-all">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-lg line-clamp-1">{test.name}</CardTitle>
+                      <CardDescription className="mt-1">
+                        {new Date(test.createdAt).toLocaleDateString()}
+                      </CardDescription>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link to={`/exam/${test.id}`}>Start Test</Link>
+                        </DropdownMenuItem>
+                        {results.length > 0 && (
+                          <DropdownMenuItem asChild>
+                            <Link to={`/analysis/${results[results.length - 1].attemptId}`}>
+                              View Analysis
+                            </Link>
+                          </DropdownMenuItem>
+                        )}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem
+                              onSelect={(e) => e.preventDefault()}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              Delete Test
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Test?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete this test and all its attempts.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteTest(test.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Test Info */}
+                  <div className="flex flex-wrap gap-2">
+                    {test.subjects.map((subject) => (
+                      <Badge key={subject} variant="outline" className={`badge-${subject.toLowerCase()}`}>
+                        {subject}
+                      </Badge>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-lg bg-muted p-2">
+                      <FileText className="h-4 w-4 mx-auto text-muted-foreground" />
+                      <p className="text-sm font-medium mt-1">{test.questions.length}</p>
+                      <p className="text-xs text-muted-foreground">Questions</p>
+                    </div>
+                    <div className="rounded-lg bg-muted p-2">
+                      <Clock className="h-4 w-4 mx-auto text-muted-foreground" />
+                      <p className="text-sm font-medium mt-1">{test.duration}</p>
+                      <p className="text-xs text-muted-foreground">Minutes</p>
+                    </div>
+                    <div className="rounded-lg bg-muted p-2">
+                      <Target className="h-4 w-4 mx-auto text-muted-foreground" />
+                      <p className="text-sm font-medium mt-1">{test.totalMarks}</p>
+                      <p className="text-xs text-muted-foreground">Marks</p>
+                    </div>
+                  </div>
+
+                  {/* Best Score */}
+                  {bestResult && (
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-correct/10 border border-correct/20">
+                      <span className="text-sm text-muted-foreground">Best Score</span>
+                      <span className="font-medium text-correct">
+                        {bestResult.score}/{bestResult.maxScore} ({bestResult.accuracy.toFixed(1)}%)
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    <Link to={`/exam/${test.id}`} className="flex-1">
+                      <Button className="w-full gap-2">
+                        <Play className="h-4 w-4" />
+                        Start Test
+                      </Button>
+                    </Link>
+                    {results.length > 0 && (
+                      <Link to={`/analysis/${results[results.length - 1].attemptId}`}>
+                        <Button variant="outline" size="icon">
+                          <BarChart3 className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+
+                  {results.length > 0 && (
+                    <p className="text-xs text-center text-muted-foreground">
+                      {results.length} attempt{results.length !== 1 ? 's' : ''}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </MainLayout>
+  );
+}

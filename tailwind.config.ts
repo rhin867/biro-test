@@ -57,33 +57,91 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Exam-specific colors
+        correct: {
+          DEFAULT: "hsl(var(--correct))",
+          foreground: "hsl(var(--correct-foreground))",
+        },
+        incorrect: {
+          DEFAULT: "hsl(var(--incorrect))",
+          foreground: "hsl(var(--incorrect-foreground))",
+        },
+        skipped: {
+          DEFAULT: "hsl(var(--skipped))",
+          foreground: "hsl(var(--skipped-foreground))",
+        },
+        review: {
+          DEFAULT: "hsl(var(--review))",
+          foreground: "hsl(var(--review-foreground))",
+        },
+        current: {
+          DEFAULT: "hsl(var(--current))",
+          foreground: "hsl(var(--current-foreground))",
+        },
+        // Subject colors
+        physics: {
+          DEFAULT: "hsl(var(--physics))",
+          foreground: "hsl(var(--physics-foreground))",
+        },
+        chemistry: {
+          DEFAULT: "hsl(var(--chemistry))",
+          foreground: "hsl(var(--chemistry-foreground))",
+        },
+        maths: {
+          DEFAULT: "hsl(var(--maths))",
+          foreground: "hsl(var(--maths-foreground))",
+        },
+        // Chart colors
+        chart: {
+          1: "hsl(var(--chart-1))",
+          2: "hsl(var(--chart-2))",
+          3: "hsl(var(--chart-3))",
+          4: "hsl(var(--chart-4))",
+          5: "hsl(var(--chart-5))",
+          6: "hsl(var(--chart-6))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+      },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+        "pulse-slow": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.5" },
+        },
+        "slide-in-right": {
+          from: { transform: "translateX(100%)", opacity: "0" },
+          to: { transform: "translateX(0)", opacity: "1" },
+        },
+        "slide-in-left": {
+          from: { transform: "translateX(-100%)", opacity: "0" },
+          to: { transform: "translateX(0)", opacity: "1" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "pulse-slow": "pulse-slow 2s ease-in-out infinite",
+        "slide-in-right": "slide-in-right 0.3s ease-out",
+        "slide-in-left": "slide-in-left 0.3s ease-out",
+      },
+      backgroundImage: {
+        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
+        "gradient-primary": "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--physics)))",
       },
     },
   },
