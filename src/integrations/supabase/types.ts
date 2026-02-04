@@ -14,7 +14,193 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      mistake_book: {
+        Row: {
+          added_at: string
+          correct_answer: string
+          id: string
+          mastered: boolean | null
+          mistake_types: string[] | null
+          notes: string | null
+          question: Json
+          question_id: string
+          reattempt_count: number | null
+          selected_answer: string | null
+          test_id: string | null
+          test_name: string | null
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          correct_answer: string
+          id?: string
+          mastered?: boolean | null
+          mistake_types?: string[] | null
+          notes?: string | null
+          question: Json
+          question_id: string
+          reattempt_count?: number | null
+          selected_answer?: string | null
+          test_id?: string | null
+          test_name?: string | null
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          correct_answer?: string
+          id?: string
+          mastered?: boolean | null
+          mistake_types?: string[] | null
+          notes?: string | null
+          question?: Json
+          question_id?: string
+          reattempt_count?: number | null
+          selected_answer?: string | null
+          test_id?: string | null
+          test_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mistake_book_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      study_plans: {
+        Row: {
+          created_at: string
+          id: string
+          plan_data: Json
+          updated_at: string
+          user_id: string
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          plan_data: Json
+          updated_at?: string
+          user_id: string
+          week_start: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          plan_data?: Json
+          updated_at?: string
+          user_id?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
+      test_attempts: {
+        Row: {
+          attempts: Json
+          completed_at: string | null
+          id: string
+          result: Json | null
+          started_at: string
+          test_id: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: Json
+          completed_at?: string | null
+          id?: string
+          result?: Json | null
+          started_at?: string
+          test_id: string
+          user_id: string
+        }
+        Update: {
+          attempts?: Json
+          completed_at?: string | null
+          id?: string
+          result?: Json | null
+          started_at?: string
+          test_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_attempts_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tests: {
+        Row: {
+          created_at: string
+          duration_minutes: number
+          id: string
+          name: string
+          negative_marking: number
+          positive_marking: number
+          questions: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          name: string
+          negative_marking?: number
+          positive_marking?: number
+          questions?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          name?: string
+          negative_marking?: number
+          positive_marking?: number
+          questions?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
