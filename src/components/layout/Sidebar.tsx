@@ -1,89 +1,151 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
-  Home,
+  LayoutDashboard,
+  Plus,
   FileText,
-  BarChart3,
+  History,
   BookOpen,
   Calendar,
-  Settings,
-  Upload,
-  History,
+  Download,
+  GraduationCap,
+  LogOut,
+  Menu,
+  X,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+
+const navItems = [
+  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/create', label: 'Create Test', icon: Plus },
+  { path: '/tests', label: 'My Tests', icon: FileText },
+  { path: '/history', label: 'History', icon: History },
+  { path: '/mistakes', label: 'Mistake Book', icon: BookOpen },
+  { path: '/plan', label: 'Study Planner', icon: Calendar },
+  { path: '/export', label: 'Export/Import', icon: Download },
+];
 
 interface SidebarProps {
   className?: string;
 }
 
-const navItems = [
-  { icon: Home, label: 'Dashboard', href: '/' },
-  { icon: Upload, label: 'Create Test', href: '/create' },
-  { icon: FileText, label: 'My Tests', href: '/tests' },
-  { icon: History, label: 'History', href: '/history' },
-  { icon: BarChart3, label: 'Analysis', href: '/analysis' },
-  { icon: BookOpen, label: 'Mistake Book', href: '/mistakes' },
-  { icon: Calendar, label: 'Study Plan', href: '/plan' },
-];
-
 export function Sidebar({ className }: SidebarProps) {
   const location = useLocation();
+  const { user, signOut } = useAuth();
+  const isMobile = useIsMobile();
+  const [isOpen, setIsOpen] = useState(false);
 
-  return (
-    <aside
-      className={cn(
-        'flex h-screen w-64 flex-col border-r border-sidebar-border bg-sidebar',
-        className
-      )}
-    >
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
+  const NavContent = () => (
+    <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="flex h-16 items-center gap-2 border-b border-sidebar-border px-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-physics">
-          <FileText className="h-5 w-5 text-primary-foreground" />
+      <div className="flex items-center gap-3 px-4 py-6 border-b border-border">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+          <GraduationCap className="h-5 w-5" />
         </div>
-        <div>
-          <h1 className="font-bold text-sidebar-foreground">JEE Analyzer</h1>
-          <p className="text-xs text-sidebar-foreground/60">Advanced CBT System</p>
+        <div className="flex flex-col">
+          <span className="font-semibold text-sm">JEE CBT</span>
+          <span className="text-xs text-muted-foreground">Analyzer</span>
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 space-y-1 p-4">
+      {/* Nav Items */}
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.href;
+          const isActive = location.pathname === item.path;
           return (
-            <Link key={item.href} to={item.href}>
-              <Button
-                variant="ghost"
-                className={cn(
-                  'w-full justify-start gap-3 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                  isActive && 'bg-sidebar-accent text-sidebar-primary font-medium'
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.label}
-              </Button>
+            <Link
+              key={item.path}
+              to={item.path}
+              onClick={() => isMobile && setIsOpen(false)}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+              )}
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
             </Link>
           );
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="border-t border-sidebar-border p-4">
-        <Link to="/settings">
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 text-sidebar-foreground/80 hover:bg-sidebar-accent"
-          >
-            <Settings className="h-5 w-5" />
-            Settings
-          </Button>
-        </Link>
-        <p className="mt-4 text-center text-xs text-sidebar-foreground/40">
-          v1.0.0 • Advanced Performance Analysis
-        </p>
+      {/* User & Sign Out */}
+      <div className="border-t border-border p-3 space-y-2">
+        {user && (
+          <div className="px-3 py-2">
+            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+          </div>
+        )}
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+          onClick={handleSignOut}
+        >
+          <LogOut className="h-4 w-4" />
+          Sign Out
+        </Button>
       </div>
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        {/* Mobile Header */}
+        <div className="fixed top-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
+          <div className="flex items-center justify-between px-4 h-14">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <GraduationCap className="h-4 w-4" />
+              </div>
+              <span className="font-semibold text-sm">JEE CBT Analyzer</span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsOpen(!isOpen)}
+              aria-label="Toggle menu"
+            >
+              {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          </div>
+        </div>
+
+        {/* Mobile Drawer */}
+        {isOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-40 bg-black/50"
+              onClick={() => setIsOpen(false)}
+            />
+            <div className="fixed left-0 top-14 bottom-0 z-50 w-64 bg-background border-r border-border">
+              <NavContent />
+            </div>
+          </>
+        )}
+
+        {/* Spacer for mobile header */}
+        <div className="h-14" />
+      </>
+    );
+  }
+
+  return (
+    <aside className={cn(
+      "fixed left-0 top-0 bottom-0 z-30 w-56 border-r border-border bg-background/95 backdrop-blur-sm hidden md:block",
+      className
+    )}>
+      <NavContent />
     </aside>
   );
 }

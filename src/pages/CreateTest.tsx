@@ -9,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { saveTest, generateId } from '@/lib/storage';
 import { Test, Question, Subject } from '@/types/exam';
-import { Upload, FileText, Loader2, Sparkles, AlertCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function CreateTest() {
@@ -20,6 +21,10 @@ export default function CreateTest() {
   const [duration, setDuration] = useState(180);
   const [extractedQuestions, setExtractedQuestions] = useState<Question[]>([]);
   const [step, setStep] = useState<'upload' | 'configure' | 'review'>('upload');
+  const [extractionStats, setExtractionStats] = useState<{
+    totalExtracted: number;
+    subjectCounts: Record<string, number>;
+  } | null>(null);
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -34,20 +39,17 @@ export default function CreateTest() {
     toast.info('Processing PDF...');
 
     try {
-      // Import pdf.js dynamically
       const pdfjsLib = await import('pdfjs-dist');
       pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      
+
       let fullText = '';
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
-        const pageText = textContent.items
-          .map((item: any) => item.str)
-          .join(' ');
+        const pageText = textContent.items.map((item: any) => item.str).join(' ');
         fullText += pageText + '\n\n';
       }
 
@@ -71,179 +73,55 @@ export default function CreateTest() {
     setStep('configure');
   };
 
-  const extractQuestions = useCallback(() => {
+  const extractQuestions = useCallback(async () => {
     setIsProcessing(true);
     toast.info('Extracting questions with AI...');
 
-    // Simulated AI extraction - in production, this would call an AI API
-    setTimeout(() => {
-      const questions = parseQuestionsFromText(pdfText);
-      setExtractedQuestions(questions);
-      setStep('review');
-      setIsProcessing(false);
-      toast.success(`Extracted ${questions.length} questions`);
-    }, 2000);
-  }, [pdfText]);
+    try {
+      const { data, error } = await supabase.functions.invoke('extract-questions', {
+        body: { pdfText },
+      });
 
-  const parseQuestionsFromText = (text: string): Question[] => {
-    // Basic question parser - extracts numbered questions with options
-    const questions: Question[] = [];
-    const lines = text.split('\n').filter(l => l.trim());
-    
-    let currentQuestion: Partial<Question> | null = null;
-    let questionNumber = 0;
-    let currentSubject: Subject = 'Physics';
-
-    // Detect subject sections
-    const physicsKeywords = ['physics', 'mechanics', 'thermodynamics', 'optics', 'electricity'];
-    const chemistryKeywords = ['chemistry', 'organic', 'inorganic', 'physical chemistry'];
-    const mathsKeywords = ['mathematics', 'maths', 'calculus', 'algebra', 'trigonometry'];
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim().toLowerCase();
-      
-      // Detect subject
-      if (physicsKeywords.some(k => line.includes(k))) currentSubject = 'Physics';
-      else if (chemistryKeywords.some(k => line.includes(k))) currentSubject = 'Chemistry';
-      else if (mathsKeywords.some(k => line.includes(k))) currentSubject = 'Maths';
-
-      // Detect question start (e.g., "Q1.", "1.", "Question 1")
-      const questionMatch = lines[i].match(/^(?:Q\.?\s*)?(\d+)[.)]\s*(.+)/i);
-      
-      if (questionMatch) {
-        // Save previous question
-        if (currentQuestion && currentQuestion.question) {
-          questions.push(currentQuestion as Question);
-        }
-
-        questionNumber++;
-        currentQuestion = {
-          id: generateId(),
-          questionNumber,
-          subject: currentSubject,
-          chapter: 'General',
-          question: questionMatch[2].trim(),
-          options: { A: '', B: '', C: '', D: '' },
-          correctAnswer: null,
-          type: 'MCQ',
-          level: 'JEE',
-        };
-      } else if (currentQuestion) {
-        // Detect options
-        const optionMatch = lines[i].match(/^\(?([A-Da-d])\)?[.)]\s*(.+)/);
-        if (optionMatch) {
-          const optionKey = optionMatch[1].toUpperCase() as 'A' | 'B' | 'C' | 'D';
-          currentQuestion.options![optionKey] = optionMatch[2].trim();
-        } else if (!lines[i].match(/^(?:answer|correct|key)/i)) {
-          // Append to question text if not an answer key
-          currentQuestion.question += ' ' + lines[i].trim();
-        }
-
-        // Detect answer key
-        const answerMatch = lines[i].match(/(?:answer|correct|key)[:\s]*([A-Da-d])/i);
-        if (answerMatch) {
-          currentQuestion.correctAnswer = answerMatch[1].toUpperCase();
-        }
+      if (error) {
+        console.error('AI extraction error:', error);
+        throw error;
       }
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      const questions: Question[] = (data.questions || []).map((q: any, index: number) => ({
+        id: generateId(),
+        questionNumber: q.questionNumber || index + 1,
+        subject: q.subject || 'Physics',
+        chapter: q.chapter || 'General',
+        question: q.question || '',
+        options: {
+          A: q.options?.A || '',
+          B: q.options?.B || '',
+          C: q.options?.C || '',
+          D: q.options?.D || '',
+        },
+        correctAnswer: q.correctAnswer || null,
+        type: q.type || 'MCQ',
+        level: 'JEE',
+      }));
+
+      setExtractedQuestions(questions);
+      setExtractionStats({
+        totalExtracted: data.totalExtracted || questions.length,
+        subjectCounts: data.subjectCounts || {},
+      });
+      setStep('review');
+      toast.success(`Extracted ${questions.length} questions from PDF`);
+    } catch (error) {
+      console.error('Extraction error:', error);
+      toast.error('AI extraction failed. Please try again or check your PDF format.');
+    } finally {
+      setIsProcessing(false);
     }
-
-    // Add last question
-    if (currentQuestion && currentQuestion.question) {
-      questions.push(currentQuestion as Question);
-    }
-
-    // If no questions found, create sample questions for demo
-    if (questions.length === 0) {
-      return createSampleQuestions();
-    }
-
-    return questions;
-  };
-
-  const createSampleQuestions = (): Question[] => {
-    return [
-      {
-        id: generateId(),
-        questionNumber: 1,
-        subject: 'Physics',
-        chapter: 'Mechanics',
-        question: 'A ball is thrown vertically upward with velocity 20 m/s. What is the maximum height reached? (g = 10 m/s²)',
-        options: {
-          A: '10 m',
-          B: '20 m',
-          C: '30 m',
-          D: '40 m',
-        },
-        correctAnswer: 'B',
-        type: 'MCQ',
-        level: 'JEE',
-      },
-      {
-        id: generateId(),
-        questionNumber: 2,
-        subject: 'Physics',
-        chapter: 'Current Electricity',
-        question: 'The resistance of a wire is R ohms. If it is stretched to double its length, the new resistance will be:',
-        options: {
-          A: 'R/2',
-          B: 'R',
-          C: '2R',
-          D: '4R',
-        },
-        correctAnswer: 'D',
-        type: 'MCQ',
-        level: 'JEE',
-      },
-      {
-        id: generateId(),
-        questionNumber: 3,
-        subject: 'Chemistry',
-        chapter: 'Atomic Structure',
-        question: 'Which of the following has the highest ionization energy?',
-        options: {
-          A: 'Na',
-          B: 'Mg',
-          C: 'Al',
-          D: 'Ne',
-        },
-        correctAnswer: 'D',
-        type: 'MCQ',
-        level: 'JEE',
-      },
-      {
-        id: generateId(),
-        questionNumber: 4,
-        subject: 'Chemistry',
-        chapter: 'Organic Chemistry',
-        question: 'Benzene reacts with CH₃Cl in the presence of anhydrous AlCl₃ to give:',
-        options: {
-          A: 'Chlorobenzene',
-          B: 'Toluene',
-          C: 'Benzyl chloride',
-          D: 'Triphenylmethane',
-        },
-        correctAnswer: 'B',
-        type: 'MCQ',
-        level: 'JEE',
-      },
-      {
-        id: generateId(),
-        questionNumber: 5,
-        subject: 'Maths',
-        chapter: 'Calculus',
-        question: 'If f(x) = x³ - 3x² + 2x, then f\'(1) equals:',
-        options: {
-          A: '0',
-          B: '1',
-          C: '-1',
-          D: '2',
-        },
-        correctAnswer: 'C',
-        type: 'MCQ',
-        level: 'JEE',
-      },
-    ];
-  };
+  }, [pdfText]);
 
   const handleCreateTest = () => {
     if (extractedQuestions.length === 0) {
@@ -251,8 +129,8 @@ export default function CreateTest() {
       return;
     }
 
-    const subjects: Subject[] = [...new Set(extractedQuestions.map(q => q.subject))];
-    
+    const subjects: Subject[] = [...new Set(extractedQuestions.map((q) => q.subject))];
+
     const test: Test = {
       id: generateId(),
       name: testName || 'Untitled Test',
@@ -279,12 +157,12 @@ export default function CreateTest() {
       />
 
       {/* Progress Steps */}
-      <div className="flex items-center gap-4 mb-8">
+      <div className="flex items-center gap-2 md:gap-4 mb-6 md:mb-8 overflow-x-auto pb-2">
         {['upload', 'configure', 'review'].map((s, i) => (
-          <div key={s} className="flex items-center">
+          <div key={s} className="flex items-center flex-shrink-0">
             <div
               className={cn(
-                'flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-all',
+                'flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full text-xs md:text-sm font-medium transition-all',
                 step === s
                   ? 'bg-primary text-primary-foreground'
                   : i < ['upload', 'configure', 'review'].indexOf(step)
@@ -294,33 +172,36 @@ export default function CreateTest() {
             >
               {i + 1}
             </div>
-            <span className={cn('ml-2 text-sm', step === s ? 'font-medium' : 'text-muted-foreground')}>
+            <span
+              className={cn(
+                'ml-1.5 md:ml-2 text-xs md:text-sm',
+                step === s ? 'font-medium' : 'text-muted-foreground'
+              )}
+            >
               {s.charAt(0).toUpperCase() + s.slice(1)}
             </span>
-            {i < 2 && <div className="w-12 h-0.5 bg-border mx-4" />}
+            {i < 2 && <div className="w-6 md:w-12 h-0.5 bg-border mx-2 md:mx-4" />}
           </div>
         ))}
       </div>
 
       {/* Step Content */}
       {step === 'upload' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           {/* PDF Upload */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
                 <Upload className="h-5 w-5 text-primary" />
                 Upload PDF
               </CardTitle>
-              <CardDescription>
-                Upload a JEE-style question paper PDF
-              </CardDescription>
+              <CardDescription>Upload a JEE-style question paper PDF</CardDescription>
             </CardHeader>
             <CardContent>
               <label
                 htmlFor="pdf-upload"
                 className={cn(
-                  'flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg cursor-pointer transition-all',
+                  'flex flex-col items-center justify-center h-40 md:h-48 border-2 border-dashed rounded-lg cursor-pointer transition-all',
                   isProcessing
                     ? 'border-primary bg-primary/5'
                     : 'border-border hover:border-primary/50 hover:bg-accent'
@@ -328,16 +209,14 @@ export default function CreateTest() {
               >
                 {isProcessing ? (
                   <div className="flex flex-col items-center gap-2">
-                    <Loader2 className="h-10 w-10 text-primary animate-spin" />
+                    <Loader2 className="h-8 md:h-10 w-8 md:w-10 text-primary animate-spin" />
                     <p className="text-sm text-muted-foreground">Processing PDF...</p>
                   </div>
                 ) : (
                   <>
-                    <FileText className="h-10 w-10 text-muted-foreground mb-2" />
+                    <FileText className="h-8 md:h-10 w-8 md:w-10 text-muted-foreground mb-2" />
                     <p className="text-sm font-medium">Click to upload PDF</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Supports unlimited pages
-                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">Supports unlimited pages</p>
                   </>
                 )}
                 <input
@@ -355,20 +234,18 @@ export default function CreateTest() {
           {/* Manual Input */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
                 <FileText className="h-5 w-5 text-physics" />
                 Manual Input
               </CardTitle>
-              <CardDescription>
-                Paste question text directly
-              </CardDescription>
+              <CardDescription>Paste question text directly</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Textarea
                 placeholder="Paste your questions here...&#10;&#10;Example format:&#10;1. What is the SI unit of force?&#10;(A) Newton&#10;(B) Joule&#10;(C) Watt&#10;(D) Pascal"
                 value={pdfText}
                 onChange={(e) => setPdfText(e.target.value)}
-                className="min-h-[150px]"
+                className="min-h-[120px] md:min-h-[150px]"
               />
               <Button
                 onClick={handleManualTextInput}
@@ -384,7 +261,7 @@ export default function CreateTest() {
       )}
 
       {step === 'configure' && (
-        <Card className="max-w-xl">
+        <Card className="max-w-xl mx-auto">
           <CardHeader>
             <CardTitle>Configure Test</CardTitle>
             <CardDescription>Set test parameters before extraction</CardDescription>
@@ -411,9 +288,9 @@ export default function CreateTest() {
               />
             </div>
             <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
-              <Sparkles className="h-5 w-5 text-primary" />
+              <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
               <p className="text-sm">
-                AI will extract questions, options, subjects, and chapters automatically
+                AI will extract questions, options, subjects, and chapters from your PDF
               </p>
             </div>
             <div className="flex gap-3">
@@ -439,23 +316,38 @@ export default function CreateTest() {
       )}
 
       {step === 'review' && (
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
+          {/* Extraction Stats */}
+          {extractionStats && (
+            <div className="flex flex-wrap gap-3">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-correct/10 border border-correct/20">
+                <CheckCircle className="h-4 w-4 text-correct" />
+                <span className="text-sm font-medium">{extractionStats.totalExtracted} Questions Extracted</span>
+              </div>
+              {Object.entries(extractionStats.subjectCounts).map(([subject, count]) => (
+                <div
+                  key={subject}
+                  className={cn('px-3 py-2 rounded-lg text-sm', `badge-${subject.toLowerCase()}`)}
+                >
+                  {subject}: {count as number}
+                </div>
+              ))}
+            </div>
+          )}
+
           <Card>
             <CardHeader>
-              <CardTitle>Review Extracted Questions</CardTitle>
+              <CardTitle className="text-base md:text-lg">Review Extracted Questions</CardTitle>
               <CardDescription>
                 {extractedQuestions.length} questions extracted • Verify before creating test
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+              <div className="space-y-3 md:space-y-4 max-h-[350px] md:max-h-[400px] overflow-y-auto pr-2">
                 {extractedQuestions.map((q, index) => (
-                  <div
-                    key={q.id}
-                    className="p-4 rounded-lg border border-border bg-card/50"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
+                  <div key={q.id} className="p-3 md:p-4 rounded-lg border border-border bg-card/50">
+                    <div className="flex items-start justify-between gap-2 mb-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="flex h-6 w-6 items-center justify-center rounded bg-primary/20 text-xs font-medium text-primary">
                           {index + 1}
                         </span>
@@ -468,13 +360,16 @@ export default function CreateTest() {
                         <span className="text-xs text-correct">Answer: {q.correctAnswer}</span>
                       )}
                     </div>
-                    <p className="text-sm mb-2">{q.question}</p>
-                    <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                    <p className="text-sm mb-2 line-clamp-3">{q.question}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
                       {Object.entries(q.options).map(([key, value]) => (
-                        <div key={key} className={cn(
-                          'p-1.5 rounded',
-                          q.correctAnswer === key && 'bg-correct/10 text-correct'
-                        )}>
+                        <div
+                          key={key}
+                          className={cn(
+                            'p-1.5 rounded truncate',
+                            q.correctAnswer === key && 'bg-correct/10 text-correct'
+                          )}
+                        >
                           ({key}) {value || <span className="italic">Empty</span>}
                         </div>
                       ))}
@@ -485,9 +380,9 @@ export default function CreateTest() {
             </CardContent>
           </Card>
 
-          {extractedQuestions.some(q => !q.options.A || !q.options.B) && (
+          {extractedQuestions.some((q) => !q.options.A || !q.options.B) && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-review/10 border border-review/20">
-              <AlertCircle className="h-5 w-5 text-review" />
+              <AlertCircle className="h-5 w-5 text-review flex-shrink-0" />
               <p className="text-sm text-review">
                 Some questions have missing options. You may want to edit them after creation.
               </p>
