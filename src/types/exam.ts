@@ -38,6 +38,9 @@ export interface Question {
   type: QuestionType;
   level: string;
   imageUrl?: string;
+   hasDiagram?: boolean;
+   pdfPageNumber?: number;
+   croppedImageUrl?: string;
 }
 
 export interface QuestionAttempt {

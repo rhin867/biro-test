@@ -1,9 +1,46 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.21.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const systemPrompt = `You are an expert JEE question paper parser. Analyze the provided PDF/text and extract questions into STRICT JSON format.
+
+CRITICAL RULES:
+1. Extract EVERY question - count carefully, the output count MUST match the PDF
+2. Identify Subject (Physics/Chemistry/Maths) based on content keywords
+3. Output ALL math equations in valid LaTeX format (e.g., $\\int_0^1 x\\,dx$, $E = mc^2$)
+4. For EACH question provide exactly 4 options (A, B, C, D)
+5. If question relies on a diagram/circuit/graph/structure, set "hasDiagram": true
+6. Detect correct answer if visible, else set to null
+7. Ignore headers, footers, page numbers, watermarks
+8. Combine multi-line questions into single text
+9. Chapter should be specific (e.g., "Kinematics", "Organic Chemistry", "Calculus")
+
+OUTPUT FORMAT (STRICT JSON, NO MARKDOWN):
+{
+  "examTitle": "Detected Exam Title or 'Extracted Test'",
+  "questions": [
+    {
+      "id": 1,
+      "question": "Question text with LaTeX: $x^2 + y^2 = r^2$",
+      "options": ["Option A with $\\frac{1}{2}$", "Option B", "Option C", "Option D"],
+      "correctAnswer": "A",
+      "subject": "Physics",
+      "chapter": "Mechanics",
+      "hasDiagram": false,
+      "pageNumber": 1
+    }
+  ],
+  "totalExtracted": 75,
+  "subjectCounts": {
+    "Physics": 25,
+    "Chemistry": 25,
+    "Maths": 25
+  }
+}`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -11,57 +48,49 @@ serve(async (req) => {
   }
 
   try {
-    const { pdfText } = await req.json();
+    const { pdfText, pdfBase64, mimeType } = await req.json();
     
-    if (!pdfText || typeof pdfText !== "string") {
+    if (!pdfText && !pdfBase64) {
       return new Response(
-        JSON.stringify({ error: "PDF text is required" }),
+        JSON.stringify({ error: "PDF text or base64 data is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    // Use Lovable AI Gateway for extraction
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const systemPrompt = `You are a JEE question paper parser. Extract all questions from the provided text and return ONLY valid JSON.
+    // Build messages based on input type
+    const messages: any[] = [
+      { role: "system", content: systemPrompt }
+    ];
 
-RULES:
-1. Extract EVERY question from the text - count them carefully
-2. For each question, identify: question number, subject (Physics/Chemistry/Maths), chapter, question text, options A/B/C/D, and correct answer if found
-3. If subject is unclear, infer from keywords (forces/motion = Physics, reactions/compounds = Chemistry, equations/calculus = Maths)
-4. If chapter is unclear, use a general category like "General Physics", "Organic Chemistry", "Algebra"
-5. If correct answer is not found, set it to null
-6. Preserve mathematical expressions as-is
-7. Handle multi-line questions by combining text
-8. Ignore page headers, footers, and page numbers
-
-OUTPUT FORMAT (JSON ONLY, NO MARKDOWN):
-{
-  "questions": [
-    {
-      "questionNumber": 1,
-      "subject": "Physics",
-      "chapter": "Mechanics",
-      "question": "Question text here",
-      "options": {
-        "A": "Option A text",
-        "B": "Option B text",
-        "C": "Option C text",
-        "D": "Option D text"
-      },
-      "correctAnswer": "A" or null,
-      "type": "MCQ"
+    if (pdfBase64) {
+      // Use vision model for PDF images
+      messages.push({
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "Extract all JEE questions from this PDF. Return STRICT JSON only."
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:${mimeType || 'application/pdf'};base64,${pdfBase64}`
+            }
+          }
+        ]
+      });
+    } else {
+      messages.push({
+        role: "user",
+        content: `Extract all JEE questions from this text. Return STRICT JSON only:\n\n${pdfText}`
+      });
     }
-  ],
-  "totalExtracted": 5,
-  "subjectCounts": {
-    "Physics": 2,
-    "Chemistry": 2,
-    "Maths": 1
-  }
-}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -71,10 +100,7 @@ OUTPUT FORMAT (JSON ONLY, NO MARKDOWN):
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Extract all questions from this JEE question paper text:\n\n${pdfText}` }
-        ],
+        messages,
         temperature: 0.1,
       }),
     });
@@ -120,8 +146,28 @@ OUTPUT FORMAT (JSON ONLY, NO MARKDOWN):
       throw new Error("Failed to parse extracted questions");
     }
 
+    // Transform to expected format
+    const transformedQuestions = (parsed.questions || []).map((q: any, index: number) => ({
+      questionNumber: q.id || index + 1,
+      subject: q.subject || "Physics",
+      chapter: q.chapter || "General",
+      question: q.question || q.text || "",
+      options: Array.isArray(q.options) 
+        ? { A: q.options[0] || "", B: q.options[1] || "", C: q.options[2] || "", D: q.options[3] || "" }
+        : q.options || { A: "", B: "", C: "", D: "" },
+      correctAnswer: q.correctAnswer || q.answer || null,
+      type: "MCQ",
+      hasDiagram: q.hasDiagram || false,
+      pdfPageNumber: q.pageNumber || null
+    }));
+
     return new Response(
-      JSON.stringify(parsed),
+      JSON.stringify({
+        examTitle: parsed.examTitle || "Extracted Test",
+        questions: transformedQuestions,
+        totalExtracted: transformedQuestions.length,
+        subjectCounts: parsed.subjectCounts || {}
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

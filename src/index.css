@@ -131,6 +131,43 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 
+  /* NTA Classic Mode - Real Exam Environment */
+  .nta-classic-mode {
+    --background: 0 0% 96%;
+    --foreground: 220 13% 18%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 13% 18%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 13% 18%;
+    --primary: 220 70% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 13% 91%;
+    --secondary-foreground: 220 13% 18%;
+    --muted: 220 13% 91%;
+    --muted-foreground: 220 13% 46%;
+    --accent: 220 13% 91%;
+    --accent-foreground: 220 13% 18%;
+    --destructive: 0 84% 37%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 82%;
+    --input: 220 13% 82%;
+    --ring: 220 70% 50%;
+    --correct: 142 76% 36%;
+    --correct-foreground: 0 0% 100%;
+    --incorrect: 0 84% 50%;
+    --incorrect-foreground: 0 0% 100%;
+    --skipped: 220 13% 60%;
+    --skipped-foreground: 0 0% 100%;
+    --review: 280 65% 50%;
+    --review-foreground: 0 0% 100%;
+    --current: 220 70% 50%;
+    --current-foreground: 0 0% 100%;
+  }
+
+  .nta-classic-mode body {
+    font-family: 'Times New Roman', Georgia, serif;
+  }
+
   /* Custom scrollbar for dark theme */
   ::-webkit-scrollbar {
     width: 8px;
@@ -245,6 +282,32 @@
     background: hsl(var(--maths) / 0.2);
     color: hsl(var(--maths));
     @apply border border-current;
+  }
+
+  /* KaTeX styling */
+  .katex {
+    font-size: 1.1em;
+  }
+
+  .katex-display {
+    margin: 0.5em 0;
+    overflow-x: auto;
+  }
+
+  /* NTA Classic specific styles */
+  .nta-classic-mode .question-btn-answered {
+    background: hsl(142 76% 36%);
+    color: white;
+  }
+
+  .nta-classic-mode .question-btn-review {
+    background: hsl(280 65% 50%);
+    color: white;
+  }
+
+  .nta-classic-mode .stat-card {
+    background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   }
 }
 

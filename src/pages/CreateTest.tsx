@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout, PageHeader } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -6,11 +6,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { saveTest, generateId } from '@/lib/storage';
 import { Test, Question, Subject } from '@/types/exam';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle } from 'lucide-react';
+import { renderPDFPagesToImages, fileToBase64, PDFPageImage } from '@/lib/pdf-cropper';
+import { LatexRenderer } from '@/components/ui/latex-renderer';
+import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Settings2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function CreateTest() {
@@ -19,12 +25,22 @@ export default function CreateTest() {
   const [pdfText, setPdfText] = useState('');
   const [testName, setTestName] = useState('');
   const [duration, setDuration] = useState(180);
+  const [positiveMarking, setPositiveMarking] = useState(4);
+  const [negativeMarking, setNegativeMarking] = useState(1);
   const [extractedQuestions, setExtractedQuestions] = useState<Question[]>([]);
   const [step, setStep] = useState<'upload' | 'configure' | 'review'>('upload');
   const [extractionStats, setExtractionStats] = useState<{
     totalExtracted: number;
     subjectCounts: Record<string, number>;
+    examTitle?: string;
   } | null>(null);
+  const [pdfPageImages, setPdfPageImages] = useState<PDFPageImage[]>([]);
+  const [pdfArrayBuffer, setPdfArrayBuffer] = useState<ArrayBuffer | null>(null);
+  const [useImageMode, setUseImageMode] = useState(false);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [showPageViewer, setShowPageViewer] = useState(false);
+  const [selectedPage, setSelectedPage] = useState<number>(1);
+  const [questionsPerPage, setQuestionsPerPage] = useState(3);
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -36,25 +52,36 @@ export default function CreateTest() {
     }
 
     setIsProcessing(true);
-    toast.info('Processing PDF...');
+    toast.info('Processing PDF - extracting text and images...');
+    setPdfFile(file);
 
     try {
       const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+      // Use unpkg CDN for better reliability
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
       const arrayBuffer = await file.arrayBuffer();
+      setPdfArrayBuffer(arrayBuffer);
+      
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
+      // Extract text
       let fullText = '';
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
         const pageText = textContent.items.map((item: any) => item.str).join(' ');
-        fullText += pageText + '\n\n';
+        fullText += `[Page ${i}]\n${pageText}\n\n`;
       }
 
       setPdfText(fullText);
       setTestName(file.name.replace('.pdf', ''));
+      
+      // Render PDF pages to images for diagram viewing
+      toast.info('Rendering PDF pages for diagram support...');
+      const pageImages = await renderPDFPagesToImages(arrayBuffer, 1.5);
+      setPdfPageImages(pageImages);
+      
       toast.success(`PDF processed: ${pdf.numPages} pages extracted`);
       setStep('configure');
     } catch (error) {
@@ -75,11 +102,23 @@ export default function CreateTest() {
 
   const extractQuestions = useCallback(async () => {
     setIsProcessing(true);
-    toast.info('Extracting questions with AI...');
+    toast.info('Extracting questions with AI (this may take a moment)...');
 
     try {
+      let requestBody: any = { pdfText };
+      
+      // If image mode is enabled and we have a PDF file, send as base64
+      if (useImageMode && pdfFile) {
+        toast.info('Using vision mode for better diagram detection...');
+        const base64Data = await fileToBase64(pdfFile);
+        requestBody = {
+          pdfBase64: base64Data,
+          mimeType: 'application/pdf'
+        };
+      }
+
       const { data, error } = await supabase.functions.invoke('extract-questions', {
-        body: { pdfText },
+        body: requestBody,
       });
 
       if (error) {
@@ -106,22 +145,30 @@ export default function CreateTest() {
         correctAnswer: q.correctAnswer || null,
         type: q.type || 'MCQ',
         level: 'JEE',
+        hasDiagram: q.hasDiagram || false,
+        pdfPageNumber: q.pdfPageNumber || null,
       }));
 
       setExtractedQuestions(questions);
       setExtractionStats({
         totalExtracted: data.totalExtracted || questions.length,
         subjectCounts: data.subjectCounts || {},
+        examTitle: data.examTitle,
       });
+      
+      if (data.examTitle && data.examTitle !== 'Extracted Test') {
+        setTestName(data.examTitle);
+      }
+      
       setStep('review');
       toast.success(`Extracted ${questions.length} questions from PDF`);
     } catch (error) {
       console.error('Extraction error:', error);
-      toast.error('AI extraction failed. Please try again or check your PDF format.');
+      toast.error('AI extraction failed. Try enabling "Image Mode" for complex PDFs.');
     } finally {
       setIsProcessing(false);
     }
-  }, [pdfText]);
+  }, [pdfText, useImageMode, pdfFile]);
 
   const handleCreateTest = () => {
     if (extractedQuestions.length === 0) {
@@ -139,15 +186,17 @@ export default function CreateTest() {
       duration,
       questions: extractedQuestions,
       subjects,
-      totalMarks: extractedQuestions.length * 4,
-      positiveMarking: 4,
-      negativeMarking: 1,
+      totalMarks: extractedQuestions.length * positiveMarking,
+      positiveMarking,
+      negativeMarking,
     };
 
     saveTest(test);
     toast.success('Test created successfully!');
     navigate(`/tests`);
   };
+
+  const diagramQuestionCount = extractedQuestions.filter(q => q.hasDiagram).length;
 
   return (
     <MainLayout>
@@ -287,12 +336,90 @@ export default function CreateTest() {
                 max={300}
               />
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="positiveMarking">Correct (+)</Label>
+                <Input
+                  id="positiveMarking"
+                  type="number"
+                  value={positiveMarking}
+                  onChange={(e) => setPositiveMarking(Number(e.target.value))}
+                  min={1}
+                  max={10}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="negativeMarking">Wrong (-)</Label>
+                <Input
+                  id="negativeMarking"
+                  type="number"
+                  value={negativeMarking}
+                  onChange={(e) => setNegativeMarking(Number(e.target.value))}
+                  min={0}
+                  max={10}
+                />
+              </div>
+            </div>
+            
+            {/* Image Mode Toggle */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border">
+              <div className="space-y-0.5">
+                <Label htmlFor="imageMode" className="text-sm font-medium">Image Mode (Vision)</Label>
+                <p className="text-xs text-muted-foreground">Better for PDFs with diagrams/circuits</p>
+              </div>
+              <Switch
+                id="imageMode"
+                checked={useImageMode}
+                onCheckedChange={setUseImageMode}
+              />
+            </div>
+            
             <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
               <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
               <p className="text-sm">
-                AI will extract questions, options, subjects, and chapters from your PDF
+                AI will extract questions with LaTeX math, detect diagrams, and identify subjects
               </p>
             </div>
+            
+            {/* PDF Page Preview */}
+            {pdfPageImages.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">PDF Preview ({pdfPageImages.length} pages)</Label>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setShowPageViewer(true)}
+                  >
+                    <ZoomIn className="h-4 w-4 mr-1" />
+                    View Pages
+                  </Button>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {pdfPageImages.slice(0, 4).map((page) => (
+                    <img
+                      key={page.pageNumber}
+                      src={page.imageDataUrl}
+                      alt={`Page ${page.pageNumber}`}
+                      className="h-20 w-auto rounded border border-border cursor-pointer hover:ring-2 hover:ring-primary"
+                      onClick={() => {
+                        setSelectedPage(page.pageNumber);
+                        setShowPageViewer(true);
+                      }}
+                    />
+                  ))}
+                  {pdfPageImages.length > 4 && (
+                    <div 
+                      className="h-20 w-16 flex items-center justify-center rounded border border-border bg-muted cursor-pointer hover:bg-accent"
+                      onClick={() => setShowPageViewer(true)}
+                    >
+                      <span className="text-xs text-muted-foreground">+{pdfPageImages.length - 4}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setStep('upload')}>
                 Back
@@ -324,6 +451,12 @@ export default function CreateTest() {
                 <CheckCircle className="h-4 w-4 text-correct" />
                 <span className="text-sm font-medium">{extractionStats.totalExtracted} Questions Extracted</span>
               </div>
+              {diagramQuestionCount > 0 && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-review/10 border border-review/20">
+                  <Image className="h-4 w-4 text-review" />
+                  <span className="text-sm font-medium">{diagramQuestionCount} with Diagrams</span>
+                </div>
+              )}
               {Object.entries(extractionStats.subjectCounts).map(([subject, count]) => (
                 <div
                   key={subject}
@@ -355,22 +488,30 @@ export default function CreateTest() {
                           {q.subject}
                         </span>
                         <span className="text-xs text-muted-foreground">{q.chapter}</span>
+                        {q.hasDiagram && (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-review/10 text-review border border-review/20">
+                            <Image className="h-3 w-3" />
+                            Diagram
+                          </span>
+                        )}
                       </div>
                       {q.correctAnswer && (
                         <span className="text-xs text-correct">Answer: {q.correctAnswer}</span>
                       )}
                     </div>
-                    <p className="text-sm mb-2 line-clamp-3">{q.question}</p>
+                    <div className="text-sm mb-2 line-clamp-3">
+                      <LatexRenderer content={q.question} />
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
                       {Object.entries(q.options).map(([key, value]) => (
                         <div
                           key={key}
                           className={cn(
-                            'p-1.5 rounded truncate',
+                            'p-1.5 rounded',
                             q.correctAnswer === key && 'bg-correct/10 text-correct'
                           )}
                         >
-                          ({key}) {value || <span className="italic">Empty</span>}
+                          ({key}) {value ? <LatexRenderer content={value} /> : <span className="italic">Empty</span>}
                         </div>
                       ))}
                     </div>
@@ -399,6 +540,29 @@ export default function CreateTest() {
           </div>
         </div>
       )}
+
+      {/* PDF Page Viewer Dialog */}
+      <Dialog open={showPageViewer} onOpenChange={setShowPageViewer}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>PDF Pages</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="h-[70vh]">
+            <div className="space-y-4">
+              {pdfPageImages.map((page) => (
+                <div key={page.pageNumber} className="space-y-2">
+                  <p className="text-sm font-medium">Page {page.pageNumber}</p>
+                  <img
+                    src={page.imageDataUrl}
+                    alt={`Page ${page.pageNumber}`}
+                    className="w-full rounded-lg border border-border"
+                  />
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
