@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { NTAModeToggle } from '@/components/exam/NTAModeToggle';
 import {
   LayoutDashboard,
   Plus,
@@ -81,6 +82,9 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* User & Sign Out */}
       <div className="border-t border-border p-3 space-y-2">
+        <div className="px-3 py-2">
+          <NTAModeToggle />
+        </div>
         {user && (
           <div className="px-3 py-2">
             <p className="text-xs text-muted-foreground truncate">{user.email}</p>

@@ -7,6 +7,8 @@ import { QuestionDisplay } from '@/components/exam/QuestionDisplay';
 import { ExamTimer } from '@/components/exam/ExamTimer';
 import { SubjectTabs } from '@/components/exam/SubjectTabs';
 import { MistakeFeedback } from '@/components/exam/MistakeFeedback';
+import { NTAModeToggle } from '@/components/exam/NTAModeToggle';
+import { useNTAMode } from '@/contexts/NTAModeContext';
 import {
   getTestById,
   getCurrentAttempt,
@@ -56,6 +58,7 @@ export default function ExamInterface() {
   const [currentSubject, setCurrentSubject] = useState<Subject>('Physics');
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const { isNTAMode } = useNTAMode();
 
   // Initialize test and attempt
   useEffect(() => {
@@ -332,9 +335,15 @@ export default function ExamInterface() {
   return (
     <div className="flex h-screen flex-col bg-background">
       {/* Header */}
-      <header className="flex h-16 items-center justify-between border-b border-border bg-card px-4">
+      <header className={cn(
+        "flex h-16 items-center justify-between border-b border-border bg-card px-4",
+        isNTAMode && "bg-background"
+      )}>
         <div className="flex items-center gap-4">
-          <h1 className="font-bold text-lg truncate max-w-[200px]">{test.name}</h1>
+          <h1 className={cn(
+            "font-bold text-lg truncate max-w-[200px]",
+            isNTAMode && "text-foreground"
+          )}>{test.name}</h1>
           <SubjectTabs
             subjects={test.subjects}
             activeSubject={currentSubject}
@@ -343,6 +352,7 @@ export default function ExamInterface() {
           />
         </div>
         <div className="flex items-center gap-4">
+          <NTAModeToggle showLabel={false} />
           <ExamTimer
             initialTime={attempt.timeRemaining}
             onTimeUp={handleTimeUp}
