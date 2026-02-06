@@ -15,6 +15,7 @@ import History from "./pages/History";
 import MistakeBook from "./pages/MistakeBook";
 import StudyPlanner from "./pages/StudyPlanner";
 import ExportImport from "./pages/ExportImport";
+import JoinTest from "./pages/JoinTest";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -30,6 +31,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/join/:shareCode" element={<JoinTest />} />
             <Route
               path="/"
               element={

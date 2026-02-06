@@ -38,9 +38,13 @@ export interface Question {
   type: QuestionType;
   level: string;
   imageUrl?: string;
-   hasDiagram?: boolean;
-   pdfPageNumber?: number;
-   croppedImageUrl?: string;
+  hasDiagram?: boolean;
+  pdfPageNumber?: number;
+  croppedImageUrl?: string;
+}
+
+export interface AnswerKey {
+  [questionId: string]: string;
 }
 
 export interface QuestionAttempt {
@@ -67,6 +71,11 @@ export interface Test {
   totalMarks: number;
   positiveMarking: number;
   negativeMarking: number;
+  answerKey?: AnswerKey;
+  hasAnswerKey?: boolean;
+  shareCode?: string;
+  createdBy?: string;
+  pdfPageImages?: { pageNumber: number; imageDataUrl: string }[];
 }
 
 export interface TestAttempt {
@@ -79,6 +88,8 @@ export interface TestAttempt {
   currentQuestionIndex: number;
   currentSubject: Subject;
   isSubmitted: boolean;
+  attemptNumber?: number;
+  userId?: string;
 }
 
 export interface TestResult {
@@ -98,6 +109,8 @@ export interface TestResult {
   subjectWise: Record<Subject, SubjectResult>;
   chapterWise: Record<string, ChapterResult>;
   questionResults: QuestionResult[];
+  attemptNumber?: number;
+  hasAnswerKey?: boolean;
 }
 
 export interface SubjectResult {
@@ -138,6 +151,7 @@ export interface QuestionResult {
   mistakeTypes: MistakeType[];
   notes: string;
   markedForRevision: boolean;
+  question?: Question;
 }
 
 export interface MistakeAnalysis {
@@ -158,6 +172,7 @@ export interface PerformanceTrend {
   score: number;
   accuracy: number;
   timeTaken: number;
+  attemptNumber: number;
 }
 
 export interface WeeklyPlan {
@@ -221,6 +236,15 @@ export interface MistakeBookEntry {
   mastered: boolean;
 }
 
+export interface PracticeQuestion {
+  id: string;
+  question: Question;
+  generatedAt: string;
+  basedOnQuestionId: string;
+  chapter: string;
+  subject: Subject;
+}
+
 // Storage state
 export interface ExamStore {
   tests: Test[];
@@ -229,4 +253,5 @@ export interface ExamStore {
   mistakeBook: MistakeBookEntry[];
   weeklyPlans: WeeklyPlan[];
   currentAttempt: TestAttempt | null;
+  practiceQuestions?: PracticeQuestion[];
 }

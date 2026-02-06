@@ -1,23 +1,39 @@
 import React, { useState, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MainLayout, PageHeader } from '@/components/layout/MainLayout';
 import { StatCard } from '@/components/exam/StatCard';
 import { MultiProgressBar } from '@/components/exam/ProgressBar';
 import { SubjectTabs } from '@/components/exam/SubjectTabs';
 import { QuestionDisplay } from '@/components/exam/QuestionDisplay';
+import { AnswerKeyInput } from '@/components/exam/AnswerKeyInput';
+import { AttemptHistory } from '@/components/exam/AttemptHistory';
+import { QuestionWiseTable } from '@/components/analysis/QuestionWiseTable';
+import { ChapterWiseBreakdown } from '@/components/analysis/ChapterWiseBreakdown';
+import { TestJourneyChart } from '@/components/analysis/TestJourneyChart';
+import { MistakePatternDonut } from '@/components/analysis/MistakePatternDonut';
+import { PerformanceComparison } from '@/components/analysis/PerformanceComparison';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getResultById, getTestById, addToMistakeBook } from '@/lib/storage';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  getResultById,
+  getTestById,
+  getResultsByTestId,
+  addToMistakeBook,
+  updateTestAnswerKey,
+  saveResult,
+} from '@/lib/storage';
 import {
   calculateMistakeAnalysis,
+  calculateTestResult,
   formatTime,
   getMistakeTypeLabel,
   getMistakeTypeColor,
   createMistakeBookEntry,
 } from '@/lib/exam-utils';
-import { Subject, TestResult, QuestionResult, MistakeType } from '@/types/exam';
+import { Subject, TestResult, QuestionResult, MistakeType, Question, AnswerKey } from '@/types/exam';
 import {
   Target,
   Clock,
@@ -26,9 +42,10 @@ import {
   MinusCircle,
   TrendingUp,
   BookOpen,
-  ChevronDown,
-  ChevronUp,
   BarChart3,
+  RefreshCw,
+  Sparkles,
+  Key,
 } from 'lucide-react';
 import {
   BarChart,
@@ -51,16 +68,23 @@ import {
 } from 'recharts';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function TestAnalysis() {
   const { attemptId } = useParams<{ attemptId: string }>();
+  const navigate = useNavigate();
   const [selectedSubject, setSelectedSubject] = useState<Subject | 'All'>('All');
-  const [expandedChapter, setExpandedChapter] = useState<string | null>(null);
   const [selectedQuestion, setSelectedQuestion] = useState<QuestionResult | null>(null);
+  const [showAnswerKeyDialog, setShowAnswerKeyDialog] = useState(false);
+  const [isGeneratingPractice, setIsGeneratingPractice] = useState(false);
 
   const result = useMemo(() => attemptId ? getResultById(attemptId) : null, [attemptId]);
   const test = useMemo(() => result ? getTestById(result.testId) : null, [result]);
+  const allAttempts = useMemo(() => result ? getResultsByTestId(result.testId) : [], [result]);
   const mistakeAnalysis = useMemo(() => result ? calculateMistakeAnalysis([result]) : null, [result]);
+
+  // Check if analysis is available (has answer key)
+  const hasAnswerKey = test?.hasAnswerKey || test?.questions.some(q => q.correctAnswer);
 
   if (!result || !test) {
     return (
@@ -71,6 +95,82 @@ export default function TestAnalysis() {
       </MainLayout>
     );
   }
+
+  const handleAnswerKeySubmit = (answerKey: AnswerKey) => {
+    updateTestAnswerKey(test.id, answerKey);
+    
+    // Recalculate results with new answer key
+    const updatedTest = getTestById(test.id);
+    if (updatedTest) {
+      // Get the attempt data and recalculate
+      const attempts = JSON.parse(localStorage.getItem('jee_cbt_attempts') || '[]');
+      const attempt = attempts.find((a: any) => a.id === result.attemptId.split('-')[0]);
+      
+      if (attempt) {
+        const newResult = calculateTestResult(updatedTest, attempt);
+        newResult.attemptNumber = result.attemptNumber;
+        newResult.hasAnswerKey = true;
+        saveResult(newResult);
+      }
+    }
+    
+    setShowAnswerKeyDialog(false);
+    toast.success('Answer key saved! Refreshing analysis...');
+    window.location.reload();
+  };
+
+  const handleAddToMistakeBook = (questionResult: QuestionResult) => {
+    const question = test.questions.find(q => q.id === questionResult.questionId);
+    if (!question) return;
+
+    const entry = createMistakeBookEntry(
+      question,
+      result.testId,
+      result.testName,
+      questionResult.selectedAnswer,
+      questionResult.mistakeTypes,
+      questionResult.notes
+    );
+    addToMistakeBook(entry);
+    toast.success('Added to Mistake Book');
+  };
+
+  const handleGeneratePractice = async () => {
+    const wrongQuestions = result.questionResults
+      .filter(qr => !qr.isCorrect && qr.isAttempted)
+      .map(qr => {
+        const q = test.questions.find(tq => tq.id === qr.questionId);
+        return q ? { question: q.question, correctAnswer: q.correctAnswer, chapter: q.chapter } : null;
+      })
+      .filter(Boolean)
+      .slice(0, 5);
+
+    if (wrongQuestions.length === 0) {
+      toast.info('No wrong questions to generate practice from');
+      return;
+    }
+
+    setIsGeneratingPractice(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-practice-questions', {
+        body: {
+          wrongQuestions,
+          subject: result.questionResults.find(qr => !qr.isCorrect)?.subject || 'Physics',
+          chapter: wrongQuestions[0]?.chapter || 'General',
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success(`Generated ${data.questions?.length || 0} practice questions!`);
+      // Could navigate to a practice mode or show questions in a modal
+    } catch (error) {
+      console.error('Failed to generate practice questions:', error);
+      toast.error('Failed to generate practice questions');
+    } finally {
+      setIsGeneratingPractice(false);
+    }
+  };
 
   // Subject-wise data for charts
   const subjectData = [
@@ -101,65 +201,107 @@ export default function TestAnalysis() {
   ].filter(s => result.subjectWise[s.name as Subject].total > 0);
 
   // Mistake type distribution
-  const mistakeTypeData = mistakeAnalysis
-    ? Object.entries(mistakeAnalysis.byType)
-        .filter(([_, count]) => count > 0)
-        .map(([type, count]) => ({
-          name: getMistakeTypeLabel(type as MistakeType),
-          value: count,
-          color: getMistakeTypeColor(type as MistakeType),
-        }))
-    : [];
-
-  // Chapter-wise data
-  const chapterData = Object.entries(result.chapterWise).map(([key, data]) => ({
-    key,
-    ...data,
-    accuracy: Math.round(data.accuracy),
-  }));
-
-  // Time analysis data
-  const timeData = result.questionResults.map((qr, index) => ({
-    question: `Q${index + 1}`,
-    time: qr.timeSpent,
-    isCorrect: qr.isCorrect,
-    subject: qr.subject,
-  }));
+  const mistakesByType = mistakeAnalysis?.byType || {
+    concept: 0,
+    formula: 0,
+    calculation: 0,
+    'time-management': 0,
+    guessing: 0,
+    'forgot-concept': 0,
+    misread: 0,
+    'correct-slow': 0,
+    'perfectly-known': 0,
+  };
 
   // Filtered questions
   const filteredQuestions = selectedSubject === 'All'
     ? result.questionResults
     : result.questionResults.filter(q => q.subject === selectedSubject);
 
-  const handleAddToMistakeBook = (questionResult: QuestionResult) => {
-    const question = test.questions.find(q => q.id === questionResult.questionId);
-    if (!question) return;
+  // If no answer key, show prompt
+  if (!hasAnswerKey) {
+    return (
+      <MainLayout>
+        <PageHeader
+          title="Test Submitted"
+          description={`${result.testName} • ${new Date(result.completedAt).toLocaleDateString()}`}
+        >
+          <Link to={`/exam/${result.testId}`}>
+            <Button variant="outline">Retake Test</Button>
+          </Link>
+        </PageHeader>
 
-    const entry = createMistakeBookEntry(
-      question,
-      result.testId,
-      result.testName,
-      questionResult.selectedAnswer,
-      questionResult.mistakeTypes,
-      questionResult.notes
+        <div className="max-w-2xl mx-auto space-y-6">
+          <Card className="border-yellow-500/20 bg-yellow-500/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-5 w-5 text-yellow-500" />
+                Answer Key Required
+              </CardTitle>
+              <CardDescription>
+                To view detailed analysis and marks, please add the answer key for this test.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="text-center p-4 rounded-lg bg-muted">
+                  <p className="text-2xl font-bold">{result.attempted}</p>
+                  <p className="text-sm text-muted-foreground">Attempted</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-muted">
+                  <p className="text-2xl font-bold">{result.skipped}</p>
+                  <p className="text-sm text-muted-foreground">Skipped</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-muted">
+                  <p className="text-2xl font-bold">{formatTime(result.timeTaken)}</p>
+                  <p className="text-sm text-muted-foreground">Time Taken</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <AnswerKeyInput test={test} onAnswerKeySubmit={handleAnswerKeySubmit} />
+
+          <AttemptHistory testId={test.id} results={allAttempts} />
+        </div>
+      </MainLayout>
     );
-    addToMistakeBook(entry);
-    toast.success('Added to Mistake Book');
-  };
+  }
 
   return (
     <MainLayout>
       <PageHeader
-        title="Advanced Performance Analysis"
-        description={`${result.testName} • ${new Date(result.completedAt).toLocaleDateString()}`}
+        title="Detailed Test Analysis"
+        description={`${result.testName} • Attempt #${result.attemptNumber || 1} • ${new Date(result.completedAt).toLocaleDateString()}`}
       >
-        <Link to={`/exam/${result.testId}`}>
-          <Button variant="outline">Retake Test</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowAnswerKeyDialog(true)}>
+            <Key className="h-4 w-4 mr-2" />
+            Edit Answers
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleGeneratePractice}
+            disabled={isGeneratingPractice}
+          >
+            {isGeneratingPractice ? (
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4 mr-2" />
+            )}
+            AI Practice
+          </Button>
+          <Link to={`/exam/${result.testId}`}>
+            <Button>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retake
+            </Button>
+          </Link>
+        </div>
       </PageHeader>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
         <StatCard
           title="Score"
           value={`${result.score}/${result.maxScore}`}
@@ -193,7 +335,7 @@ export default function TestAnalysis() {
           variant="skipped"
         />
         <StatCard
-          title="Time Taken"
+          title="Time"
           value={formatTime(result.timeTaken)}
           icon={Clock}
         />
@@ -201,7 +343,7 @@ export default function TestAnalysis() {
 
       {/* Progress Overview */}
       <Card className="mb-8">
-        <CardHeader>
+        <CardHeader className="pb-2">
           <CardTitle>Overall Performance</CardTitle>
         </CardHeader>
         <CardContent>
@@ -232,16 +374,17 @@ export default function TestAnalysis() {
       </Card>
 
       {/* Tabbed Analysis */}
-      <Tabs defaultValue="subject" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="subject">Subject Analysis</TabsTrigger>
-          <TabsTrigger value="chapter">Chapter Analysis</TabsTrigger>
-          <TabsTrigger value="mistakes">Mistake Analysis</TabsTrigger>
-          <TabsTrigger value="time">Time Analysis</TabsTrigger>
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="questions">Questions</TabsTrigger>
+          <TabsTrigger value="chapters">Chapters</TabsTrigger>
+          <TabsTrigger value="mistakes">Mistakes</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 
-        {/* Subject Analysis */}
-        <TabsContent value="subject" className="space-y-6">
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Subject Accuracy Chart */}
             <Card>
@@ -252,7 +395,7 @@ export default function TestAnalysis() {
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={subjectData}>
                     <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                    <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                    <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} domain={[0, 100]} />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: 'hsl(var(--card))',
@@ -270,10 +413,10 @@ export default function TestAnalysis() {
               </CardContent>
             </Card>
 
-            {/* Subject Breakdown */}
+            {/* Subject Performance Radar */}
             <Card>
               <CardHeader>
-                <CardTitle>Subject Performance Radar</CardTitle>
+                <CardTitle>Performance Radar</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={250}>
@@ -337,313 +480,122 @@ export default function TestAnalysis() {
               </Card>
             ))}
           </div>
+
+          <PerformanceComparison result={result} />
+          <TestJourneyChart questionResults={result.questionResults} />
         </TabsContent>
 
-        {/* Chapter Analysis */}
-        <TabsContent value="chapter" className="space-y-6">
+        {/* Questions Tab */}
+        <TabsContent value="questions" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <SubjectTabs
+              subjects={['All' as any, ...test.subjects]}
+              activeSubject={selectedSubject as Subject}
+              onSubjectChange={(s) => setSelectedSubject(s as Subject | 'All')}
+              subjectCounts={{
+                Physics: { total: result.subjectWise.Physics.total, answered: result.subjectWise.Physics.correct },
+                Chemistry: { total: result.subjectWise.Chemistry.total, answered: result.subjectWise.Chemistry.correct },
+                Maths: { total: result.subjectWise.Maths.total, answered: result.subjectWise.Maths.correct },
+              }}
+            />
+          </div>
+
+          <QuestionWiseTable
+            questionResults={filteredQuestions}
+            onViewQuestion={(qr) => setSelectedQuestion(qr)}
+            onReattempt={(qr) => {
+              handleAddToMistakeBook(qr);
+            }}
+          />
+        </TabsContent>
+
+        {/* Chapters Tab */}
+        <TabsContent value="chapters" className="space-y-6">
+          <ChapterWiseBreakdown
+            chapterData={result.chapterWise}
+            questionResults={result.questionResults}
+            onQuestionClick={(qr) => setSelectedQuestion(qr)}
+          />
+        </TabsContent>
+
+        {/* Mistakes Tab */}
+        <TabsContent value="mistakes" className="space-y-6">
+          <MistakePatternDonut
+            mistakesByType={mistakesByType}
+            totalMistakes={result.incorrect}
+          />
+
           <Card>
             <CardHeader>
-              <CardTitle>Chapter-wise Performance</CardTitle>
+              <CardTitle>Wrong Questions</CardTitle>
               <CardDescription>
-                Click on a chapter to see question details
+                Click to view details and add to Mistake Book
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {chapterData.map((chapter) => (
-                  <div key={chapter.key} className="rounded-lg border border-border">
-                    <button
-                      onClick={() => setExpandedChapter(
-                        expandedChapter === chapter.key ? null : chapter.key
-                      )}
-                      className="flex w-full items-center justify-between p-4 text-left hover:bg-accent transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline" className={`badge-${chapter.subject.toLowerCase()}`}>
-                          {chapter.subject}
-                        </Badge>
-                        <span className="font-medium">{chapter.chapter}</span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="font-medium">{chapter.accuracy}% accuracy</p>
-                          <p className="text-xs text-muted-foreground">
-                            {chapter.correct}/{chapter.total} correct
-                          </p>
-                        </div>
-                        {expandedChapter === chapter.key ? (
-                          <ChevronUp className="h-5 w-5 text-muted-foreground" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                        )}
-                      </div>
-                    </button>
-                    
-                    {expandedChapter === chapter.key && (
-                      <div className="border-t border-border p-4 bg-muted/50">
-                        <div className="flex flex-wrap gap-2">
-                          {chapter.questionIds.map((qId) => {
-                            const qResult = result.questionResults.find(q => q.questionId === qId);
-                            if (!qResult) return null;
-                            return (
-                              <button
-                                key={qId}
-                                onClick={() => setSelectedQuestion(qResult)}
-                                className={cn(
-                                  'question-btn',
-                                  qResult.isCorrect
-                                    ? 'question-btn-answered'
-                                    : qResult.isAttempted
-                                    ? 'question-btn-incorrect'
-                                    : 'question-btn-skipped'
-                                )}
-                              >
-                                {qResult.questionNumber}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+              <QuestionWiseTable
+                questionResults={result.questionResults.filter(qr => !qr.isCorrect)}
+                onViewQuestion={(qr) => setSelectedQuestion(qr)}
+                onReattempt={handleAddToMistakeBook}
+              />
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Mistake Analysis */}
-        <TabsContent value="mistakes" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Mistake Type Distribution */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Mistake Distribution</CardTitle>
-                <CardDescription>Breakdown by mistake type</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {mistakeTypeData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={250}>
-                    <PieChart>
-                      <Pie
-                        data={mistakeTypeData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={90}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {mistakeTypeData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex h-[250px] items-center justify-center text-muted-foreground">
-                    <p>No mistake data recorded. Use feedback during exam.</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Knowledge Profile */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Knowledge Profile</CardTitle>
-                <CardDescription>Analysis of your weak areas</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {mistakeAnalysis && (
-                  <>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Carelessness Rate</span>
-                        <span className={cn(
-                          'font-medium',
-                          mistakeAnalysis.carelessnessRate > 30 ? 'text-review' : 'text-correct'
-                        )}>
-                          {mistakeAnalysis.carelessnessRate.toFixed(1)}%
-                        </span>
-                      </div>
-                      <div className="h-2 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className="h-full bg-review transition-all"
-                          style={{ width: `${Math.min(mistakeAnalysis.carelessnessRate, 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Time Pressure Issues</span>
-                        <span className={cn(
-                          'font-medium',
-                          mistakeAnalysis.timePressureRate > 30 ? 'text-review' : 'text-correct'
-                        )}>
-                          {mistakeAnalysis.timePressureRate.toFixed(1)}%
-                        </span>
-                      </div>
-                      <div className="h-2 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className="h-full bg-physics transition-all"
-                          style={{ width: `${Math.min(mistakeAnalysis.timePressureRate, 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                    
-                    {mistakeAnalysis.weakConcepts.length > 0 && (
-                      <div className="pt-4 border-t border-border">
-                        <p className="text-sm font-medium mb-2">Weak Concepts</p>
-                        <div className="flex flex-wrap gap-2">
-                          {mistakeAnalysis.weakConcepts.slice(0, 5).map((concept) => (
-                            <Badge key={concept} variant="outline" className="border-incorrect text-incorrect">
-                              {concept}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {mistakeAnalysis.weakFormulas.length > 0 && (
-                      <div className="pt-4 border-t border-border">
-                        <p className="text-sm font-medium mb-2">Formula Revision Needed</p>
-                        <div className="flex flex-wrap gap-2">
-                          {mistakeAnalysis.weakFormulas.slice(0, 5).map((formula) => (
-                            <Badge key={formula} variant="outline" className="border-review text-review">
-                              {formula}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Time Analysis */}
-        <TabsContent value="time" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Time per Question</CardTitle>
-              <CardDescription>How long you spent on each question</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={timeData}>
-                  <XAxis dataKey="question" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
-                  <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} label={{ value: 'Seconds', angle: -90, position: 'insideLeft' }} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                    formatter={(value: number) => [`${value}s`, 'Time']}
-                  />
-                  <Bar dataKey="time" radius={[4, 4, 0, 0]}>
-                    {timeData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={entry.isCorrect ? 'hsl(var(--correct))' : 'hsl(var(--incorrect))'}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <StatCard
-              title="Avg. Time per Question"
-              value={`${Math.round(result.timeTaken / result.totalQuestions)}s`}
-              icon={Clock}
-            />
-            <StatCard
-              title="Fastest Correct"
-              value={`${Math.min(...timeData.filter(t => t.isCorrect).map(t => t.time) || [0])}s`}
-              icon={CheckCircle2}
-              variant="correct"
-            />
-            <StatCard
-              title="Slowest Attempt"
-              value={`${Math.max(...timeData.map(t => t.time) || [0])}s`}
-              icon={Clock}
-              variant="skipped"
-            />
-          </div>
+        {/* History Tab */}
+        <TabsContent value="history" className="space-y-6">
+          <AttemptHistory testId={test.id} results={allAttempts} />
         </TabsContent>
       </Tabs>
 
-      {/* Question Review Panel */}
-      {selectedQuestion && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
-          <div className="fixed inset-4 md:inset-10 bg-card rounded-xl border border-border shadow-xl overflow-auto">
-            <div className="sticky top-0 flex items-center justify-between p-4 border-b border-border bg-card">
-              <h3 className="font-semibold">Question {selectedQuestion.questionNumber} Review</h3>
-              <div className="flex items-center gap-2">
-                {!selectedQuestion.isCorrect && selectedQuestion.isAttempted && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      handleAddToMistakeBook(selectedQuestion);
-                    }}
-                    className="gap-2"
-                  >
-                    <BookOpen className="h-4 w-4" />
-                    Add to Mistake Book
-                  </Button>
-                )}
-                <Button variant="ghost" size="sm" onClick={() => setSelectedQuestion(null)}>
-                  Close
+      {/* Question Detail Dialog */}
+      <Dialog open={!!selectedQuestion} onOpenChange={() => setSelectedQuestion(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Question {selectedQuestion?.questionNumber}</DialogTitle>
+          </DialogHeader>
+          {selectedQuestion && (
+            <div className="space-y-4">
+              <QuestionDisplay
+                question={test.questions.find(q => q.id === selectedQuestion.questionId)!}
+                questionNumber={selectedQuestion.questionNumber}
+                totalQuestions={test.questions.length}
+                selectedAnswer={selectedQuestion.selectedAnswer}
+                onAnswerSelect={() => {}}
+                showCorrectAnswer
+                pdfPageImages={test.pdfPageImages}
+              />
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    handleAddToMistakeBook(selectedQuestion);
+                    setSelectedQuestion(null);
+                  }}
+                >
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Add to Mistake Book
                 </Button>
               </div>
             </div>
-            <div className="p-6">
-              {test.questions.find(q => q.id === selectedQuestion.questionId) && (
-                <QuestionDisplay
-                  question={test.questions.find(q => q.id === selectedQuestion.questionId)!}
-                  questionNumber={selectedQuestion.questionNumber}
-                  totalQuestions={result.totalQuestions}
-                  selectedAnswer={selectedQuestion.selectedAnswer}
-                  onAnswerSelect={() => {}}
-                  showCorrectAnswer
-                />
-              )}
-              <div className="mt-4 flex items-center gap-2">
-                <Badge variant={selectedQuestion.isCorrect ? 'default' : 'destructive'}>
-                  {selectedQuestion.isCorrect ? 'Correct' : selectedQuestion.isAttempted ? 'Incorrect' : 'Skipped'}
-                </Badge>
-                <span className="text-sm text-muted-foreground">
-                  Time spent: {selectedQuestion.timeSpent}s
-                </span>
-                {selectedQuestion.mistakeTypes.length > 0 && (
-                  <div className="flex gap-1">
-                    {selectedQuestion.mistakeTypes.map((mt) => (
-                      <Badge key={mt} variant="outline" className="text-xs">
-                        {getMistakeTypeLabel(mt)}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {selectedQuestion.notes && (
-                <div className="mt-4 p-3 rounded-lg bg-muted">
-                  <p className="text-sm font-medium mb-1">Your Notes:</p>
-                  <p className="text-sm text-muted-foreground">{selectedQuestion.notes}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Answer Key Dialog */}
+      <Dialog open={showAnswerKeyDialog} onOpenChange={setShowAnswerKeyDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Answer Key</DialogTitle>
+          </DialogHeader>
+          <AnswerKeyInput
+            test={test}
+            existingKey={test.answerKey}
+            onAnswerKeySubmit={handleAnswerKeySubmit}
+          />
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
