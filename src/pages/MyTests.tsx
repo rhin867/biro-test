@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MainLayout, PageHeader } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getTests, getResultsByTestId, deleteTest } from '@/lib/storage';
+import { TestShareDialog } from '@/components/exam/TestShareDialog';
+import { getTests, getResultsByTestId, deleteTest, generateShareCode } from '@/lib/storage';
 import { formatTimeMinutes } from '@/lib/exam-utils';
 import {
   Plus,
@@ -15,11 +16,15 @@ import {
   FileText,
   Target,
   MoreVertical,
+  Share2,
+  Key,
+  CheckCircle2,
 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -36,12 +41,16 @@ import {
 import { toast } from 'sonner';
 
 export default function MyTests() {
-  const [tests, setTests] = React.useState(getTests());
+  const [tests, setTests] = useState(getTests());
 
   const handleDeleteTest = (testId: string) => {
     deleteTest(testId);
     setTests(getTests());
     toast.success('Test deleted');
+  };
+
+  const handleGenerateShareCode = (testId: string) => {
+    return generateShareCode(testId);
   };
 
   return (
@@ -87,7 +96,12 @@ export default function MyTests() {
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <CardTitle className="text-lg line-clamp-1">{test.name}</CardTitle>
+                      <CardTitle className="text-lg line-clamp-1 flex items-center gap-2">
+                        {test.name}
+                        {test.hasAnswerKey && (
+                          <CheckCircle2 className="h-4 w-4 text-correct" />
+                        )}
+                      </CardTitle>
                       <CardDescription className="mt-1">
                         {new Date(test.createdAt).toLocaleDateString()}
                       </CardDescription>
@@ -109,6 +123,7 @@ export default function MyTests() {
                             </Link>
                           </DropdownMenuItem>
                         )}
+                        <DropdownMenuSeparator />
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <DropdownMenuItem
@@ -148,6 +163,12 @@ export default function MyTests() {
                         {subject}
                       </Badge>
                     ))}
+                    {!test.hasAnswerKey && (
+                      <Badge variant="outline" className="text-yellow-500 border-yellow-500/30">
+                        <Key className="h-3 w-3 mr-1" />
+                        No Key
+                      </Badge>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 text-center">
@@ -178,6 +199,13 @@ export default function MyTests() {
                     </div>
                   )}
 
+                  {/* Attempt Count */}
+                  {results.length > 0 && (
+                    <p className="text-xs text-center text-muted-foreground">
+                      {results.length} attempt{results.length !== 1 ? 's' : ''}
+                    </p>
+                  )}
+
                   {/* Actions */}
                   <div className="flex gap-2">
                     <Link to={`/exam/${test.id}`} className="flex-1">
@@ -186,6 +214,10 @@ export default function MyTests() {
                         Start Test
                       </Button>
                     </Link>
+                    <TestShareDialog 
+                      test={test} 
+                      onGenerateShareCode={() => handleGenerateShareCode(test.id)}
+                    />
                     {results.length > 0 && (
                       <Link to={`/analysis/${results[results.length - 1].attemptId}`}>
                         <Button variant="outline" size="icon">
@@ -194,12 +226,6 @@ export default function MyTests() {
                       </Link>
                     )}
                   </div>
-
-                  {results.length > 0 && (
-                    <p className="text-xs text-center text-muted-foreground">
-                      {results.length} attempt{results.length !== 1 ? 's' : ''}
-                    </p>
-                  )}
                 </CardContent>
               </Card>
             );

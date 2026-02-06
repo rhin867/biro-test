@@ -1,6 +1,6 @@
 // Local storage utilities for persistent exam data
 
-import { Test, TestAttempt, TestResult, MistakeBookEntry, WeeklyPlan, ExamStore } from '@/types/exam';
+import { Test, TestAttempt, TestResult, MistakeBookEntry, WeeklyPlan, ExamStore, AnswerKey } from '@/types/exam';
 
 const STORAGE_KEYS = {
   TESTS: 'jee_cbt_tests',
@@ -9,6 +9,7 @@ const STORAGE_KEYS = {
   MISTAKE_BOOK: 'jee_cbt_mistake_book',
   WEEKLY_PLANS: 'jee_cbt_weekly_plans',
   CURRENT_ATTEMPT: 'jee_cbt_current_attempt',
+  SHARE_CODES: 'jee_cbt_share_codes',
 } as const;
 
 // Generic storage helpers
@@ -43,6 +44,46 @@ export function saveTest(test: Test): void {
     tests.push(test);
   }
   setItem(STORAGE_KEYS.TESTS, tests);
+}
+
+export function updateTestAnswerKey(testId: string, answerKey: AnswerKey): void {
+  const tests = getTests();
+  const testIndex = tests.findIndex(t => t.id === testId);
+  if (testIndex >= 0) {
+    tests[testIndex].answerKey = answerKey;
+    tests[testIndex].hasAnswerKey = Object.keys(answerKey).length > 0;
+    
+    // Also apply to questions
+    tests[testIndex].questions = tests[testIndex].questions.map(q => ({
+      ...q,
+      correctAnswer: answerKey[q.id] || q.correctAnswer,
+    }));
+    
+    setItem(STORAGE_KEYS.TESTS, tests);
+  }
+}
+
+export function generateShareCode(testId: string): string {
+  const code = `TEST-${testId.slice(0, 8).toUpperCase()}`;
+  const shareCodes = getItem<Record<string, string>>(STORAGE_KEYS.SHARE_CODES, {});
+  shareCodes[code] = testId;
+  setItem(STORAGE_KEYS.SHARE_CODES, shareCodes);
+  
+  // Update test with share code
+  const tests = getTests();
+  const testIndex = tests.findIndex(t => t.id === testId);
+  if (testIndex >= 0) {
+    tests[testIndex].shareCode = code;
+    setItem(STORAGE_KEYS.TESTS, tests);
+  }
+  
+  return code;
+}
+
+export function getTestByShareCode(shareCode: string): Test | null {
+  const shareCodes = getItem<Record<string, string>>(STORAGE_KEYS.SHARE_CODES, {});
+  const testId = shareCodes[shareCode];
+  return testId ? getTestById(testId) : null;
 }
 
 export function deleteTest(testId: string): void {

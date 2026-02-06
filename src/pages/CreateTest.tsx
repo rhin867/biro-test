@@ -178,6 +178,9 @@ export default function CreateTest() {
 
     const subjects: Subject[] = [...new Set(extractedQuestions.map((q) => q.subject))];
 
+    // Check if any questions have answer keys
+    const hasAnswerKey = extractedQuestions.some(q => q.correctAnswer);
+
     const test: Test = {
       id: generateId(),
       name: testName || 'Untitled Test',
@@ -189,6 +192,8 @@ export default function CreateTest() {
       totalMarks: extractedQuestions.length * positiveMarking,
       positiveMarking,
       negativeMarking,
+      hasAnswerKey,
+      pdfPageImages: pdfPageImages, // Store PDF pages for diagram viewing
     };
 
     saveTest(test);

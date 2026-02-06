@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { QuestionPalette } from '@/components/exam/QuestionPalette';
 import { QuestionDisplay } from '@/components/exam/QuestionDisplay';
 import { ExamTimer } from '@/components/exam/ExamTimer';
 import { SubjectTabs } from '@/components/exam/SubjectTabs';
 import { MistakeFeedback } from '@/components/exam/MistakeFeedback';
 import { NTAModeToggle } from '@/components/exam/NTAModeToggle';
+import { NTAQuestionPalette } from '@/components/exam/NTAQuestionPalette';
 import { useNTAMode } from '@/contexts/NTAModeContext';
 import {
   getTestById,
@@ -17,6 +17,7 @@ import {
   saveResult,
   clearCurrentAttempt,
   generateId,
+  getAttempts,
 } from '@/lib/storage';
 import { calculateTestResult } from '@/lib/exam-utils';
 import { Test, TestAttempt, QuestionAttempt, QuestionStatus, Subject, MistakeType } from '@/types/exam';
@@ -26,9 +27,9 @@ import {
   ChevronRight,
   Flag,
   Send,
-  Save,
   X,
   AlertTriangle,
+  Grid3X3,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -58,6 +59,7 @@ export default function ExamInterface() {
   const [currentSubject, setCurrentSubject] = useState<Subject>('Physics');
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showMobilePalette, setShowMobilePalette] = useState(false);
   const { isNTAMode } = useNTAMode();
 
   // Initialize test and attempt
@@ -83,6 +85,10 @@ export default function ExamInterface() {
       setCurrentQuestionIndex(existingAttempt.currentQuestionIndex);
       setCurrentSubject(existingAttempt.currentSubject);
     } else {
+      // Calculate attempt number
+      const previousAttempts = getAttempts().filter(a => a.testId === testId && a.isSubmitted);
+      const attemptNumber = previousAttempts.length + 1;
+
       // Create new attempt
       const newAttempt: TestAttempt = {
         id: generateId(),
@@ -93,6 +99,7 @@ export default function ExamInterface() {
         currentQuestionIndex: 0,
         currentSubject: loadedTest.subjects[0] || 'Physics',
         isSubmitted: false,
+        attemptNumber,
       };
       setAttempt(newAttempt);
       setCurrentAttempt(newAttempt);
@@ -113,6 +120,16 @@ export default function ExamInterface() {
   // Current question
   const currentQuestion = test?.questions[currentQuestionIndex];
   const currentAttemptData = currentQuestion ? attempt?.attempts[currentQuestion.id] : null;
+
+  // Get question subjects mapping
+  const questionSubjects = useMemo(() => {
+    if (!test) return {};
+    const mapping: Record<number, Subject> = {};
+    test.questions.forEach((q, index) => {
+      mapping[index + 1] = q.subject;
+    });
+    return mapping;
+  }, [test]);
 
   // Get question status for palette
   const getQuestionStatuses = useCallback((): Record<number, QuestionStatus> => {
@@ -241,6 +258,7 @@ export default function ExamInterface() {
       if (question) {
         setCurrentSubject(question.subject);
       }
+      setShowMobilePalette(false);
     }
   };
 
@@ -288,7 +306,14 @@ export default function ExamInterface() {
   const handleSubmitTest = () => {
     if (!test || !attempt) return;
 
+    // Check if test has answer key
+    if (!test.hasAnswerKey && !test.answerKey) {
+      toast.info('Test submitted! Add answer key to view detailed analysis.');
+    }
+
     const result = calculateTestResult(test, attempt);
+    result.attemptNumber = attempt.attemptNumber;
+    result.hasAnswerKey = test.hasAnswerKey;
     
     const finalAttempt: TestAttempt = {
       ...attempt,
@@ -333,25 +358,30 @@ export default function ExamInterface() {
   ).length;
 
   return (
-    <div className="flex h-screen flex-col bg-background">
+    <div className={cn(
+      "flex h-screen flex-col",
+      isNTAMode ? "bg-white" : "bg-background"
+    )}>
       {/* Header */}
       <header className={cn(
-        "flex h-16 items-center justify-between border-b border-border bg-card px-4",
-        isNTAMode && "bg-background"
+        "flex h-14 items-center justify-between border-b px-4",
+        isNTAMode ? "bg-blue-800 text-white border-blue-900" : "border-border bg-card"
       )}>
         <div className="flex items-center gap-4">
           <h1 className={cn(
             "font-bold text-lg truncate max-w-[200px]",
-            isNTAMode && "text-foreground"
+            isNTAMode && "text-white"
           )}>{test.name}</h1>
-          <SubjectTabs
-            subjects={test.subjects}
-            activeSubject={currentSubject}
-            onSubjectChange={handleSubjectChange}
-            subjectCounts={subjectCounts}
-          />
+          {attempt.attemptNumber && (
+            <span className={cn(
+              "text-xs px-2 py-1 rounded",
+              isNTAMode ? "bg-blue-700" : "bg-muted"
+            )}>
+              Attempt #{attempt.attemptNumber}
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <NTAModeToggle showLabel={false} />
           <ExamTimer
             initialTime={attempt.timeRemaining}
@@ -359,26 +389,43 @@ export default function ExamInterface() {
             onTick={handleTimerTick}
           />
           <Button
-            variant="destructive"
+            variant={isNTAMode ? "secondary" : "destructive"}
             onClick={() => setShowSubmitDialog(true)}
             className="gap-2"
           >
             <Send className="h-4 w-4" />
-            Submit Test
+            Submit
           </Button>
         </div>
       </header>
 
+      {/* Subject Tabs */}
+      <div className={cn(
+        "border-b px-4 py-2",
+        isNTAMode ? "bg-gray-100 border-gray-300" : "border-border bg-card"
+      )}>
+        <SubjectTabs
+          subjects={test.subjects}
+          activeSubject={currentSubject}
+          onSubjectChange={handleSubjectChange}
+          subjectCounts={subjectCounts}
+        />
+      </div>
+
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Question Area */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className={cn(
+          "flex-1 overflow-y-auto p-4 lg:p-6",
+          isNTAMode && "bg-white"
+        )}>
           <QuestionDisplay
             question={currentQuestion}
             questionNumber={currentQuestionIndex + 1}
             totalQuestions={test.questions.length}
             selectedAnswer={currentAttemptData?.selectedAnswer || null}
             onAnswerSelect={handleAnswerSelect}
+            pdfPageImages={test.pdfPageImages}
           />
 
           {/* Feedback Section (Collapsible) */}
@@ -396,11 +443,12 @@ export default function ExamInterface() {
           )}
 
           {/* Navigation Buttons */}
-          <div className="mt-6 flex items-center justify-between">
-            <div className="flex gap-2">
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
                 onClick={handleMarkForReview}
+                size="sm"
                 className={cn(
                   'gap-2',
                   (currentAttemptData?.status === 'marked-review' ||
@@ -409,95 +457,81 @@ export default function ExamInterface() {
                 )}
               >
                 <Flag className="h-4 w-4" />
-                {currentAttemptData?.status === 'marked-review' ||
-                currentAttemptData?.status === 'answered-marked'
-                  ? 'Unmark'
-                  : 'Mark for Review'}
+                Mark
               </Button>
               <Button
                 variant="outline"
+                size="sm"
                 onClick={handleClearResponse}
                 disabled={!currentAttemptData?.selectedAnswer}
               >
-                <X className="h-4 w-4 mr-2" />
+                <X className="h-4 w-4 mr-1" />
                 Clear
               </Button>
               <Button
                 variant="ghost"
+                size="sm"
                 onClick={() => setShowFeedback(!showFeedback)}
               >
-                {showFeedback ? 'Hide' : 'Show'} Feedback
+                {showFeedback ? 'Hide' : 'Feedback'}
               </Button>
             </div>
             <div className="flex gap-2">
               <Button
                 variant="outline"
+                size="sm"
                 onClick={goToPrevious}
                 disabled={currentQuestionIndex === 0}
               >
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                Previous
+                <ChevronLeft className="h-4 w-4" />
+                Prev
               </Button>
               <Button
+                size="sm"
                 onClick={goToNext}
                 disabled={currentQuestionIndex === test.questions.length - 1}
               >
                 Next
-                <ChevronRight className="h-4 w-4 ml-2" />
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
         </div>
 
-        {/* Question Palette Sidebar */}
-        <aside className="hidden lg:block w-72 border-l border-border bg-card p-4 overflow-y-auto">
-          <QuestionPalette
+        {/* Question Palette Sidebar - Always visible on desktop */}
+        <aside className={cn(
+          "hidden lg:flex w-64 border-l flex-col",
+          isNTAMode ? "bg-gray-50 border-gray-300" : "border-border bg-card"
+        )}>
+          <NTAQuestionPalette
             totalQuestions={test.questions.length}
             currentQuestion={currentQuestionIndex + 1}
             questionStatuses={questionStatuses}
+            questionSubjects={questionSubjects}
             onQuestionClick={goToQuestion}
+            currentSubject={currentSubject}
           />
-
-          <div className="mt-6 space-y-2 border-t border-border pt-4">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Answered</span>
-              <span className="font-medium text-correct">{answeredCount}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Marked for Review</span>
-              <span className="font-medium text-review">{markedCount}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Not Visited</span>
-              <span className="font-medium">{test.questions.length - Object.keys(attempt.attempts).length}</span>
-            </div>
-          </div>
         </aside>
-
-        {/* Mobile Question Palette */}
-        <Sheet>
-          <SheetTrigger asChild className="lg:hidden fixed bottom-4 right-4 z-50">
-            <Button size="lg" className="rounded-full h-14 w-14 shadow-lg">
-              {currentQuestionIndex + 1}
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-80">
-            <SheetHeader>
-              <SheetTitle>Question Navigator</SheetTitle>
-            </SheetHeader>
-            <div className="mt-4">
-              <QuestionPalette
-                totalQuestions={test.questions.length}
-                currentQuestion={currentQuestionIndex + 1}
-                questionStatuses={questionStatuses}
-                onQuestionClick={(num) => {
-                  goToQuestion(num);
-                }}
-              />
-            </div>
-          </SheetContent>
-        </Sheet>
       </div>
+
+      {/* Mobile Question Palette FAB */}
+      <Sheet open={showMobilePalette} onOpenChange={setShowMobilePalette}>
+        <SheetTrigger asChild className="lg:hidden fixed bottom-4 right-4 z-50">
+          <Button size="lg" className="rounded-full h-14 w-14 shadow-lg">
+            <Grid3X3 className="h-6 w-6" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="right" className="w-80 p-0">
+          <NTAQuestionPalette
+            totalQuestions={test.questions.length}
+            currentQuestion={currentQuestionIndex + 1}
+            questionStatuses={questionStatuses}
+            questionSubjects={questionSubjects}
+            onQuestionClick={goToQuestion}
+            currentSubject={currentSubject}
+          />
+        </SheetContent>
+      </Sheet>
 
       {/* Submit Confirmation Dialog */}
       <AlertDialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
@@ -507,18 +541,32 @@ export default function ExamInterface() {
               <AlertTriangle className="h-5 w-5 text-review" />
               Submit Test?
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <p>Are you sure you want to submit your test?</p>
-              <div className="rounded-lg bg-muted p-3 mt-4 space-y-1 text-sm">
-                <p>Answered: <span className="font-medium text-correct">{answeredCount}</span> / {test.questions.length}</p>
-                <p>Marked for Review: <span className="font-medium text-review">{markedCount}</span></p>
-                <p>Unanswered: <span className="font-medium">{test.questions.length - answeredCount}</span></p>
+            <AlertDialogDescription className="space-y-3">
+              <p>Are you sure you want to submit? This action cannot be undone.</p>
+              <div className="grid grid-cols-3 gap-4 mt-4 p-4 bg-muted rounded-lg">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-correct">{answeredCount}</p>
+                  <p className="text-xs text-muted-foreground">Answered</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-review">{markedCount}</p>
+                  <p className="text-xs text-muted-foreground">Marked</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold">{test.questions.length - answeredCount}</p>
+                  <p className="text-xs text-muted-foreground">Unanswered</p>
+                </div>
               </div>
+              {!test.hasAnswerKey && (
+                <p className="text-sm text-muted-foreground bg-yellow-500/10 p-2 rounded border border-yellow-500/20">
+                  ⚠️ No answer key set. You can add it after submission to view analysis.
+                </p>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Continue Test</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSubmitTest}>
+            <AlertDialogAction onClick={handleSubmitTest} className="bg-primary">
               Submit Test
             </AlertDialogAction>
           </AlertDialogFooter>
