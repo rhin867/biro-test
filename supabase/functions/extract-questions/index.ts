@@ -48,7 +48,7 @@ serve(async (req) => {
   }
 
   try {
-    const { pdfText, pdfBase64, mimeType } = await req.json();
+    const { pdfText, pdfBase64, mimeType, extractAnswerKeyOnly, totalQuestions } = await req.json();
     
     if (!pdfText && !pdfBase64) {
       return new Response(
@@ -57,25 +57,38 @@ serve(async (req) => {
       );
     }
 
-    // Use Lovable AI Gateway for extraction
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Build messages based on input type
+    // Determine prompt based on mode
+    const promptContent = extractAnswerKeyOnly
+      ? `You are an answer key extractor. Look at this document and extract the answer key.
+Return STRICT JSON only, no markdown. Format:
+{
+  "answerKey": {
+    "1": "A",
+    "2": "B",
+    "3": "C"
+  }
+}
+Extract answers for up to ${totalQuestions || 75} questions. Map question numbers to their correct option letter (A/B/C/D).`
+      : systemPrompt;
+
     const messages: any[] = [
-      { role: "system", content: systemPrompt }
+      { role: "system", content: promptContent }
     ];
 
     if (pdfBase64) {
-      // Use vision model for PDF images
       messages.push({
         role: "user",
         content: [
           {
             type: "text",
-            text: "Extract all JEE questions from this PDF. Return STRICT JSON only."
+            text: extractAnswerKeyOnly 
+              ? "Extract the answer key from this document. Return STRICT JSON only."
+              : "Extract all JEE questions from this PDF. Return STRICT JSON only."
           },
           {
             type: "image_url",
@@ -88,7 +101,9 @@ serve(async (req) => {
     } else {
       messages.push({
         role: "user",
-        content: `Extract all JEE questions from this text. Return STRICT JSON only:\n\n${pdfText}`
+        content: extractAnswerKeyOnly
+          ? `Extract the answer key from this text. Return STRICT JSON only:\n\n${pdfText}`
+          : `Extract all JEE questions from this text. Return STRICT JSON only:\n\n${pdfText}`
       });
     }
 
@@ -130,7 +145,7 @@ serve(async (req) => {
       throw new Error("No response from AI");
     }
 
-    // Parse the JSON response (remove markdown if present)
+    // Parse the JSON response
     let jsonContent = content;
     if (content.includes("```json")) {
       jsonContent = content.replace(/```json\n?/g, "").replace(/```\n?/g, "");
@@ -143,7 +158,15 @@ serve(async (req) => {
       parsed = JSON.parse(jsonContent.trim());
     } catch (parseError) {
       console.error("Failed to parse AI response:", content);
-      throw new Error("Failed to parse extracted questions");
+      throw new Error("Failed to parse extracted data");
+    }
+
+    // If extracting answer key only, return it directly
+    if (extractAnswerKeyOnly) {
+      return new Response(
+        JSON.stringify({ answerKey: parsed.answerKey || parsed }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Transform to expected format

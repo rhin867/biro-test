@@ -500,8 +500,8 @@ export default function CreateTest() {
                           </span>
                         )}
                       </div>
-                      {q.correctAnswer && (
-                        <span className="text-xs text-correct">Answer: {q.correctAnswer}</span>
+                       {q.correctAnswer && (
+                        <span className="text-xs text-muted-foreground italic">✓ Has Answer Key</span>
                       )}
                     </div>
                     <div className="text-sm mb-2 line-clamp-3">
@@ -511,10 +511,7 @@ export default function CreateTest() {
                       {Object.entries(q.options).map(([key, value]) => (
                         <div
                           key={key}
-                          className={cn(
-                            'p-1.5 rounded',
-                            q.correctAnswer === key && 'bg-correct/10 text-correct'
-                          )}
+                          className="p-1.5 rounded"
                         >
                           ({key}) {value ? <LatexRenderer content={value} /> : <span className="italic">Empty</span>}
                         </div>
@@ -525,6 +522,25 @@ export default function CreateTest() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Answer Key Detected Banner */}
+          {extractedQuestions.some(q => q.correctAnswer) && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-correct/10 border border-correct/20">
+              <CheckCircle className="h-5 w-5 text-correct flex-shrink-0" />
+              <p className="text-sm text-correct">
+                ✅ Answer key detected from PDF! You won't need to enter answers after the test.
+              </p>
+            </div>
+          )}
+
+          {!extractedQuestions.some(q => q.correctAnswer) && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-review/10 border border-review/20">
+              <AlertCircle className="h-5 w-5 text-review flex-shrink-0" />
+              <p className="text-sm text-review">
+                No answer key detected. You can upload an answer key PDF/image after submitting the test.
+              </p>
+            </div>
+          )}
 
           {extractedQuestions.some((q) => !q.options.A || !q.options.B) && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-review/10 border border-review/20">
