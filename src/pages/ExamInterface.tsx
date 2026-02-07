@@ -425,6 +425,7 @@ export default function ExamInterface() {
             totalQuestions={test.questions.length}
             selectedAnswer={currentAttemptData?.selectedAnswer || null}
             onAnswerSelect={handleAnswerSelect}
+            showCorrectAnswer={false}
             pdfPageImages={test.pdfPageImages}
           />
 
@@ -443,7 +444,7 @@ export default function ExamInterface() {
           )}
 
           {/* Navigation Buttons */}
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
+          <div className="mt-6 mb-20 lg:mb-6 flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"

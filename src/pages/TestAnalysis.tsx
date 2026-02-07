@@ -12,11 +12,17 @@ import { ChapterWiseBreakdown } from '@/components/analysis/ChapterWiseBreakdown
 import { TestJourneyChart } from '@/components/analysis/TestJourneyChart';
 import { MistakePatternDonut } from '@/components/analysis/MistakePatternDonut';
 import { PerformanceComparison } from '@/components/analysis/PerformanceComparison';
+import { TimeAnalysis } from '@/components/analysis/TimeAnalysis';
+import { QuestionJourney } from '@/components/analysis/QuestionJourney';
+import { SubjectMovement } from '@/components/analysis/SubjectMovement';
+import { ScorePotential } from '@/components/analysis/ScorePotential';
+import { AttemptAnalysis } from '@/components/analysis/AttemptAnalysis';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import {
   getResultById,
   getTestById,
@@ -29,11 +35,9 @@ import {
   calculateMistakeAnalysis,
   calculateTestResult,
   formatTime,
-  getMistakeTypeLabel,
-  getMistakeTypeColor,
   createMistakeBookEntry,
 } from '@/lib/exam-utils';
-import { Subject, TestResult, QuestionResult, MistakeType, Question, AnswerKey } from '@/types/exam';
+import { Subject, TestResult, QuestionResult, MistakeType, AnswerKey } from '@/types/exam';
 import {
   Target,
   Clock,
@@ -42,10 +46,10 @@ import {
   MinusCircle,
   TrendingUp,
   BookOpen,
-  BarChart3,
   RefreshCw,
   Sparkles,
   Key,
+  Download,
 } from 'lucide-react';
 import {
   BarChart,
@@ -54,11 +58,7 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
   Cell,
-  LineChart,
-  Line,
   RadarChart,
   PolarGrid,
   PolarAngleAxis,
@@ -83,7 +83,6 @@ export default function TestAnalysis() {
   const allAttempts = useMemo(() => result ? getResultsByTestId(result.testId) : [], [result]);
   const mistakeAnalysis = useMemo(() => result ? calculateMistakeAnalysis([result]) : null, [result]);
 
-  // Check if analysis is available (has answer key)
   const hasAnswerKey = test?.hasAnswerKey || test?.questions.some(q => q.correctAnswer);
 
   if (!result || !test) {
@@ -99,10 +98,8 @@ export default function TestAnalysis() {
   const handleAnswerKeySubmit = (answerKey: AnswerKey) => {
     updateTestAnswerKey(test.id, answerKey);
     
-    // Recalculate results with new answer key
     const updatedTest = getTestById(test.id);
     if (updatedTest) {
-      // Get the attempt data and recalculate
       const attempts = JSON.parse(localStorage.getItem('jee_cbt_attempts') || '[]');
       const attempt = attempts.find((a: any) => a.id === result.attemptId.split('-')[0]);
       
@@ -161,9 +158,7 @@ export default function TestAnalysis() {
       });
 
       if (error) throw error;
-
       toast.success(`Generated ${data.questions?.length || 0} practice questions!`);
-      // Could navigate to a practice mode or show questions in a modal
     } catch (error) {
       console.error('Failed to generate practice questions:', error);
       toast.error('Failed to generate practice questions');
@@ -200,20 +195,11 @@ export default function TestAnalysis() {
     },
   ].filter(s => result.subjectWise[s.name as Subject].total > 0);
 
-  // Mistake type distribution
   const mistakesByType = mistakeAnalysis?.byType || {
-    concept: 0,
-    formula: 0,
-    calculation: 0,
-    'time-management': 0,
-    guessing: 0,
-    'forgot-concept': 0,
-    misread: 0,
-    'correct-slow': 0,
-    'perfectly-known': 0,
+    concept: 0, formula: 0, calculation: 0, 'time-management': 0,
+    guessing: 0, 'forgot-concept': 0, misread: 0, 'correct-slow': 0, 'perfectly-known': 0,
   };
 
-  // Filtered questions
   const filteredQuestions = selectedSubject === 'All'
     ? result.questionResults
     : result.questionResults.filter(q => q.subject === selectedSubject);
@@ -261,7 +247,6 @@ export default function TestAnalysis() {
           </Card>
 
           <AnswerKeyInput test={test} onAnswerKeySubmit={handleAnswerKeySubmit} />
-
           <AttemptHistory testId={test.id} results={allAttempts} />
         </div>
       </MainLayout>
@@ -274,7 +259,7 @@ export default function TestAnalysis() {
         title="Detailed Test Analysis"
         description={`${result.testName} • Attempt #${result.attemptNumber || 1} • ${new Date(result.completedAt).toLocaleDateString()}`}
       >
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={() => setShowAnswerKeyDialog(true)}>
             <Key className="h-4 w-4 mr-2" />
             Edit Answers
@@ -302,43 +287,12 @@ export default function TestAnalysis() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-        <StatCard
-          title="Score"
-          value={`${result.score}/${result.maxScore}`}
-          icon={Target}
-          variant="primary"
-        />
-        <StatCard
-          title="Accuracy"
-          value={`${result.accuracy.toFixed(1)}%`}
-          icon={TrendingUp}
-          variant={result.accuracy >= 60 ? 'correct' : 'incorrect'}
-        />
-        <StatCard
-          title="Correct"
-          value={result.correct}
-          icon={CheckCircle2}
-          variant="correct"
-          subtitle={`+${result.correct * test.positiveMarking}`}
-        />
-        <StatCard
-          title="Incorrect"
-          value={result.incorrect}
-          icon={XCircle}
-          variant="incorrect"
-          subtitle={`-${result.incorrect * test.negativeMarking}`}
-        />
-        <StatCard
-          title="Skipped"
-          value={result.skipped}
-          icon={MinusCircle}
-          variant="skipped"
-        />
-        <StatCard
-          title="Time"
-          value={formatTime(result.timeTaken)}
-          icon={Clock}
-        />
+        <StatCard title="Score" value={`${result.score}/${result.maxScore}`} icon={Target} variant="primary" />
+        <StatCard title="Accuracy" value={`${result.accuracy.toFixed(1)}%`} icon={TrendingUp} variant={result.accuracy >= 60 ? 'correct' : 'incorrect'} />
+        <StatCard title="Correct" value={result.correct} icon={CheckCircle2} variant="correct" subtitle={`+${result.correct * test.positiveMarking}`} />
+        <StatCard title="Incorrect" value={result.incorrect} icon={XCircle} variant="incorrect" subtitle={`-${result.incorrect * test.negativeMarking}`} />
+        <StatCard title="Skipped" value={result.skipped} icon={MinusCircle} variant="skipped" />
+        <StatCard title="Time" value={formatTime(result.timeTaken)} icon={Clock} />
       </div>
 
       {/* Progress Overview */}
@@ -373,20 +327,27 @@ export default function TestAnalysis() {
         </CardContent>
       </Card>
 
-      {/* Tabbed Analysis */}
+      {/* Tabbed Analysis - Scrollable tabs like Mathongo/PW */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="questions">Questions</TabsTrigger>
-          <TabsTrigger value="chapters">Chapters</TabsTrigger>
-          <TabsTrigger value="mistakes">Mistakes</TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
-        </TabsList>
+        <ScrollArea className="w-full">
+          <TabsList className="inline-flex w-auto min-w-full">
+            <TabsTrigger value="overview">Performance</TabsTrigger>
+            <TabsTrigger value="score-potential">Score Potential</TabsTrigger>
+            <TabsTrigger value="attempt-analysis">Attempt Analysis</TabsTrigger>
+            <TabsTrigger value="time-analysis">Time Analysis</TabsTrigger>
+            <TabsTrigger value="subject-movement">Subject Movement</TabsTrigger>
+            <TabsTrigger value="question-journey">Question Journey</TabsTrigger>
+            <TabsTrigger value="questions">Qs by Qs Analysis</TabsTrigger>
+            <TabsTrigger value="chapters">Chapters</TabsTrigger>
+            <TabsTrigger value="mistakes">Mistakes</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
+          </TabsList>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Subject Accuracy Chart */}
             <Card>
               <CardHeader>
                 <CardTitle>Subject-wise Accuracy</CardTitle>
@@ -413,7 +374,6 @@ export default function TestAnalysis() {
               </CardContent>
             </Card>
 
-            {/* Subject Performance Radar */}
             <Card>
               <CardHeader>
                 <CardTitle>Performance Radar</CardTitle>
@@ -424,13 +384,7 @@ export default function TestAnalysis() {
                     <PolarGrid stroke="hsl(var(--border))" />
                     <PolarAngleAxis dataKey="name" tick={{ fill: 'hsl(var(--foreground))' }} />
                     <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                    <Radar
-                      name="Accuracy"
-                      dataKey="accuracy"
-                      stroke="hsl(var(--primary))"
-                      fill="hsl(var(--primary))"
-                      fillOpacity={0.3}
-                    />
+                    <Radar name="Accuracy" dataKey="accuracy" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.3} />
                     <Legend />
                   </RadarChart>
                 </ResponsiveContainer>
@@ -438,7 +392,6 @@ export default function TestAnalysis() {
             </Card>
           </div>
 
-          {/* Subject Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {subjectData.map((subject) => (
               <Card key={subject.name}>
@@ -453,8 +406,7 @@ export default function TestAnalysis() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Score</span>
                       <span className="font-medium">
-                        {result.subjectWise[subject.name as Subject].score}/
-                        {result.subjectWise[subject.name as Subject].maxScore}
+                        {result.subjectWise[subject.name as Subject].score}/{result.subjectWise[subject.name as Subject].maxScore}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -482,7 +434,41 @@ export default function TestAnalysis() {
           </div>
 
           <PerformanceComparison result={result} />
-          <TestJourneyChart questionResults={result.questionResults} />
+        </TabsContent>
+
+        {/* Score Potential Tab */}
+        <TabsContent value="score-potential" className="space-y-6">
+          <ScorePotential
+            result={result}
+            positiveMarking={test.positiveMarking}
+            negativeMarking={test.negativeMarking}
+          />
+        </TabsContent>
+
+        {/* Attempt Analysis Tab */}
+        <TabsContent value="attempt-analysis" className="space-y-6">
+          <AttemptAnalysis questionResults={result.questionResults} />
+        </TabsContent>
+
+        {/* Time Analysis Tab */}
+        <TabsContent value="time-analysis" className="space-y-6">
+          <TimeAnalysis
+            questionResults={result.questionResults}
+            totalDuration={test.duration}
+          />
+        </TabsContent>
+
+        {/* Subject Movement Tab */}
+        <TabsContent value="subject-movement" className="space-y-6">
+          <SubjectMovement questionResults={result.questionResults} />
+        </TabsContent>
+
+        {/* Question Journey Tab */}
+        <TabsContent value="question-journey" className="space-y-6">
+          <QuestionJourney
+            questionResults={result.questionResults}
+            totalDuration={test.duration}
+          />
         </TabsContent>
 
         {/* Questions Tab */}
@@ -499,13 +485,10 @@ export default function TestAnalysis() {
               }}
             />
           </div>
-
           <QuestionWiseTable
             questionResults={filteredQuestions}
             onViewQuestion={(qr) => setSelectedQuestion(qr)}
-            onReattempt={(qr) => {
-              handleAddToMistakeBook(qr);
-            }}
+            onReattempt={(qr) => handleAddToMistakeBook(qr)}
           />
         </TabsContent>
 
@@ -520,17 +503,11 @@ export default function TestAnalysis() {
 
         {/* Mistakes Tab */}
         <TabsContent value="mistakes" className="space-y-6">
-          <MistakePatternDonut
-            mistakesByType={mistakesByType}
-            totalMistakes={result.incorrect}
-          />
-
+          <MistakePatternDonut mistakesByType={mistakesByType} totalMistakes={result.incorrect} />
           <Card>
             <CardHeader>
               <CardTitle>Wrong Questions</CardTitle>
-              <CardDescription>
-                Click to view details and add to Mistake Book
-              </CardDescription>
+              <CardDescription>Click to view details and add to Mistake Book</CardDescription>
             </CardHeader>
             <CardContent>
               <QuestionWiseTable
