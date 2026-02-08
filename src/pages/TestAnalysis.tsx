@@ -17,6 +17,10 @@ import { QuestionJourney } from '@/components/analysis/QuestionJourney';
 import { SubjectMovement } from '@/components/analysis/SubjectMovement';
 import { ScorePotential } from '@/components/analysis/ScorePotential';
 import { AttemptAnalysis } from '@/components/analysis/AttemptAnalysis';
+import { DifficultyAnalysis } from '@/components/analysis/DifficultyAnalysis';
+import { MissedConcepts } from '@/components/analysis/MissedConcepts';
+import { PainfulQuestions } from '@/components/analysis/PainfulQuestions';
+import { CompleteAuditTable } from '@/components/analysis/CompleteAuditTable';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -260,6 +264,26 @@ export default function TestAnalysis() {
         description={`${result.testName} • Attempt #${result.attemptNumber || 1} • ${new Date(result.completedAt).toLocaleDateString()}`}
       >
         <div className="flex gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            onClick={() => {
+              const el = document.getElementById('analysis-content');
+              if (el) {
+                import('html2canvas').then(({ default: html2canvas }) => {
+                  html2canvas(el, { backgroundColor: '#1a1f2e', scale: 1 }).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = `${result.testName}-analysis.png`;
+                    link.href = canvas.toDataURL();
+                    link.click();
+                    toast.success('Analysis downloaded!');
+                  });
+                });
+              }
+            }}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Download
+          </Button>
           <Button variant="outline" onClick={() => setShowAnswerKeyDialog(true)}>
             <Key className="h-4 w-4 mr-2" />
             Edit Answers
@@ -328,6 +352,7 @@ export default function TestAnalysis() {
       </Card>
 
       {/* Tabbed Analysis - Scrollable tabs like Mathongo/PW */}
+      <div id="analysis-content">
       <Tabs defaultValue="overview" className="space-y-6">
         <ScrollArea className="w-full">
           <TabsList className="inline-flex w-auto min-w-full">
@@ -335,9 +360,13 @@ export default function TestAnalysis() {
             <TabsTrigger value="score-potential">Score Potential</TabsTrigger>
             <TabsTrigger value="attempt-analysis">Attempt Analysis</TabsTrigger>
             <TabsTrigger value="time-analysis">Time Analysis</TabsTrigger>
+            <TabsTrigger value="difficulty">Difficulty</TabsTrigger>
             <TabsTrigger value="subject-movement">Subject Movement</TabsTrigger>
             <TabsTrigger value="question-journey">Question Journey</TabsTrigger>
+            <TabsTrigger value="painful">Painful Qs</TabsTrigger>
+            <TabsTrigger value="missed-concepts">Missed Concepts</TabsTrigger>
             <TabsTrigger value="questions">Qs by Qs Analysis</TabsTrigger>
+            <TabsTrigger value="complete-analysis">Complete Analysis</TabsTrigger>
             <TabsTrigger value="chapters">Chapters</TabsTrigger>
             <TabsTrigger value="mistakes">Mistakes</TabsTrigger>
             <TabsTrigger value="history">History</TabsTrigger>
@@ -458,6 +487,14 @@ export default function TestAnalysis() {
           />
         </TabsContent>
 
+        {/* Difficulty Tab */}
+        <TabsContent value="difficulty" className="space-y-6">
+          <DifficultyAnalysis
+            questionResults={result.questionResults}
+            questions={test.questions.map(q => ({ id: q.id, level: q.level }))}
+          />
+        </TabsContent>
+
         {/* Subject Movement Tab */}
         <TabsContent value="subject-movement" className="space-y-6">
           <SubjectMovement questionResults={result.questionResults} />
@@ -469,6 +506,19 @@ export default function TestAnalysis() {
             questionResults={result.questionResults}
             totalDuration={test.duration}
           />
+        </TabsContent>
+
+        {/* Painful Questions Tab */}
+        <TabsContent value="painful" className="space-y-6">
+          <PainfulQuestions
+            questionResults={result.questionResults}
+            onQuestionClick={(qr) => setSelectedQuestion(qr)}
+          />
+        </TabsContent>
+
+        {/* Missed Concepts Tab */}
+        <TabsContent value="missed-concepts" className="space-y-6">
+          <MissedConcepts questionResults={result.questionResults} />
         </TabsContent>
 
         {/* Questions Tab */}
@@ -489,6 +539,15 @@ export default function TestAnalysis() {
             questionResults={filteredQuestions}
             onViewQuestion={(qr) => setSelectedQuestion(qr)}
             onReattempt={(qr) => handleAddToMistakeBook(qr)}
+          />
+        </TabsContent>
+
+        {/* Complete Analysis Tab */}
+        <TabsContent value="complete-analysis" className="space-y-6">
+          <CompleteAuditTable
+            questionResults={result.questionResults}
+            questions={test.questions}
+            onViewQuestion={(qr) => setSelectedQuestion(qr)}
           />
         </TabsContent>
 
@@ -524,6 +583,7 @@ export default function TestAnalysis() {
           <AttemptHistory testId={test.id} results={allAttempts} />
         </TabsContent>
       </Tabs>
+      </div>
 
       {/* Question Detail Dialog */}
       <Dialog open={!!selectedQuestion} onOpenChange={() => setSelectedQuestion(null)}>

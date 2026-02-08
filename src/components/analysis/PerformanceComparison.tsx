@@ -1,14 +1,29 @@
 import React from 'react';
 import { TestResult, Subject } from '@/types/exam';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatTime } from '@/lib/exam-utils';
+import { cn } from '@/lib/utils';
 
 interface PerformanceComparisonProps {
   result: TestResult;
 }
 
+const subjectLabels: Record<Subject, string> = {
+  Physics: 'Physics',
+  Chemistry: 'Chemistry',
+  Maths: 'Mathematics',
+};
+
+function formatTimeHMS(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.round(seconds % 60);
+  if (h > 0) return `${h}h ${m}m ${s}s`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
 export function PerformanceComparison({ result }: PerformanceComparisonProps) {
-  // Simulated average data (in a real app, this would come from backend)
+  // Simulated comparison data
   const averageData = {
     score: Math.round(result.maxScore * 0.45),
     correct: Math.round(result.totalQuestions * 0.4),
@@ -16,7 +31,6 @@ export function PerformanceComparison({ result }: PerformanceComparisonProps) {
     skipped: Math.round(result.totalQuestions * 0.45),
     accuracy: 65,
   };
-
   const topperData = {
     score: Math.round(result.maxScore * 0.95),
     correct: Math.round(result.totalQuestions * 0.92),
@@ -25,90 +39,161 @@ export function PerformanceComparison({ result }: PerformanceComparisonProps) {
     accuracy: 98,
   };
 
-  const rows = [
-    { label: 'Score', you: result.score, average: averageData.score, topper: topperData.score },
-    { label: 'Correct', you: result.correct, average: averageData.correct, topper: topperData.correct },
-    { label: 'Incorrect', you: result.incorrect, average: averageData.incorrect, topper: topperData.incorrect },
-    { label: 'Skipped', you: result.skipped, average: averageData.skipped, topper: topperData.skipped },
-    { label: 'Accuracy', you: `${result.accuracy.toFixed(1)}%`, average: `${averageData.accuracy}%`, topper: `${topperData.accuracy}%` },
-  ];
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Performance Comparison</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-4 gap-4">
-          <div />
-          <div className="text-center">
-            <div className="bg-primary/10 rounded-lg p-3">
-              <span className="text-2xl">👑</span>
-              <p className="text-sm font-medium mt-1">Topper</p>
-              <p className="text-xs text-muted-foreground">(Live Test)</p>
-            </div>
-          </div>
-          <div className="text-center">
-            <div className="bg-secondary/50 rounded-lg p-3">
-              <span className="text-2xl">👥</span>
-              <p className="text-sm font-medium mt-1">Average</p>
-              <p className="text-xs text-muted-foreground">(Live Test)</p>
-            </div>
-          </div>
-          <div className="text-center">
-            <div className="bg-correct/10 border border-correct/20 rounded-lg p-3">
-              <span className="text-2xl">🎯</span>
-              <p className="text-sm font-medium mt-1">You</p>
-            </div>
-          </div>
-        </div>
+    <div className="space-y-6">
+      {/* Test Breakdown Table - like reference image */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Test Breakdown</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-3 px-4 font-medium">Subject</th>
+                  <th className="text-center py-3 px-4 font-medium">Total Score</th>
+                  <th className="text-center py-3 px-4 font-medium">Attempted Correct</th>
+                  <th className="text-center py-3 px-4 font-medium">Attempted Wrong</th>
+                  <th className="text-center py-3 px-4 font-medium">Not Attempted</th>
+                  <th className="text-center py-3 px-4 font-medium">Not Visited Qs</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* Overall Row */}
+                <tr className="border-b border-border/50 font-semibold bg-muted/20">
+                  <td className="py-3 px-4 flex items-center gap-2">
+                    <span className="text-primary">✓</span> Overall
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <span className="text-primary font-bold text-lg">{result.score}</span>
+                    <span className="text-muted-foreground text-xs">/{result.maxScore}</span>
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <span className="text-correct font-bold">{result.correct}</span>
+                    <span className="text-muted-foreground text-xs"> / {result.totalQuestions}</span>
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <span className="text-incorrect font-bold">{result.incorrect}</span>
+                    <span className="text-muted-foreground text-xs"> / {result.totalQuestions}</span>
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <span className="text-review font-bold">{result.skipped}</span>
+                    <span className="text-muted-foreground text-xs"> / {result.totalQuestions}</span>
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <span className="font-bold">0</span>
+                    <span className="text-muted-foreground text-xs"> / {result.totalQuestions}</span>
+                  </td>
+                </tr>
 
-        <div className="mt-4 space-y-2">
-          {rows.map((row) => (
-            <div key={row.label} className="grid grid-cols-4 gap-4 py-2 border-b border-border last:border-0">
-              <div className="font-medium">{row.label}</div>
-              <div className="text-center text-primary font-semibold">{row.topper}</div>
-              <div className="text-center text-muted-foreground">{row.average}</div>
-              <div className="text-center text-correct font-semibold">{row.you}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Subject-wise Performance */}
-        <div className="mt-6">
-          <h4 className="font-medium mb-3">Sectional Performance</h4>
-          <div className="space-y-3">
-            {Object.entries(result.subjectWise).map(([subject, data]) => (
-              data.total > 0 && (
-                <div key={subject} className="p-3 rounded-lg bg-muted/30 border border-border">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium">{subject}</span>
-                    <span className="text-primary font-semibold">{data.score}/{data.maxScore}</span>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Accuracy</p>
-                      <p className="font-medium text-correct">{data.accuracy.toFixed(1)}%</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Correct</p>
-                      <p className="font-medium">{data.correct}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Incorrect</p>
-                      <p className="font-medium">{data.incorrect}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Skipped</p>
-                      <p className="font-medium">{data.skipped}</p>
-                    </div>
+                {/* Subject Rows */}
+                {(['Maths', 'Physics', 'Chemistry'] as Subject[]).map(subject => {
+                  const data = result.subjectWise[subject];
+                  if (data.total === 0) return null;
+                  return (
+                    <tr key={subject} className="border-b border-border/30">
+                      <td className="py-3 px-4">
+                        <span className={cn(
+                          'font-medium',
+                          subject === 'Maths' ? 'text-[hsl(280,65%,60%)]' :
+                          subject === 'Physics' ? 'text-[hsl(199,89%,48%)]' :
+                          'text-[hsl(142,76%,36%)]'
+                        )}>
+                          {subjectLabels[subject]}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="font-bold">{data.score}</span>
+                        <span className="text-muted-foreground text-xs"> / {data.maxScore}</span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="text-correct font-bold">{data.correct}</span>
+                        <span className="text-muted-foreground text-xs"> / {data.total}</span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="text-incorrect font-bold">{data.incorrect}</span>
+                        <span className="text-muted-foreground text-xs"> / {data.total}</span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="text-review font-bold">{data.skipped}</span>
+                        <span className="text-muted-foreground text-xs"> / {data.total}</span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="font-bold">0</span>
+                        <span className="text-muted-foreground text-xs"> / {data.total}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          
+          {/* Progress bars per subject */}
+          <div className="mt-4 space-y-3">
+            {(['Maths', 'Physics', 'Chemistry'] as Subject[]).map(subject => {
+              const data = result.subjectWise[subject];
+              if (data.total === 0) return null;
+              return (
+                <div key={subject} className="flex items-center gap-3">
+                  <span className="text-xs font-medium w-24">{subjectLabels[subject]}</span>
+                  <div className="flex-1 h-2.5 rounded-full overflow-hidden flex bg-muted">
+                    <div className="bg-correct h-full" style={{ width: `${(data.correct / data.total) * 100}%` }} />
+                    <div className="bg-incorrect h-full" style={{ width: `${(data.incorrect / data.total) * 100}%` }} />
+                    <div className="bg-review h-full" style={{ width: `${(data.skipped / data.total) * 100}%` }} />
                   </div>
                 </div>
-              )
-            ))}
+              );
+            })}
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      {/* Comparison Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Performance Comparison</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-4 gap-4 mb-4">
+            <div />
+            <div className="text-center">
+              <div className="bg-primary/10 rounded-lg p-2">
+                <span className="text-xl">👑</span>
+                <p className="text-xs font-medium mt-1">Topper</p>
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="bg-secondary/50 rounded-lg p-2">
+                <span className="text-xl">👥</span>
+                <p className="text-xs font-medium mt-1">Average</p>
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="bg-correct/10 border border-correct/20 rounded-lg p-2">
+                <span className="text-xl">🎯</span>
+                <p className="text-xs font-medium mt-1">You</p>
+              </div>
+            </div>
+          </div>
+
+          {[
+            { label: 'Score', topper: topperData.score, avg: averageData.score, you: result.score },
+            { label: 'Correct', topper: topperData.correct, avg: averageData.correct, you: result.correct },
+            { label: 'Incorrect', topper: topperData.incorrect, avg: averageData.incorrect, you: result.incorrect },
+            { label: 'Accuracy', topper: `${topperData.accuracy}%`, avg: `${averageData.accuracy}%`, you: `${result.accuracy.toFixed(1)}%` },
+            { label: 'Time', topper: '-', avg: '-', you: formatTimeHMS(result.timeTaken) },
+          ].map(row => (
+            <div key={row.label} className="grid grid-cols-4 gap-4 py-2 border-b border-border last:border-0">
+              <div className="font-medium text-sm">{row.label}</div>
+              <div className="text-center text-primary font-semibold text-sm">{row.topper}</div>
+              <div className="text-center text-muted-foreground text-sm">{row.avg}</div>
+              <div className="text-center text-correct font-semibold text-sm">{row.you}</div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

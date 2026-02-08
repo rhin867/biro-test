@@ -10,34 +10,43 @@ interface SubjectMovementProps {
 }
 
 const subjectColors: Record<Subject, string> = {
-  Physics: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  Chemistry: 'bg-green-500/20 text-green-400 border-green-500/30',
-  Maths: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  Physics: 'bg-[hsl(199,89%,48%)]/20 text-[hsl(199,89%,48%)] border-[hsl(199,89%,48%)]/30',
+  Chemistry: 'bg-[hsl(142,76%,36%)]/20 text-[hsl(142,76%,36%)] border-[hsl(142,76%,36%)]/30',
+  Maths: 'bg-[hsl(280,65%,60%)]/20 text-[hsl(280,65%,60%)] border-[hsl(280,65%,60%)]/30',
 };
 
+const subjectIconBg: Record<Subject, string> = {
+  Physics: 'bg-[hsl(199,89%,48%)]/20 border-[hsl(199,89%,48%)]/40',
+  Chemistry: 'bg-[hsl(142,76%,36%)]/20 border-[hsl(142,76%,36%)]/40',
+  Maths: 'bg-[hsl(280,65%,60%)]/20 border-[hsl(280,65%,60%)]/40',
+};
+
+const subjectIcons: Record<Subject, string> = {
+  Physics: '⚛️',
+  Chemistry: '🧪',
+  Maths: '📐',
+};
+
+function formatTimeHMS(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.round(seconds % 60);
+  if (h > 0) return `${h} hr ${m} min ${s} sec`;
+  if (m > 0) return `${m} min ${s} sec`;
+  return `${s} sec`;
+}
+
 export function SubjectMovement({ questionResults }: SubjectMovementProps) {
-  // Track subject switches
-  const switches: { from: Subject; to: Subject; atQuestion: number; timeSpent: number }[] = [];
-  let currentSubject = questionResults[0]?.subject;
-  let timeInCurrentSubject = 0;
+  // Build sessions with exact time tracking
+  const sessions: {
+    subject: Subject;
+    action: string;
+    questions: number;
+    timeSpent: number;
+    correct: number;
+    attempted: number;
+  }[] = [];
 
-  questionResults.forEach((q, i) => {
-    if (q.subject !== currentSubject) {
-      switches.push({
-        from: currentSubject,
-        to: q.subject,
-        atQuestion: q.questionNumber,
-        timeSpent: timeInCurrentSubject,
-      });
-      currentSubject = q.subject;
-      timeInCurrentSubject = q.timeSpent;
-    } else {
-      timeInCurrentSubject += q.timeSpent;
-    }
-  });
-
-  // Subject order and time spent per subject session
-  const sessions: { subject: Subject; questions: number; timeSpent: number; correct: number; total: number }[] = [];
   let sessionSubject = questionResults[0]?.subject;
   let sessionStart = 0;
 
@@ -45,19 +54,29 @@ export function SubjectMovement({ questionResults }: SubjectMovementProps) {
     if (q.subject !== sessionSubject || i === questionResults.length - 1) {
       const endIdx = q.subject !== sessionSubject ? i : i + 1;
       const sessionQs = questionResults.slice(sessionStart, endIdx);
+      
       sessions.push({
         subject: sessionSubject,
+        action: sessions.length === 0 ? 'Started with' : 'Switched to',
         questions: sessionQs.length,
         timeSpent: sessionQs.reduce((s, sq) => s + sq.timeSpent, 0),
         correct: sessionQs.filter(sq => sq.isCorrect).length,
-        total: sessionQs.length,
+        attempted: sessionQs.filter(sq => sq.isAttempted).length,
       });
-      sessionSubject = q.subject;
-      sessionStart = i;
+      
+      if (q.subject !== sessionSubject) {
+        sessionSubject = q.subject;
+        sessionStart = i;
+      }
     }
   });
 
-  // Per-subject stats
+  // Mark last session
+  if (sessions.length > 0) {
+    sessions[sessions.length - 1].action = 'Ended with';
+  }
+
+  // Per-subject total time
   const subjectStats = (['Physics', 'Chemistry', 'Maths'] as Subject[]).map(subject => {
     const qs = questionResults.filter(q => q.subject === subject);
     const correct = qs.filter(q => q.isCorrect).length;
@@ -69,89 +88,95 @@ export function SubjectMovement({ questionResults }: SubjectMovementProps) {
       correct,
       attempted,
       accuracy: attempted > 0 ? Math.round((correct / attempted) * 100) : 0,
-      time: Math.round(time / 60),
+      time,
+      attemptPercent: qs.length > 0 ? Math.round((attempted / qs.length) * 100) : 0,
     };
   }).filter(s => s.total > 0);
 
-  // Recommendation
+  const switches = sessions.length - 1;
+
   const bestSubject = subjectStats.reduce((best, s) =>
     s.accuracy > best.accuracy ? s : best, subjectStats[0]);
   const firstSubject = questionResults[0]?.subject;
 
   return (
     <div className="space-y-6">
-      {/* Subject Flow */}
+      {/* Visual Flow Path - like Quizrr/Mathongo */}
       <Card>
         <CardHeader>
-          <CardTitle>Subject Movement Flow</CardTitle>
+          <CardTitle>Subject Movement</CardTitle>
           <CardDescription>
-            How you navigated between subjects during the exam
+            How you traversed each subject and time spent between switches
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap items-center gap-2 mb-6">
-            {sessions.map((session, i) => (
-              <React.Fragment key={i}>
-                <div className={cn(
-                  'flex items-center gap-2 px-3 py-2 rounded-lg border',
-                  subjectColors[session.subject]
-                )}>
-                  <span className="text-sm font-medium">{session.subject}</span>
-                  <span className="text-xs opacity-70">
-                    {session.questions}Q • {Math.round(session.timeSpent / 60)}m
-                  </span>
-                </div>
-                {i < sessions.length - 1 && (
-                  <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                )}
-              </React.Fragment>
-            ))}
+          {/* Horizontal scroll flow */}
+          <div className="overflow-x-auto pb-4">
+            <div className="flex items-center gap-2 min-w-max">
+              {sessions.map((session, i) => (
+                <React.Fragment key={i}>
+                  <div className="flex flex-col items-center gap-2 min-w-[140px]">
+                    <div className={cn(
+                      'h-14 w-14 rounded-full border-2 flex items-center justify-center text-xl',
+                      subjectIconBg[session.subject]
+                    )}>
+                      {subjectIcons[session.subject]}
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs font-medium">
+                        {session.action} {session.subject === 'Maths' ? 'Mathematics' : session.subject}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {session.attempted} Qs attempted
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Spent {formatTimeHMS(session.timeSpent)}
+                      </p>
+                    </div>
+                  </div>
+                  {i < sessions.length - 1 && (
+                    <div className="flex items-center gap-0.5 text-muted-foreground/50 flex-shrink-0 -mt-8">
+                      <div className="w-6 h-px bg-muted-foreground/30" />
+                      <ArrowRight className="h-3 w-3" />
+                      <div className="w-6 h-px bg-muted-foreground/30" />
+                    </div>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
           </div>
 
-          <div className="text-sm text-muted-foreground">
-            Total subject switches: <span className="font-medium text-foreground">{switches.length}</span>
-          </div>
+          <p className="text-sm text-muted-foreground text-center mt-4">
+            Total subject switches: <span className="font-medium text-foreground">{switches}</span>
+          </p>
         </CardContent>
       </Card>
 
-      {/* Subject-wise Breakdown */}
+      {/* Table: Subject Movement Detail */}
       <Card>
         <CardHeader>
-          <CardTitle>Subject-wise Summary</CardTitle>
+          <CardTitle className="text-base">Movement Log</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
+                  <th className="text-left py-3 px-4 font-medium">Action</th>
                   <th className="text-left py-3 px-4 font-medium">Subject</th>
-                  <th className="text-center py-3 px-4 font-medium">Questions</th>
-                  <th className="text-center py-3 px-4 font-medium">Attempted</th>
-                  <th className="text-center py-3 px-4 font-medium text-correct">Correct</th>
-                  <th className="text-center py-3 px-4 font-medium">Accuracy</th>
-                  <th className="text-center py-3 px-4 font-medium">Time</th>
+                  <th className="text-right py-3 px-4 font-medium">Time Spent</th>
                 </tr>
               </thead>
               <tbody>
-                {subjectStats.map(s => (
-                  <tr key={s.subject} className="border-b border-border/50">
+                {sessions.map((session, i) => (
+                  <tr key={i} className="border-b border-border/30">
+                    <td className="py-3 px-4 text-muted-foreground">{session.action}</td>
                     <td className="py-3 px-4">
-                      <Badge variant="outline" className={cn('border', subjectColors[s.subject])}>
-                        {s.subject}
+                      <Badge variant="outline" className={cn('border', subjectColors[session.subject])}>
+                        {session.subject === 'Maths' ? 'Mathematics' : session.subject}
                       </Badge>
                     </td>
-                    <td className="py-3 px-4 text-center">{s.total}</td>
-                    <td className="py-3 px-4 text-center">{s.attempted}</td>
-                    <td className="py-3 px-4 text-center text-correct font-medium">{s.correct}</td>
-                    <td className="py-3 px-4 text-center">
-                      <span className={cn(
-                        'font-medium',
-                        s.accuracy >= 70 ? 'text-correct' : s.accuracy >= 40 ? 'text-review' : 'text-incorrect'
-                      )}>
-                        {s.accuracy}%
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-center">{s.time} min</td>
+                    <td className="py-3 px-4 text-right font-medium">{formatTimeHMS(session.timeSpent)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -160,7 +185,65 @@ export function SubjectMovement({ questionResults }: SubjectMovementProps) {
         </CardContent>
       </Card>
 
-      {/* AI Recommendation */}
+      {/* Time & Accuracy Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Time and Accuracy</CardTitle>
+          <CardDescription>
+            Time is the most important resource. Check your balance between accuracy and time.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-3 px-4 font-medium">Subject</th>
+                  <th className="text-center py-3 px-4 font-medium">Time Spent</th>
+                  <th className="text-center py-3 px-4 font-medium">Attempt (%)</th>
+                  <th className="text-center py-3 px-4 font-medium">Accuracy (%)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-border/50 font-semibold">
+                  <td className="py-3 px-4">Overall</td>
+                  <td className="py-3 px-4 text-center">
+                    {formatTimeHMS(questionResults.reduce((s, q) => s + q.timeSpent, 0))}
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    {questionResults.length > 0 
+                      ? Math.round((questionResults.filter(q => q.isAttempted).length / questionResults.length) * 100)
+                      : 0}
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    {(() => {
+                      const a = questionResults.filter(q => q.isAttempted);
+                      return a.length > 0 ? Math.round((a.filter(q => q.isCorrect).length / a.length) * 100) : 0;
+                    })()}
+                  </td>
+                </tr>
+                {subjectStats.map(s => (
+                  <tr key={s.subject} className="border-b border-border/30">
+                    <td className="py-3 px-4">{s.subject === 'Maths' ? 'Mathematics' : s.subject}</td>
+                    <td className="py-3 px-4 text-center">{formatTimeHMS(s.time)}</td>
+                    <td className="py-3 px-4 text-center">{s.attemptPercent}</td>
+                    <td className="py-3 px-4 text-center">
+                      <span className={cn(
+                        'font-medium',
+                        s.accuracy >= 70 ? 'text-correct' : s.accuracy >= 40 ? 'text-review' : 'text-incorrect'
+                      )}>
+                        {s.accuracy}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recommendations */}
       {bestSubject && firstSubject !== bestSubject.subject && (
         <Card className="border-primary/20 bg-primary/5">
           <CardContent className="pt-6">
@@ -170,7 +253,7 @@ export function SubjectMovement({ questionResults }: SubjectMovementProps) {
                 <p className="font-medium text-sm mb-1">Strategy Recommendation</p>
                 <p className="text-sm text-muted-foreground">
                   You started with {firstSubject}, but your highest accuracy is in {bestSubject.subject} ({bestSubject.accuracy}%).
-                  Consider starting with {bestSubject.subject} next time to secure easier marks early and build confidence.
+                  Consider starting with {bestSubject.subject} next time to secure easier marks early.
                 </p>
               </div>
             </div>
@@ -178,16 +261,15 @@ export function SubjectMovement({ questionResults }: SubjectMovementProps) {
         </Card>
       )}
 
-      {switches.length > 6 && (
+      {switches > 6 && (
         <Card className="border-review/20 bg-review/5">
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-review mt-0.5" />
               <div>
-                <p className="font-medium text-sm mb-1">⚠️ Too Many Switches</p>
+                <p className="font-medium text-sm mb-1">⚠️ Too Many Switches ({switches})</p>
                 <p className="text-sm text-muted-foreground">
-                  You switched subjects {switches.length} times. Frequent switching can indicate panic or lack of strategy.
-                  Try to complete one subject section before moving to the next.
+                  Frequent switching can indicate panic. Try to complete one subject section before moving to the next.
                 </p>
               </div>
             </div>
