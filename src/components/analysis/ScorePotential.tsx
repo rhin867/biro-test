@@ -1,7 +1,18 @@
 import React from 'react';
 import { TestResult, QuestionResult, Subject } from '@/types/exam';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrendingUp, AlertTriangle, Lightbulb, Target } from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+  Cell,
+} from 'recharts';
 
 interface ScorePotentialProps {
   result: TestResult;
@@ -10,24 +21,46 @@ interface ScorePotentialProps {
 }
 
 export function ScorePotential({ result, positiveMarking, negativeMarking }: ScorePotentialProps) {
-  // Calculate potential score
   const marksLostToNegative = result.incorrect * negativeMarking;
   const potentialWithoutNegative = result.score + marksLostToNegative;
-  
-  // Wasted attempts: questions answered in < 30s that were wrong (guessing)
+
+  // Wasted attempts
   const wastedQuestions = result.questionResults.filter(
     q => q.isAttempted && !q.isCorrect && q.timeSpent < 30
   );
-  const marksLostToWasted = wastedQuestions.length * (positiveMarking + negativeMarking);
-
-  // Confused: spent time but didn't attempt
   const confusedQuestions = result.questionResults.filter(
     q => !q.isAttempted && q.timeSpent > 60
   );
   const timeWastedOnConfused = confusedQuestions.reduce((s, q) => s + q.timeSpent, 0);
 
-  // Calculate max achievable
-  const maxAchievable = potentialWithoutNegative + (wastedQuestions.length * positiveMarking);
+  // Score potential calculation (50%, 75%, 100% less errors)
+  const totalErrors = result.incorrect;
+  const getScoreWithLessErrors = (reductionPercent: number) => {
+    const errorsRemoved = Math.round(totalErrors * reductionPercent / 100);
+    return result.score + (errorsRemoved * (positiveMarking + negativeMarking));
+  };
+
+  // Chart data for score potential
+  const potentialChartData = [
+    { name: 'Actual Score', score: result.score, improved: 0 },
+    { name: '50% less error', score: result.score, improved: getScoreWithLessErrors(50) - result.score },
+    { name: '75% less error', score: result.score, improved: getScoreWithLessErrors(75) - result.score },
+    { name: '100% less error', score: result.score, improved: getScoreWithLessErrors(100) - result.score },
+  ];
+
+  // Subject-wise potential
+  const getSubjectPotential = (subject: Subject) => {
+    const subjectQs = result.questionResults.filter(q => q.subject === subject);
+    const subjectIncorrect = subjectQs.filter(q => q.isAttempted && !q.isCorrect).length;
+    const subjectScore = result.subjectWise[subject].score;
+
+    return [
+      { name: 'Actual', score: subjectScore, improved: 0 },
+      { name: '50% less', score: subjectScore, improved: Math.round(subjectIncorrect * 0.5) * (positiveMarking + negativeMarking) },
+      { name: '75% less', score: subjectScore, improved: Math.round(subjectIncorrect * 0.75) * (positiveMarking + negativeMarking) },
+      { name: '100% less', score: subjectScore, improved: subjectIncorrect * (positiveMarking + negativeMarking) },
+    ];
+  };
 
   // Behavior classification
   let behaviorTag = 'Balanced Solver';
@@ -36,40 +69,120 @@ export function ScorePotential({ result, positiveMarking, negativeMarking }: Sco
   else if (result.accuracy > 85) behaviorTag = 'The Precision Player';
   else if (result.attempted / result.totalQuestions > 0.9) behaviorTag = 'The Completionist';
 
+  const renderChart = (data: typeof potentialChartData, maxScore: number) => (
+    <div>
+      <div className="flex flex-wrap gap-4 mb-4 text-sm">
+        <div className="flex items-center gap-2">
+          <div className="h-3 w-3 rounded" style={{ backgroundColor: 'hsl(var(--primary))' }} />
+          Actual Score
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="h-3 w-3 rounded" style={{ backgroundColor: 'hsl(var(--primary) / 0.4)' }} />
+          Improved score by error reduction
+        </div>
+      </div>
+      <ResponsiveContainer width="100%" height={280}>
+        <BarChart data={data} barCategoryGap="20%">
+          <XAxis
+            dataKey="name"
+            tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+          />
+          <YAxis
+            tick={{ fill: 'hsl(var(--muted-foreground))' }}
+            domain={[0, maxScore]}
+          />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: 'hsl(var(--card))',
+              border: '1px solid hsl(var(--border))',
+              borderRadius: '8px',
+            }}
+            formatter={(value: number, name: string) => {
+              if (name === 'improved') return [value, 'Improvement'];
+              return [value, 'Base Score'];
+            }}
+          />
+          <Bar dataKey="score" stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} name="score">
+            {data.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill="hsl(var(--primary))" />
+            ))}
+          </Bar>
+          <Bar dataKey="improved" stackId="a" fill="hsl(var(--primary) / 0.4)" radius={[4, 4, 0, 0]} name="improved">
+            {data.map((entry, index) => (
+              <Cell key={`cell2-${index}`} fill="hsl(var(--primary) / 0.4)" />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+      {/* Labels above bars */}
+      <div className="flex justify-around text-sm font-medium -mt-2">
+        {data.map((d, i) => (
+          <span key={i}>{d.score + d.improved}/{maxScore}</span>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
-      {/* Score Potential Card */}
+      {/* Score Potential Chart */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" />
-            Score Potential Analysis
+            Score Potential
           </CardTitle>
           <CardDescription>
-            How you could improve your score with better strategy
+            How your score would improve by reducing errors
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-4 rounded-lg bg-muted text-center">
-              <p className="text-2xl font-bold text-primary">{result.score}</p>
-              <p className="text-xs text-muted-foreground">Actual Score</p>
-            </div>
-            <div className="p-4 rounded-lg bg-correct/10 text-center">
-              <p className="text-2xl font-bold text-correct">{potentialWithoutNegative}</p>
-              <p className="text-xs text-muted-foreground">Without Negatives</p>
-            </div>
-            <div className="p-4 rounded-lg bg-review/10 text-center">
-              <p className="text-2xl font-bold text-review">{marksLostToNegative}</p>
-              <p className="text-xs text-muted-foreground">Lost to Negatives</p>
-            </div>
-            <div className="p-4 rounded-lg bg-primary/10 text-center">
-              <p className="text-2xl font-bold">{maxAchievable}</p>
-              <p className="text-xs text-muted-foreground">Max Achievable</p>
-            </div>
-          </div>
+        <CardContent>
+          <Tabs defaultValue="overall" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="overall">Overall</TabsTrigger>
+              <TabsTrigger value="maths">Mathematics</TabsTrigger>
+              <TabsTrigger value="physics">Physics</TabsTrigger>
+              <TabsTrigger value="chemistry">Chemistry</TabsTrigger>
+            </TabsList>
+            <TabsContent value="overall">
+              {renderChart(potentialChartData, result.maxScore)}
+            </TabsContent>
+            <TabsContent value="maths">
+              {renderChart(getSubjectPotential('Maths'), result.subjectWise.Maths.maxScore)}
+            </TabsContent>
+            <TabsContent value="physics">
+              {renderChart(getSubjectPotential('Physics'), result.subjectWise.Physics.maxScore)}
+            </TabsContent>
+            <TabsContent value="chemistry">
+              {renderChart(getSubjectPotential('Chemistry'), result.subjectWise.Chemistry.maxScore)}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
 
-          {/* Behavior Tag */}
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="p-4 rounded-lg bg-muted text-center">
+          <p className="text-2xl font-bold text-primary">{result.score}</p>
+          <p className="text-xs text-muted-foreground">Actual Score</p>
+        </div>
+        <div className="p-4 rounded-lg bg-correct/10 text-center">
+          <p className="text-2xl font-bold text-correct">{potentialWithoutNegative}</p>
+          <p className="text-xs text-muted-foreground">Without Negatives</p>
+        </div>
+        <div className="p-4 rounded-lg bg-review/10 text-center">
+          <p className="text-2xl font-bold text-review">{marksLostToNegative}</p>
+          <p className="text-xs text-muted-foreground">Lost to Negatives</p>
+        </div>
+        <div className="p-4 rounded-lg bg-primary/10 text-center">
+          <p className="text-2xl font-bold">{getScoreWithLessErrors(100)}</p>
+          <p className="text-xs text-muted-foreground">Max Achievable</p>
+        </div>
+      </div>
+
+      {/* Behavior Tag */}
+      <Card>
+        <CardContent className="pt-6">
           <div className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card">
             <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
               <Lightbulb className="h-5 w-5 text-primary" />
@@ -113,9 +226,9 @@ export function ScorePotential({ result, positiveMarking, negativeMarking }: Sco
                   ⏳ Time Leak: {Math.round(timeWastedOnConfused / 60)} minutes wasted
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  You spent {Math.round(timeWastedOnConfused / 60)} minutes staring at {confusedQuestions.length} questions 
+                  You spent {Math.round(timeWastedOnConfused / 60)} minutes on {confusedQuestions.length} questions 
                   you didn't answer ({confusedQuestions.map(q => `Q${q.questionNumber}`).slice(0, 5).join(', ')}).
-                  Learn to skip faster — those minutes could have been used on easier questions.
+                  Learn to skip faster.
                 </p>
               </div>
             </div>
@@ -134,8 +247,7 @@ export function ScorePotential({ result, positiveMarking, negativeMarking }: Sco
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Your accuracy is {result.accuracy.toFixed(0)}% but you only attempted {result.attempted}/{result.totalQuestions} questions.
-                  With your high accuracy, attempting just 5 more questions could add up to {5 * positiveMarking} marks.
-                  Work on speed to attempt more questions.
+                  Attempting just 5 more could add up to {5 * positiveMarking} marks.
                 </p>
               </div>
             </div>
