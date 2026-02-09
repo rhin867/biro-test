@@ -1,10 +1,1 @@
-project_id = "oxfjuwlmfupgjtgozwga"
-
-[functions.extract-questions]
-verify_jwt = false
-
-[functions.generate-study-plan]
-verify_jwt = false
-
-[functions.generate-practice-questions]
-verify_jwt = false
+project_id = "jvxsmbikqadflauimjcy"
