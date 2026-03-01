@@ -17,6 +17,7 @@ import {
   LogOut,
   Menu,
   X,
+  Target,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -26,6 +27,7 @@ const navItems = [
   { path: '/tests', label: 'My Tests', icon: FileText },
   { path: '/history', label: 'History', icon: History },
   { path: '/mistakes', label: 'Mistake Book', icon: BookOpen },
+  { path: '/goal', label: 'Goal Tracker', icon: Target },
   { path: '/plan', label: 'Study Planner', icon: Calendar },
   { path: '/export', label: 'Export/Import', icon: Download },
 ];
