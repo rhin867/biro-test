@@ -15,6 +15,7 @@ import History from "./pages/History";
 import MistakeBook from "./pages/MistakeBook";
 import StudyPlanner from "./pages/StudyPlanner";
 import ExportImport from "./pages/ExportImport";
+import GoalTracker from "./pages/GoalTracker";
 import JoinTest from "./pages/JoinTest";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -101,6 +102,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <ExportImport />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/goal"
+              element={
+                <ProtectedRoute>
+                  <GoalTracker />
                 </ProtectedRoute>
               }
             />

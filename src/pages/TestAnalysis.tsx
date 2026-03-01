@@ -21,6 +21,7 @@ import { DifficultyAnalysis } from '@/components/analysis/DifficultyAnalysis';
 import { MissedConcepts } from '@/components/analysis/MissedConcepts';
 import { PainfulQuestions } from '@/components/analysis/PainfulQuestions';
 import { CompleteAuditTable } from '@/components/analysis/CompleteAuditTable';
+import { TestLearnings } from '@/components/analysis/TestLearnings';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -369,6 +370,7 @@ export default function TestAnalysis() {
             <TabsTrigger value="complete-analysis">Complete Analysis</TabsTrigger>
             <TabsTrigger value="chapters">Chapters</TabsTrigger>
             <TabsTrigger value="mistakes">Mistakes</TabsTrigger>
+            <TabsTrigger value="learnings">Learnings</TabsTrigger>
             <TabsTrigger value="history">History</TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />
@@ -576,6 +578,11 @@ export default function TestAnalysis() {
               />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Learnings Tab */}
+        <TabsContent value="learnings" className="space-y-6">
+          <TestLearnings attemptId={result.attemptId} />
         </TabsContent>
 
         {/* History Tab */}
