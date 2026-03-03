@@ -9,6 +9,7 @@ import { CheckCircle, Upload, AlertCircle, FileText, Loader2, Image } from 'luci
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { fileToBase64 } from '@/lib/pdf-cropper';
+import { getUserApiKey } from '@/pages/Settings';
 
 interface AnswerKeyInputProps {
   test: Test;
@@ -86,6 +87,7 @@ export function AnswerKeyInput({ test, onAnswerKeySubmit, existingKey }: AnswerK
 
     try {
       const base64Data = await fileToBase64(file);
+      const userApiKey = getUserApiKey();
       
       const { data, error } = await supabase.functions.invoke('extract-questions', {
         body: {
@@ -93,6 +95,7 @@ export function AnswerKeyInput({ test, onAnswerKeySubmit, existingKey }: AnswerK
           mimeType: file.type,
           extractAnswerKeyOnly: true,
           totalQuestions: test.questions.length,
+          ...(userApiKey ? { userApiKey } : {}),
         },
       });
 

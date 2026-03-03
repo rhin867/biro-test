@@ -18,6 +18,7 @@ import { renderPDFPagesToImages, fileToBase64, PDFPageImage } from '@/lib/pdf-cr
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Settings2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getUserApiKey } from './Settings';
 
 export default function CreateTest() {
   const navigate = useNavigate();
@@ -106,6 +107,7 @@ export default function CreateTest() {
 
     try {
       let requestBody: any = { pdfText };
+      const userApiKey = getUserApiKey();
       
       // If image mode is enabled and we have a PDF file, send as base64
       if (useImageMode && pdfFile) {
@@ -113,8 +115,13 @@ export default function CreateTest() {
         const base64Data = await fileToBase64(pdfFile);
         requestBody = {
           pdfBase64: base64Data,
-          mimeType: 'application/pdf'
+          mimeType: 'application/pdf',
         };
+      }
+
+      // Add user API key if available
+      if (userApiKey) {
+        requestBody.userApiKey = userApiKey;
       }
 
       const { data, error } = await supabase.functions.invoke('extract-questions', {

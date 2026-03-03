@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { NTAModeToggle } from '@/components/exam/NTAModeToggle';
@@ -14,10 +13,13 @@ import {
   Calendar,
   Download,
   GraduationCap,
-  LogOut,
   Menu,
   X,
   Target,
+  Settings,
+  MessageSquare,
+  Shield,
+  ExternalLink,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -28,7 +30,10 @@ const navItems = [
   { path: '/history', label: 'History', icon: History },
   { path: '/mistakes', label: 'Mistake Book', icon: BookOpen },
   { path: '/goal', label: 'Goal Tracker', icon: Target },
+  { path: '/external-analysis', label: 'External Analysis', icon: ExternalLink },
   { path: '/plan', label: 'Study Planner', icon: Calendar },
+  { path: '/community', label: 'Community', icon: MessageSquare },
+  { path: '/settings', label: 'Settings', icon: Settings },
   { path: '/export', label: 'Export/Import', icon: Download },
 ];
 
@@ -38,13 +43,8 @@ interface SidebarProps {
 
 export function Sidebar({ className }: SidebarProps) {
   const location = useLocation();
-  const { user, signOut } = useAuth();
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
-
-  const handleSignOut = async () => {
-    await signOut();
-  };
 
   const NavContent = () => (
     <div className="flex flex-col h-full">
@@ -82,24 +82,20 @@ export function Sidebar({ className }: SidebarProps) {
         })}
       </nav>
 
-      {/* User & Sign Out */}
+      {/* Bottom */}
       <div className="border-t border-border p-3 space-y-2">
         <div className="px-3 py-2">
           <NTAModeToggle />
         </div>
-        {user && (
-          <div className="px-3 py-2">
-            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-          </div>
-        )}
-        <Button
-          variant="ghost"
-          className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
-          onClick={handleSignOut}
-        >
-          <LogOut className="h-4 w-4" />
-          Sign Out
-        </Button>
+        <Link to="/admin">
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+          >
+            <Shield className="h-4 w-4" />
+            Admin
+          </Button>
+        </Link>
       </div>
     </div>
   );
