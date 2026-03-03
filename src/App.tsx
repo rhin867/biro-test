@@ -3,9 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/hooks/useAuth";
 import { NTAModeProvider } from "@/contexts/NTAModeContext";
-import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import CreateTest from "./pages/CreateTest";
 import MyTests from "./pages/MyTests";
@@ -17,115 +15,42 @@ import StudyPlanner from "./pages/StudyPlanner";
 import ExportImport from "./pages/ExportImport";
 import GoalTracker from "./pages/GoalTracker";
 import JoinTest from "./pages/JoinTest";
-import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import Settings from "./pages/Settings";
+import Community from "./pages/Community";
+import AdminPanel from "./pages/AdminPanel";
+import ExternalAnalysis from "./pages/ExternalAnalysis";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AuthProvider>
-        <NTAModeProvider>
+      <NTAModeProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/auth" element={<Auth />} />
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/create" element={<CreateTest />} />
+            <Route path="/tests" element={<MyTests />} />
+            <Route path="/exam/:testId" element={<ExamInterface />} />
+            <Route path="/analysis/:attemptId" element={<TestAnalysis />} />
+            <Route path="/history" element={<History />} />
+            <Route path="/mistakes" element={<MistakeBook />} />
+            <Route path="/plan" element={<StudyPlanner />} />
+            <Route path="/export" element={<ExportImport />} />
+            <Route path="/goal" element={<GoalTracker />} />
             <Route path="/join/:shareCode" element={<JoinTest />} />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/create"
-              element={
-                <ProtectedRoute>
-                  <CreateTest />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/tests"
-              element={
-                <ProtectedRoute>
-                  <MyTests />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/exam/:testId"
-              element={
-                <ProtectedRoute>
-                  <ExamInterface />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/analysis/:attemptId"
-              element={
-                <ProtectedRoute>
-                  <TestAnalysis />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/history"
-              element={
-                <ProtectedRoute>
-                  <History />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/mistakes"
-              element={
-                <ProtectedRoute>
-                  <MistakeBook />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/plan"
-              element={
-                <ProtectedRoute>
-                  <StudyPlanner />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/export"
-              element={
-                <ProtectedRoute>
-                  <ExportImport />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/goal"
-              element={
-                <ProtectedRoute>
-                  <GoalTracker />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/analysis"
-              element={
-                <ProtectedRoute>
-                  <History />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/community" element={<Community />} />
+            <Route path="/admin" element={<AdminPanel />} />
+            <Route path="/external-analysis" element={<ExternalAnalysis />} />
+            <Route path="/analysis" element={<History />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-        </NTAModeProvider>
-      </AuthProvider>
+      </NTAModeProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

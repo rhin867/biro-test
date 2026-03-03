@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.21.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,7 +47,7 @@ serve(async (req) => {
   }
 
   try {
-    const { pdfText, pdfBase64, mimeType, extractAnswerKeyOnly, totalQuestions } = await req.json();
+    const { pdfText, pdfBase64, mimeType, extractAnswerKeyOnly, totalQuestions, userApiKey } = await req.json();
     
     if (!pdfText && !pdfBase64) {
       return new Response(
@@ -57,9 +56,15 @@ serve(async (req) => {
       );
     }
 
+    // Use user's API key if provided, otherwise fall back to LOVABLE_API_KEY
+    const useGeminiDirect = !!userApiKey;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    
+    if (!userApiKey && !LOVABLE_API_KEY) {
+      return new Response(
+        JSON.stringify({ error: "No API key available. Please set your Gemini API key in Settings." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Determine prompt based on mode
@@ -76,48 +81,86 @@ Return STRICT JSON only, no markdown. Format:
 Extract answers for up to ${totalQuestions || 75} questions. Map question numbers to their correct option letter (A/B/C/D).`
       : systemPrompt;
 
-    const messages: any[] = [
-      { role: "system", content: promptContent }
-    ];
+    let apiUrl: string;
+    let headers: Record<string, string>;
+    let body: string;
 
-    if (pdfBase64) {
-      messages.push({
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: extractAnswerKeyOnly 
-              ? "Extract the answer key from this document. Return STRICT JSON only."
-              : "Extract all JEE questions from this PDF. Return STRICT JSON only."
-          },
-          {
-            type: "image_url",
-            image_url: {
-              url: `data:${mimeType || 'application/pdf'};base64,${pdfBase64}`
-            }
+    if (useGeminiDirect) {
+      // Use Google Gemini API directly with user's key
+      apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
+      headers = { "Content-Type": "application/json" };
+
+      const parts: any[] = [
+        { text: promptContent + "\n\n" + (extractAnswerKeyOnly 
+          ? "Extract the answer key from this document. Return STRICT JSON only."
+          : "Extract all questions from this PDF. Return STRICT JSON only.") }
+      ];
+
+      if (pdfBase64) {
+        parts.push({
+          inline_data: {
+            mime_type: mimeType || 'application/pdf',
+            data: pdfBase64
           }
-        ]
+        });
+      } else if (pdfText) {
+        parts[0].text += "\n\n" + pdfText;
+      }
+
+      body = JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: { temperature: 0.1 }
       });
     } else {
-      messages.push({
-        role: "user",
-        content: extractAnswerKeyOnly
-          ? `Extract the answer key from this text. Return STRICT JSON only:\n\n${pdfText}`
-          : `Extract all JEE questions from this text. Return STRICT JSON only:\n\n${pdfText}`
-      });
-    }
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
+      // Use Lovable AI Gateway
+      apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
+      headers = {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+      };
+
+      const messages: any[] = [
+        { role: "system", content: promptContent }
+      ];
+
+      if (pdfBase64) {
+        messages.push({
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: extractAnswerKeyOnly 
+                ? "Extract the answer key from this document. Return STRICT JSON only."
+                : "Extract all questions from this PDF. Return STRICT JSON only."
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:${mimeType || 'application/pdf'};base64,${pdfBase64}`
+              }
+            }
+          ]
+        });
+      } else {
+        messages.push({
+          role: "user",
+          content: extractAnswerKeyOnly
+            ? `Extract the answer key from this text. Return STRICT JSON only:\n\n${pdfText}`
+            : `Extract all questions from this text. Return STRICT JSON only:\n\n${pdfText}`
+        });
+      }
+
+      body = JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages,
         temperature: 0.1,
-      }),
+      });
+    }
+
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers,
+      body,
     });
 
     if (!response.ok) {
@@ -134,12 +177,19 @@ Extract answers for up to ${totalQuestions || 75} questions. Map question number
         );
       }
       const errorText = await response.text();
-      console.error("AI Gateway error:", response.status, errorText);
-      throw new Error(`AI Gateway error: ${response.status}`);
+      console.error("AI error:", response.status, errorText);
+      throw new Error(`AI error: ${response.status} - ${errorText.substring(0, 200)}`);
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
+    
+    // Extract content based on API used
+    let content: string;
+    if (useGeminiDirect) {
+      content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    } else {
+      content = data.choices?.[0]?.message?.content || "";
+    }
 
     if (!content) {
       throw new Error("No response from AI");
@@ -157,7 +207,7 @@ Extract answers for up to ${totalQuestions || 75} questions. Map question number
     try {
       parsed = JSON.parse(jsonContent.trim());
     } catch (parseError) {
-      console.error("Failed to parse AI response:", content);
+      console.error("Failed to parse AI response:", content.substring(0, 500));
       throw new Error("Failed to parse extracted data");
     }
 
