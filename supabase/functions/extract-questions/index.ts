@@ -5,18 +5,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const systemPrompt = `You are an expert JEE question paper parser. Analyze the provided PDF/text and extract questions into STRICT JSON format.
+const systemPrompt = `You are an expert question paper parser for competitive exams (JEE, NEET, CUET, etc.). Analyze the provided PDF/text and extract questions into STRICT JSON format.
 
 CRITICAL RULES:
 1. Extract EVERY question - count carefully, the output count MUST match the PDF
-2. Identify Subject (Physics/Chemistry/Maths) based on content keywords
+2. Identify Subject (Physics/Chemistry/Maths/Biology/English/General) based on content
 3. Output ALL math equations in valid LaTeX format (e.g., $\\int_0^1 x\\,dx$, $E = mc^2$)
-4. For EACH question provide exactly 4 options (A, B, C, D)
+4. For EACH question provide exactly 4 options (A, B, C, D) 
 5. If question relies on a diagram/circuit/graph/structure, set "hasDiagram": true
 6. Detect correct answer if visible, else set to null
-7. Ignore headers, footers, page numbers, watermarks
+7. Ignore headers, footers, page numbers, watermarks, instructions
 8. Combine multi-line questions into single text
 9. Chapter should be specific (e.g., "Kinematics", "Organic Chemistry", "Calculus")
+10. Even if numbering is missing, detect questions by pattern (options A/B/C/D)
+11. If a page has 30+ questions, extract ALL of them
+12. Clean up non-question text (instructions, headers) - only include actual questions
+13. For numerical/integer type questions, still provide 4 options if visible, else leave empty
 
 OUTPUT FORMAT (STRICT JSON, NO MARKDOWN):
 {
@@ -25,7 +29,7 @@ OUTPUT FORMAT (STRICT JSON, NO MARKDOWN):
     {
       "id": 1,
       "question": "Question text with LaTeX: $x^2 + y^2 = r^2$",
-      "options": ["Option A with $\\frac{1}{2}$", "Option B", "Option C", "Option D"],
+      "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctAnswer": "A",
       "subject": "Physics",
       "chapter": "Mechanics",
@@ -56,13 +60,9 @@ serve(async (req) => {
       );
     }
 
-    // Use user's API key if provided, otherwise fall back to LOVABLE_API_KEY
-    const useGeminiDirect = !!userApiKey;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
-    if (!userApiKey && !LOVABLE_API_KEY) {
+    if (!userApiKey) {
       return new Response(
-        JSON.stringify({ error: "No API key available. Please set your Gemini API key in Settings." }),
+        JSON.stringify({ error: "Please set your Gemini API key in Settings first. Go to Settings → Enter your API key." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -81,82 +81,36 @@ Return STRICT JSON only, no markdown. Format:
 Extract answers for up to ${totalQuestions || 75} questions. Map question numbers to their correct option letter (A/B/C/D).`
       : systemPrompt;
 
-    let apiUrl: string;
-    let headers: Record<string, string>;
-    let body: string;
+    // Always use Google Gemini API directly with user's key
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
 
-    if (useGeminiDirect) {
-      // Use Google Gemini API directly with user's key
-      apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
-      headers = { "Content-Type": "application/json" };
+    const parts: any[] = [
+      { text: promptContent + "\n\n" + (extractAnswerKeyOnly 
+        ? "Extract the answer key from this document. Return STRICT JSON only."
+        : "Extract ALL questions from this PDF. Return STRICT JSON only. Do NOT skip any question.") }
+    ];
 
-      const parts: any[] = [
-        { text: promptContent + "\n\n" + (extractAnswerKeyOnly 
-          ? "Extract the answer key from this document. Return STRICT JSON only."
-          : "Extract all questions from this PDF. Return STRICT JSON only.") }
-      ];
-
-      if (pdfBase64) {
-        parts.push({
-          inline_data: {
-            mime_type: mimeType || 'application/pdf',
-            data: pdfBase64
-          }
-        });
-      } else if (pdfText) {
-        parts[0].text += "\n\n" + pdfText;
-      }
-
-      body = JSON.stringify({
-        contents: [{ parts }],
-        generationConfig: { temperature: 0.1 }
+    if (pdfBase64) {
+      parts.push({
+        inline_data: {
+          mime_type: mimeType || 'application/pdf',
+          data: pdfBase64
+        }
       });
-    } else {
-      // Use Lovable AI Gateway
-      apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
-      headers = {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      };
-
-      const messages: any[] = [
-        { role: "system", content: promptContent }
-      ];
-
-      if (pdfBase64) {
-        messages.push({
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: extractAnswerKeyOnly 
-                ? "Extract the answer key from this document. Return STRICT JSON only."
-                : "Extract all questions from this PDF. Return STRICT JSON only."
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:${mimeType || 'application/pdf'};base64,${pdfBase64}`
-              }
-            }
-          ]
-        });
-      } else {
-        messages.push({
-          role: "user",
-          content: extractAnswerKeyOnly
-            ? `Extract the answer key from this text. Return STRICT JSON only:\n\n${pdfText}`
-            : `Extract all questions from this text. Return STRICT JSON only:\n\n${pdfText}`
-        });
-      }
-
-      body = JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages,
-        temperature: 0.1,
-      });
+    } else if (pdfText) {
+      parts[0].text += "\n\n" + pdfText;
     }
 
+    const body = JSON.stringify({
+      contents: [{ parts }],
+      generationConfig: { 
+        temperature: 0.1,
+        maxOutputTokens: 65536,
+      }
+    });
+
+    console.log("Calling Gemini API with user key...");
     const response = await fetch(apiUrl, {
       method: "POST",
       headers,
@@ -164,35 +118,30 @@ Extract answers for up to ${totalQuestions || 75} questions. Map question number
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Gemini API error:", response.status, errorText);
+      
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
+          JSON.stringify({ error: "Rate limit exceeded. Please wait a moment and try again." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
+      if (response.status === 400 && errorText.includes("API_KEY")) {
         return new Response(
-          JSON.stringify({ error: "Usage limit reached. Please add credits to continue." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Invalid API key. Please check your Gemini API key in Settings." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const errorText = await response.text();
-      console.error("AI error:", response.status, errorText);
-      throw new Error(`AI error: ${response.status} - ${errorText.substring(0, 200)}`);
+      
+      throw new Error(`Gemini API error (${response.status}): ${errorText.substring(0, 300)}`);
     }
 
     const data = await response.json();
-    
-    // Extract content based on API used
-    let content: string;
-    if (useGeminiDirect) {
-      content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    } else {
-      content = data.choices?.[0]?.message?.content || "";
-    }
+    const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     if (!content) {
-      throw new Error("No response from AI");
+      throw new Error("No response from Gemini. The PDF may be too complex or empty.");
     }
 
     // Parse the JSON response
@@ -208,7 +157,7 @@ Extract answers for up to ${totalQuestions || 75} questions. Map question number
       parsed = JSON.parse(jsonContent.trim());
     } catch (parseError) {
       console.error("Failed to parse AI response:", content.substring(0, 500));
-      throw new Error("Failed to parse extracted data");
+      throw new Error("Failed to parse extracted data. The PDF format may not be supported.");
     }
 
     // If extracting answer key only, return it directly
@@ -234,6 +183,8 @@ Extract answers for up to ${totalQuestions || 75} questions. Map question number
       pdfPageNumber: q.pageNumber || null
     }));
 
+    console.log(`Successfully extracted ${transformedQuestions.length} questions`);
+
     return new Response(
       JSON.stringify({
         examTitle: parsed.examTitle || "Extracted Test",
@@ -245,7 +196,7 @@ Extract answers for up to ${totalQuestions || 75} questions. Map question number
     );
   } catch (error) {
     console.error("Extract questions error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
