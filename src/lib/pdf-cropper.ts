@@ -24,8 +24,8 @@ if (typeof window !== 'undefined') {
  export async function renderPDFPagesToImages(
    pdfData: ArrayBuffer,
    scale: number = 2
- ): Promise<PDFPageImage[]> {
-   const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+): Promise<PDFPageImage[]> {
+  const pdf = await pdfjsLib.getDocument({ data: pdfData.slice(0) }).promise;
    const pages: PDFPageImage[] = [];
  
    for (let i = 1; i <= pdf.numPages; i++) {
@@ -61,8 +61,8 @@ if (typeof window !== 'undefined') {
    pageNumber: number,
    region: { x: number; y: number; width: number; height: number },
    scale: number = 2
- ): Promise<string> {
-   const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+): Promise<string> {
+  const pdf = await pdfjsLib.getDocument({ data: pdfData.slice(0) }).promise;
    const page = await pdf.getPage(pageNumber);
    const viewport = page.getViewport({ scale });
  

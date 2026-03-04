@@ -62,9 +62,12 @@ export default function CreateTest() {
       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
       const arrayBuffer = await file.arrayBuffer();
-      setPdfArrayBuffer(arrayBuffer);
+      // Clone the buffer since pdfjs transfers ownership
+      const bufferForText = arrayBuffer.slice(0);
+      const bufferForImages = arrayBuffer.slice(0);
+      setPdfArrayBuffer(arrayBuffer.slice(0));
       
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const pdf = await pdfjsLib.getDocument({ data: bufferForText }).promise;
 
       // Extract text
       let fullText = '';
@@ -80,7 +83,7 @@ export default function CreateTest() {
       
       // Render PDF pages to images for diagram viewing
       toast.info('Rendering PDF pages for diagram support...');
-      const pageImages = await renderPDFPagesToImages(arrayBuffer, 1.5);
+      const pageImages = await renderPDFPagesToImages(bufferForImages, 1.5);
       setPdfPageImages(pageImages);
       
       toast.success(`PDF processed: ${pdf.numPages} pages extracted`);
@@ -102,12 +105,17 @@ export default function CreateTest() {
   };
 
   const extractQuestions = useCallback(async () => {
+    const userApiKey = getUserApiKey();
+    if (!userApiKey) {
+      toast.error('Please set your Gemini API key in Settings first!');
+      return;
+    }
+
     setIsProcessing(true);
-    toast.info('Extracting questions with AI (this may take a moment)...');
+    toast.info('Extracting questions with AI (this may take 30-40 seconds)...');
 
     try {
-      let requestBody: any = { pdfText };
-      const userApiKey = getUserApiKey();
+      let requestBody: any = { pdfText, userApiKey };
       
       // If image mode is enabled and we have a PDF file, send as base64
       if (useImageMode && pdfFile) {
@@ -116,12 +124,8 @@ export default function CreateTest() {
         requestBody = {
           pdfBase64: base64Data,
           mimeType: 'application/pdf',
+          userApiKey,
         };
-      }
-
-      // Add user API key if available
-      if (userApiKey) {
-        requestBody.userApiKey = userApiKey;
       }
 
       const { data, error } = await supabase.functions.invoke('extract-questions', {
