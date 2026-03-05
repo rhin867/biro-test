@@ -16,7 +16,8 @@ import { Test, Question, Subject } from '@/types/exam';
 import { supabase } from '@/integrations/supabase/client';
 import { renderPDFPagesToImages, fileToBase64, PDFPageImage } from '@/lib/pdf-cropper';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
-import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Settings2 } from 'lucide-react';
+import { PDFCropTool } from '@/components/exam/PDFCropTool';
+import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Settings2, Crop, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getUserApiKey } from './Settings';
 
@@ -42,7 +43,8 @@ export default function CreateTest() {
   const [showPageViewer, setShowPageViewer] = useState(false);
   const [selectedPage, setSelectedPage] = useState<number>(1);
   const [questionsPerPage, setQuestionsPerPage] = useState(3);
-
+  const [showCropTool, setShowCropTool] = useState(false);
+  const [extractionFailed, setExtractionFailed] = useState(false);
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -112,6 +114,7 @@ export default function CreateTest() {
     }
 
     setIsProcessing(true);
+    setExtractionFailed(false);
     toast.info('Extracting questions with AI (this may take 30-40 seconds)...');
 
     try {
@@ -200,7 +203,8 @@ export default function CreateTest() {
       toast.success(`Extracted ${questions.length} questions from PDF`);
     } catch (error) {
       console.error('Extraction error:', error);
-      toast.error('AI extraction failed. Try enabling "Image Mode" for complex PDFs.');
+      setExtractionFailed(true);
+      toast.error('AI extraction failed. Try "Retry" or use the manual crop tool.');
     } finally {
       setIsProcessing(false);
     }
@@ -461,6 +465,23 @@ export default function CreateTest() {
               </div>
             )}
             
+            {/* Retry & Crop buttons */}
+            {extractionFailed && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
+                <p className="text-sm text-destructive flex-1">Extraction failed. Try again or use manual crop tool.</p>
+                <Button variant="outline" size="sm" onClick={extractQuestions} disabled={isProcessing} className="gap-1">
+                  <RefreshCw className="h-3 w-3" /> Retry
+                </Button>
+              </div>
+            )}
+
+            {pdfPageImages.length > 0 && (
+              <Button variant="outline" onClick={() => setShowCropTool(true)} className="gap-2 w-full">
+                <Crop className="h-4 w-4" /> Open Manual Crop Tool
+              </Button>
+            )}
+
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setStep('upload')}>
                 Back
@@ -620,6 +641,16 @@ export default function CreateTest() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* Manual Crop Tool */}
+      <PDFCropTool
+        open={showCropTool}
+        onOpenChange={setShowCropTool}
+        pages={pdfPageImages}
+        onCroppedQuestions={(crops) => {
+          toast.success(`${crops.length} regions cropped! You can use these for reference.`);
+        }}
+      />
     </MainLayout>
   );
 }

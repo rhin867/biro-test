@@ -46,11 +46,22 @@ const POSTS_KEY = 'community_posts';
 const CHAT_KEY = 'community_chat';
 const REWARDS_KEY = 'user_rewards';
 const RATINGS_KEY = 'app_ratings';
+const AUTHOR_KEY = 'community_author';
+const AUTHOR_LOCK_KEY = 'community_author_locked_at';
 
 function getStored<T>(key: string, def: T): T {
   try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(def)); } catch { return def; }
 }
 function setStored<T>(key: string, val: T) { localStorage.setItem(key, JSON.stringify(val)); }
+
+function getLockedAuthor(): { name: string; locked: boolean } {
+  const name = localStorage.getItem(AUTHOR_KEY) || '';
+  const lockedAt = localStorage.getItem(AUTHOR_LOCK_KEY);
+  if (!name || !lockedAt) return { name, locked: false };
+  const elapsed = Date.now() - parseInt(lockedAt);
+  const locked = elapsed < 24 * 60 * 60 * 1000; // 24 hours
+  return { name, locked };
+}
 
 // ─── Reward System ───
 function getRewards(): Reward[] { return getStored<Reward[]>(REWARDS_KEY, []); }
@@ -63,11 +74,13 @@ function addReward(type: string, points: number, desc: string) {
 }
 
 export default function Community() {
+  const authorInfo = getLockedAuthor();
   const [posts, setPosts] = useState<Post[]>(getStored(POSTS_KEY, []));
   const [chat, setChat] = useState<ChatMessage[]>(getStored(CHAT_KEY, []));
   const [newPost, setNewPost] = useState('');
   const [postType, setPostType] = useState<'suggestion' | 'obstacle' | 'general'>('general');
-  const [author, setAuthor] = useState(localStorage.getItem('community_author') || '');
+  const [author, setAuthor] = useState(authorInfo.name);
+  const [authorLocked, setAuthorLocked] = useState(authorInfo.locked);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [chatMsg, setChatMsg] = useState('');
@@ -82,9 +95,16 @@ export default function Community() {
 
   const totalPoints = getTotalPoints();
 
+  const lockAuthorName = () => {
+    if (!author.trim()) return;
+    localStorage.setItem(AUTHOR_KEY, author.trim());
+    localStorage.setItem(AUTHOR_LOCK_KEY, String(Date.now()));
+    setAuthorLocked(true);
+  };
+
   const handleSubmitPost = () => {
     if (!newPost.trim() || !author.trim()) { toast.error('Enter your name and message'); return; }
-    localStorage.setItem('community_author', author.trim());
+    if (!authorLocked) lockAuthorName();
     const post: Post = {
       id: generateId(), type: postType, content: newPost.trim(), author: author.trim(),
       createdAt: new Date().toISOString(), upvotes: 0, downvotes: 0, userVote: null,
@@ -117,7 +137,7 @@ export default function Community() {
 
   const handleSendChat = () => {
     if (!chatMsg.trim() || !author.trim()) { toast.error('Enter your name and message'); return; }
-    localStorage.setItem('community_author', author.trim());
+    if (!authorLocked) lockAuthorName();
     setChat(prev => [...prev, { id: generateId(), author: author.trim(), content: chatMsg.trim(), timestamp: new Date().toISOString() }]);
     setChatMsg('');
     addReward('chat', 2, 'Sent a chat message');
@@ -164,8 +184,15 @@ export default function Community() {
       </PageHeader>
 
       {/* Author Input */}
-      <div className="mb-4">
-        <Input placeholder="Your display name" value={author} onChange={e => setAuthor(e.target.value)} className="max-w-xs" />
+      <div className="mb-4 flex items-center gap-2">
+        <Input placeholder="Your display name" value={author} onChange={e => !authorLocked && setAuthor(e.target.value)} 
+          className="max-w-xs" disabled={authorLocked} />
+        {authorLocked && (
+          <span className="text-xs text-muted-foreground">🔒 Name locked for 24h</span>
+        )}
+        {!authorLocked && author.trim() && (
+          <span className="text-xs text-muted-foreground">Name will be locked after first post/chat</span>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>

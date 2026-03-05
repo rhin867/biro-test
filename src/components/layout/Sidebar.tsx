@@ -20,6 +20,7 @@ import {
   MessageSquare,
   Shield,
   ExternalLink,
+  HelpCircle,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -33,6 +34,7 @@ const navItems = [
   { path: '/external-analysis', label: 'External Analysis', icon: ExternalLink },
   { path: '/plan', label: 'Study Planner', icon: Calendar },
   { path: '/community', label: 'Community', icon: MessageSquare },
+  { path: '/guide', label: 'Guide', icon: HelpCircle },
   { path: '/settings', label: 'Settings', icon: Settings },
   { path: '/export', label: 'Export/Import', icon: Download },
 ];

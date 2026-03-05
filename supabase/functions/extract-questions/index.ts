@@ -5,45 +5,18 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const systemPrompt = `You are an expert question paper parser for competitive exams (JEE, NEET, CUET, etc.). Analyze the provided PDF/text and extract questions into STRICT JSON format.
+const systemPrompt = `You are a fast question paper parser. Extract ALL questions from the document into JSON.
 
-CRITICAL RULES:
-1. Extract EVERY question - count carefully, the output count MUST match the PDF
-2. Identify Subject (Physics/Chemistry/Maths/Biology/English/General) based on content
-3. Output ALL math equations in valid LaTeX format (e.g., $\\int_0^1 x\\,dx$, $E = mc^2$)
-4. For EACH question provide exactly 4 options (A, B, C, D) 
-5. If question relies on a diagram/circuit/graph/structure, set "hasDiagram": true
-6. Detect correct answer if visible, else set to null
-7. Ignore headers, footers, page numbers, watermarks, instructions
-8. Combine multi-line questions into single text
-9. Chapter should be specific (e.g., "Kinematics", "Organic Chemistry", "Calculus")
-10. Even if numbering is missing, detect questions by pattern (options A/B/C/D)
-11. If a page has 30+ questions, extract ALL of them
-12. Clean up non-question text (instructions, headers) - only include actual questions
-13. For numerical/integer type questions, still provide 4 options if visible, else leave empty
+RULES:
+1. Extract EVERY question. Use LaTeX for math ($x^2$).
+2. Detect Subject (Physics/Chemistry/Maths/Biology) and Chapter.
+3. 4 options per MCQ (A,B,C,D). Set hasDiagram:true if image/diagram needed.
+4. Detect correct answer if visible, else null.
+5. Skip headers/footers/instructions/watermarks.
+6. Even without numbering, detect questions by A/B/C/D option pattern.
 
-OUTPUT FORMAT (STRICT JSON, NO MARKDOWN):
-{
-  "examTitle": "Detected Exam Title or 'Extracted Test'",
-  "questions": [
-    {
-      "id": 1,
-      "question": "Question text with LaTeX: $x^2 + y^2 = r^2$",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correctAnswer": "A",
-      "subject": "Physics",
-      "chapter": "Mechanics",
-      "hasDiagram": false,
-      "pageNumber": 1
-    }
-  ],
-  "totalExtracted": 75,
-  "subjectCounts": {
-    "Physics": 25,
-    "Chemistry": 25,
-    "Maths": 25
-  }
-}`;
+OUTPUT (STRICT JSON, NO MARKDOWN):
+{"examTitle":"Title","questions":[{"id":1,"question":"text","options":["A","B","C","D"],"correctAnswer":"A","subject":"Physics","chapter":"Mechanics","hasDiagram":false,"pageNumber":1}],"totalExtracted":75,"subjectCounts":{"Physics":25}}`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -82,18 +55,16 @@ Extract answers for up to ${totalQuestions || 75} questions. Map question number
 
     // Extended model list with more fallbacks
     const models = [
-      "gemini-2.5-flash",
       "gemini-2.0-flash",
       "gemini-1.5-flash",
+      "gemini-2.5-flash",
       "gemini-1.5-pro",
     ];
 
     const headers: Record<string, string> = { "Content-Type": "application/json" };
 
     const parts: any[] = [
-      { text: promptContent + "\n\n" + (extractAnswerKeyOnly 
-        ? "Extract the answer key from this document. Return STRICT JSON only."
-        : "Extract ALL questions from this PDF. Return STRICT JSON only. Do NOT skip any question.") }
+      { text: promptContent + "\n\nExtract ALL questions. Return STRICT JSON only, no markdown." }
     ];
 
     if (pdfBase64) {
@@ -110,7 +81,7 @@ Extract answers for up to ${totalQuestions || 75} questions. Map question number
     const body = JSON.stringify({
       contents: [{ parts }],
       generationConfig: { 
-        temperature: 0.1,
+        temperature: 0.05,
         maxOutputTokens: 65536,
       }
     });
