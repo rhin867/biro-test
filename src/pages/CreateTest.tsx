@@ -115,30 +115,55 @@ export default function CreateTest() {
     toast.info('Extracting questions with AI (this may take 30-40 seconds)...');
 
     try {
-      let requestBody: any = { pdfText, userApiKey };
+      // Always prefer image/vision mode for better extraction quality
+      let requestBody: any;
       
-      // If image mode is enabled and we have a PDF file, send as base64
-      if (useImageMode && pdfFile) {
-        toast.info('Using vision mode for better diagram detection...');
+      if (pdfFile) {
+        toast.info('Sending PDF in vision mode for best extraction...');
         const base64Data = await fileToBase64(pdfFile);
         requestBody = {
           pdfBase64: base64Data,
           mimeType: 'application/pdf',
           userApiKey,
         };
+      } else {
+        requestBody = { pdfText, userApiKey };
       }
 
-      const { data, error } = await supabase.functions.invoke('extract-questions', {
-        body: requestBody,
-      });
+      // Auto-retry up to 2 times on client side
+      let data: any = null;
+      let lastErr: any = null;
+      
+      for (let clientRetry = 0; clientRetry < 2; clientRetry++) {
+        if (clientRetry > 0) {
+          toast.info(`Retrying extraction (attempt ${clientRetry + 1})...`);
+          await new Promise(r => setTimeout(r, 3000));
+        }
+        
+        const result = await supabase.functions.invoke('extract-questions', {
+          body: requestBody,
+        });
 
-      if (error) {
-        console.error('AI extraction error:', error);
-        throw error;
+        if (result.error) {
+          lastErr = result.error;
+          console.error(`Client retry ${clientRetry} error:`, result.error);
+          continue;
+        }
+
+        if (result.data?.error) {
+          if (result.data.retryable) {
+            lastErr = new Error(result.data.error);
+            continue;
+          }
+          throw new Error(result.data.error);
+        }
+        
+        data = result.data;
+        break;
       }
-
-      if (data.error) {
-        throw new Error(data.error);
+      
+      if (!data) {
+        throw lastErr || new Error('Extraction failed after retries. Please try again.');
       }
 
       const questions: Question[] = (data.questions || []).map((q: any, index: number) => ({
