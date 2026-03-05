@@ -20,6 +20,7 @@ import Settings from "./pages/Settings";
 import Community from "./pages/Community";
 import AdminPanel from "./pages/AdminPanel";
 import ExternalAnalysis from "./pages/ExternalAnalysis";
+import Guide from "./pages/Guide";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/community" element={<Community />} />
             <Route path="/admin" element={<AdminPanel />} />
             <Route path="/external-analysis" element={<ExternalAnalysis />} />
+            <Route path="/guide" element={<Guide />} />
             <Route path="/analysis" element={<History />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

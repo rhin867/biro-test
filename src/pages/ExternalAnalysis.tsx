@@ -26,6 +26,19 @@ export default function ExternalAnalysis() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordStartTime, setRecordStartTime] = useState<number | null>(null);
   const [screenMode, setScreenMode] = useState(false);
+  const [elapsedDisplay, setElapsedDisplay] = useState('0:00');
+
+  // Live seconds timer
+  React.useEffect(() => {
+    if (!isRecording || !recordStartTime) return;
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - recordStartTime) / 1000);
+      const mins = Math.floor(elapsed / 60);
+      const secs = elapsed % 60;
+      setElapsedDisplay(`${mins}:${secs.toString().padStart(2, '0')}`);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isRecording, recordStartTime]);
 
   const handleStartRecording = () => {
     setIsRecording(true);
@@ -172,9 +185,7 @@ export default function ExternalAnalysis() {
             <div className="flex items-center gap-3">
               <div className="h-3 w-3 rounded-full bg-red-500 animate-pulse" />
               <span className="font-medium">{screenMode ? 'Screen monitoring active' : 'Recording test time'}...</span>
-              <span className="text-muted-foreground">
-                {recordStartTime ? `${Math.round((Date.now() - recordStartTime) / 60000)} min` : ''}
-              </span>
+              <span className="text-lg font-mono font-bold text-primary">{elapsedDisplay}</span>
             </div>
             <Button variant="destructive" onClick={handleStopRecording}>Stop & Save Time</Button>
           </CardContent>
