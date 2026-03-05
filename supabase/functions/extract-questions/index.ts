@@ -81,8 +81,13 @@ Return STRICT JSON only, no markdown. Format:
 Extract answers for up to ${totalQuestions || 75} questions. Map question numbers to their correct option letter (A/B/C/D).`
       : systemPrompt;
 
-    // Always use Google Gemini API directly with user's key
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
+    // Models to try in order (fallback on 503/429)
+    const models = [
+      "gemini-2.5-flash",
+      "gemini-2.0-flash", 
+      "gemini-1.5-flash",
+    ];
+
     const headers: Record<string, string> = { "Content-Type": "application/json" };
 
     const parts: any[] = [
@@ -110,31 +115,50 @@ Extract answers for up to ${totalQuestions || 75} questions. Map question number
       }
     });
 
-    console.log("Calling Gemini API with user key...");
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers,
-      body,
-    });
+    let response: Response | null = null;
+    let lastError = "";
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Gemini API error:", response.status, errorText);
+    for (const model of models) {
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${userApiKey}`;
+      console.log(`Trying model: ${model}...`);
       
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please wait a moment and try again." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 400 && errorText.includes("API_KEY")) {
-        return new Response(
-          JSON.stringify({ error: "Invalid API key. Please check your Gemini API key in Settings." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      for (let attempt = 0; attempt < 2; attempt++) {
+        if (attempt > 0) {
+          console.log(`Retry ${attempt} for ${model}...`);
+          await new Promise(r => setTimeout(r, 2000));
+        }
+        
+        const res = await fetch(apiUrl, { method: "POST", headers, body });
+        
+        if (res.ok) {
+          response = res;
+          break;
+        }
+        
+        const errorText = await res.text();
+        lastError = errorText;
+        console.error(`${model} error (${res.status}):`, errorText.substring(0, 200));
+        
+        if (res.status === 400 && errorText.includes("API_KEY")) {
+          return new Response(
+            JSON.stringify({ error: "Invalid API key. Please check your Gemini API key in Settings." }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        if (res.status === 503 || res.status === 429) continue;
+        // For other errors, don't retry
+        break;
       }
       
-      throw new Error(`Gemini API error (${response.status}): ${errorText.substring(0, 300)}`);
+      if (response) break;
+    }
+
+    if (!response) {
+      return new Response(
+        JSON.stringify({ error: "All Gemini models are temporarily busy. Please try again in 30 seconds." }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const data = await response.json();
