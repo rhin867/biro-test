@@ -67,7 +67,6 @@ serve(async (req) => {
       );
     }
 
-    // Determine prompt based on mode
     const promptContent = extractAnswerKeyOnly
       ? `You are an answer key extractor. Look at this document and extract the answer key.
 Return STRICT JSON only, no markdown. Format:
@@ -81,11 +80,12 @@ Return STRICT JSON only, no markdown. Format:
 Extract answers for up to ${totalQuestions || 75} questions. Map question numbers to their correct option letter (A/B/C/D).`
       : systemPrompt;
 
-    // Models to try in order (fallback on 503/429)
+    // Extended model list with more fallbacks
     const models = [
       "gemini-2.5-flash",
-      "gemini-2.0-flash", 
+      "gemini-2.0-flash",
       "gemini-1.5-flash",
+      "gemini-1.5-pro",
     ];
 
     const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -122,33 +122,40 @@ Extract answers for up to ${totalQuestions || 75} questions. Map question number
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${userApiKey}`;
       console.log(`Trying model: ${model}...`);
       
-      for (let attempt = 0; attempt < 2; attempt++) {
+      // 3 attempts per model with increasing delays
+      for (let attempt = 0; attempt < 3; attempt++) {
         if (attempt > 0) {
-          console.log(`Retry ${attempt} for ${model}...`);
-          await new Promise(r => setTimeout(r, 2000));
+          const delay = attempt * 3000; // 3s, 6s
+          console.log(`Retry ${attempt} for ${model}, waiting ${delay}ms...`);
+          await new Promise(r => setTimeout(r, delay));
         }
         
-        const res = await fetch(apiUrl, { method: "POST", headers, body });
-        
-        if (res.ok) {
-          response = res;
-          break;
+        try {
+          const res = await fetch(apiUrl, { method: "POST", headers, body });
+          
+          if (res.ok) {
+            response = res;
+            break;
+          }
+          
+          const errorText = await res.text();
+          lastError = errorText;
+          console.error(`${model} error (${res.status}):`, errorText.substring(0, 300));
+          
+          if (res.status === 400 && (errorText.includes("API_KEY") || errorText.includes("API key"))) {
+            return new Response(
+              JSON.stringify({ error: "Invalid API key. Please check your Gemini API key in Settings." }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          
+          if (res.status === 503 || res.status === 429) continue;
+          break; // Other errors, skip to next model
+        } catch (fetchErr) {
+          console.error(`Fetch error for ${model}:`, fetchErr);
+          lastError = String(fetchErr);
+          continue;
         }
-        
-        const errorText = await res.text();
-        lastError = errorText;
-        console.error(`${model} error (${res.status}):`, errorText.substring(0, 200));
-        
-        if (res.status === 400 && errorText.includes("API_KEY")) {
-          return new Response(
-            JSON.stringify({ error: "Invalid API key. Please check your Gemini API key in Settings." }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        
-        if (res.status === 503 || res.status === 429) continue;
-        // For other errors, don't retry
-        break;
       }
       
       if (response) break;
@@ -156,7 +163,10 @@ Extract answers for up to ${totalQuestions || 75} questions. Map question number
 
     if (!response) {
       return new Response(
-        JSON.stringify({ error: "All Gemini models are temporarily busy. Please try again in 30 seconds." }),
+        JSON.stringify({ 
+          error: "All AI models are temporarily busy. Please wait 30 seconds and try again. If this persists, check your API key at aistudio.google.com.",
+          retryable: true 
+        }),
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -165,10 +175,14 @@ Extract answers for up to ${totalQuestions || 75} questions. Map question number
     const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     if (!content) {
-      throw new Error("No response from Gemini. The PDF may be too complex or empty.");
+      const finishReason = data.candidates?.[0]?.finishReason;
+      if (finishReason === "SAFETY") {
+        throw new Error("Content was blocked by safety filters. Try a different PDF.");
+      }
+      throw new Error("No response from AI. The PDF may be too complex or empty.");
     }
 
-    // Parse the JSON response
+    // Parse the JSON response - handle various formats
     let jsonContent = content;
     if (content.includes("```json")) {
       jsonContent = content.replace(/```json\n?/g, "").replace(/```\n?/g, "");
@@ -180,11 +194,21 @@ Extract answers for up to ${totalQuestions || 75} questions. Map question number
     try {
       parsed = JSON.parse(jsonContent.trim());
     } catch (parseError) {
-      console.error("Failed to parse AI response:", content.substring(0, 500));
-      throw new Error("Failed to parse extracted data. The PDF format may not be supported.");
+      // Try to find JSON in the response
+      const jsonMatch = jsonContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          parsed = JSON.parse(jsonMatch[0]);
+        } catch {
+          console.error("Failed to parse AI response:", content.substring(0, 500));
+          throw new Error("Failed to parse extracted data. Try enabling Image Mode for this PDF.");
+        }
+      } else {
+        console.error("No JSON found in response:", content.substring(0, 500));
+        throw new Error("AI returned invalid format. Try enabling Image Mode for this PDF.");
+      }
     }
 
-    // If extracting answer key only, return it directly
     if (extractAnswerKeyOnly) {
       return new Response(
         JSON.stringify({ answerKey: parsed.answerKey || parsed }),
@@ -192,7 +216,6 @@ Extract answers for up to ${totalQuestions || 75} questions. Map question number
       );
     }
 
-    // Transform to expected format
     const transformedQuestions = (parsed.questions || []).map((q: any, index: number) => ({
       questionNumber: q.id || index + 1,
       subject: q.subject || "Physics",
