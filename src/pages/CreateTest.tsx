@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout, PageHeader } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Slider } from '@/components/ui/slider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
@@ -17,9 +16,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { renderPDFPagesToImages, fileToBase64, PDFPageImage } from '@/lib/pdf-cropper';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { PDFCropTool } from '@/components/exam/PDFCropTool';
-import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Settings2, Crop, RefreshCw } from 'lucide-react';
+import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Crop, RefreshCw, Share2, Link2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getUserApiKey } from './Settings';
 
 export default function CreateTest() {
   const navigate = useNavigate();
@@ -37,14 +35,12 @@ export default function CreateTest() {
     examTitle?: string;
   } | null>(null);
   const [pdfPageImages, setPdfPageImages] = useState<PDFPageImage[]>([]);
-  const [pdfArrayBuffer, setPdfArrayBuffer] = useState<ArrayBuffer | null>(null);
-  const [useImageMode, setUseImageMode] = useState(false);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [showPageViewer, setShowPageViewer] = useState(false);
-  const [selectedPage, setSelectedPage] = useState<number>(1);
-  const [questionsPerPage, setQuestionsPerPage] = useState(3);
   const [showCropTool, setShowCropTool] = useState(false);
   const [extractionFailed, setExtractionFailed] = useState(false);
+  const [extractionTime, setExtractionTime] = useState(0);
+
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -55,23 +51,19 @@ export default function CreateTest() {
     }
 
     setIsProcessing(true);
-    toast.info('Processing PDF - extracting text and images...');
+    toast.info('Processing PDF...');
     setPdfFile(file);
 
     try {
       const pdfjsLib = await import('pdfjs-dist');
-      // Use unpkg CDN for better reliability
       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
       const arrayBuffer = await file.arrayBuffer();
-      // Clone the buffer since pdfjs transfers ownership
       const bufferForText = arrayBuffer.slice(0);
       const bufferForImages = arrayBuffer.slice(0);
-      setPdfArrayBuffer(arrayBuffer.slice(0));
-      
+
       const pdf = await pdfjsLib.getDocument({ data: bufferForText }).promise;
 
-      // Extract text
       let fullText = '';
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
@@ -82,13 +74,12 @@ export default function CreateTest() {
 
       setPdfText(fullText);
       setTestName(file.name.replace('.pdf', ''));
-      
-      // Render PDF pages to images for diagram viewing
-      toast.info('Rendering PDF pages for diagram support...');
+
+      toast.info('Rendering pages for preview & cropping...');
       const pageImages = await renderPDFPagesToImages(bufferForImages, 1.5);
       setPdfPageImages(pageImages);
-      
-      toast.success(`PDF processed: ${pdf.numPages} pages extracted`);
+
+      toast.success(`PDF processed: ${pdf.numPages} pages`);
       setStep('configure');
     } catch (error) {
       console.error('PDF processing error:', error);
@@ -98,58 +89,41 @@ export default function CreateTest() {
     }
   }, []);
 
-  const handleManualTextInput = () => {
-    if (!pdfText.trim()) {
-      toast.error('Please enter some text');
-      return;
-    }
-    setStep('configure');
-  };
-
   const extractQuestions = useCallback(async () => {
-    const userApiKey = getUserApiKey();
-    if (!userApiKey) {
-      toast.error('Please set your Gemini API key in Settings first!');
-      return;
-    }
-
     setIsProcessing(true);
     setExtractionFailed(false);
-    toast.info('Extracting questions with AI (this may take 30-40 seconds)...');
+    const startTime = Date.now();
+    toast.info('Extracting questions with AI (20-40 seconds)...');
 
     try {
-      // Always prefer image/vision mode for better extraction quality
-      let requestBody: any;
-      
+      let requestBody: any = {};
+
       if (pdfFile) {
-        toast.info('Sending PDF in vision mode for best extraction...');
         const base64Data = await fileToBase64(pdfFile);
         requestBody = {
           pdfBase64: base64Data,
           mimeType: 'application/pdf',
-          userApiKey,
         };
       } else {
-        requestBody = { pdfText, userApiKey };
+        requestBody = { pdfText };
       }
 
-      // Auto-retry up to 2 times on client side
+      // Auto-retry up to 2 times
       let data: any = null;
       let lastErr: any = null;
-      
-      for (let clientRetry = 0; clientRetry < 2; clientRetry++) {
-        if (clientRetry > 0) {
-          toast.info(`Retrying extraction (attempt ${clientRetry + 1})...`);
-          await new Promise(r => setTimeout(r, 3000));
+
+      for (let retry = 0; retry < 2; retry++) {
+        if (retry > 0) {
+          toast.info(`Retrying extraction (attempt ${retry + 1})...`);
+          await new Promise(r => setTimeout(r, 2000));
         }
-        
+
         const result = await supabase.functions.invoke('extract-questions', {
           body: requestBody,
         });
 
         if (result.error) {
           lastErr = result.error;
-          console.error(`Client retry ${clientRetry} error:`, result.error);
           continue;
         }
 
@@ -160,14 +134,17 @@ export default function CreateTest() {
           }
           throw new Error(result.data.error);
         }
-        
+
         data = result.data;
         break;
       }
-      
+
       if (!data) {
-        throw lastErr || new Error('Extraction failed after retries. Please try again.');
+        throw lastErr || new Error('Extraction failed. Please try again.');
       }
+
+      const elapsed = Math.round((Date.now() - startTime) / 1000);
+      setExtractionTime(elapsed);
 
       const questions: Question[] = (data.questions || []).map((q: any, index: number) => ({
         id: generateId(),
@@ -194,21 +171,21 @@ export default function CreateTest() {
         subjectCounts: data.subjectCounts || {},
         examTitle: data.examTitle,
       });
-      
+
       if (data.examTitle && data.examTitle !== 'Extracted Test') {
         setTestName(data.examTitle);
       }
-      
+
       setStep('review');
-      toast.success(`Extracted ${questions.length} questions from PDF`);
-    } catch (error) {
+      toast.success(`Extracted ${questions.length} questions in ${elapsed}s`);
+    } catch (error: any) {
       console.error('Extraction error:', error);
       setExtractionFailed(true);
-      toast.error('AI extraction failed. Try "Retry" or use the manual crop tool.');
+      toast.error(error.message || 'Extraction failed. Click Retry or use Crop Tool.');
     } finally {
       setIsProcessing(false);
     }
-  }, [pdfText, useImageMode, pdfFile]);
+  }, [pdfText, pdfFile]);
 
   const handleCreateTest = () => {
     if (extractedQuestions.length === 0) {
@@ -217,8 +194,6 @@ export default function CreateTest() {
     }
 
     const subjects: Subject[] = [...new Set(extractedQuestions.map((q) => q.subject))];
-
-    // Check if any questions have answer keys
     const hasAnswerKey = extractedQuestions.some(q => q.correctAnswer);
 
     const test: Test = {
@@ -233,11 +208,11 @@ export default function CreateTest() {
       positiveMarking,
       negativeMarking,
       hasAnswerKey,
-      pdfPageImages: pdfPageImages, // Store PDF pages for diagram viewing
+      pdfPageImages: pdfPageImages.length <= 10 ? pdfPageImages : undefined, // Don't store too many images
     };
 
     saveTest(test);
-    toast.success('Test created successfully!');
+    toast.success('Test created & saved successfully!');
     navigate(`/tests`);
   };
 
@@ -247,31 +222,22 @@ export default function CreateTest() {
     <MainLayout>
       <PageHeader
         title="Create Test"
-        description="Upload a PDF or enter questions manually to create a new test"
+        description="Upload a PDF to create a CBT test — no API key needed"
       />
 
       {/* Progress Steps */}
       <div className="flex items-center gap-2 md:gap-4 mb-6 md:mb-8 overflow-x-auto pb-2">
         {['upload', 'configure', 'review'].map((s, i) => (
           <div key={s} className="flex items-center flex-shrink-0">
-            <div
-              className={cn(
-                'flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full text-xs md:text-sm font-medium transition-all',
-                step === s
-                  ? 'bg-primary text-primary-foreground'
-                  : i < ['upload', 'configure', 'review'].indexOf(step)
-                  ? 'bg-correct text-correct-foreground'
-                  : 'bg-muted text-muted-foreground'
-              )}
-            >
+            <div className={cn(
+              'flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full text-xs md:text-sm font-medium transition-all',
+              step === s ? 'bg-primary text-primary-foreground' :
+              i < ['upload', 'configure', 'review'].indexOf(step) ? 'bg-correct text-correct-foreground' :
+              'bg-muted text-muted-foreground'
+            )}>
               {i + 1}
             </div>
-            <span
-              className={cn(
-                'ml-1.5 md:ml-2 text-xs md:text-sm',
-                step === s ? 'font-medium' : 'text-muted-foreground'
-              )}
-            >
+            <span className={cn('ml-1.5 md:ml-2 text-xs md:text-sm', step === s ? 'font-medium' : 'text-muted-foreground')}>
               {s.charAt(0).toUpperCase() + s.slice(1)}
             </span>
             {i < 2 && <div className="w-6 md:w-12 h-0.5 bg-border mx-2 md:mx-4" />}
@@ -279,10 +245,9 @@ export default function CreateTest() {
         ))}
       </div>
 
-      {/* Step Content */}
+      {/* Upload Step */}
       {step === 'upload' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-          {/* PDF Upload */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base md:text-lg">
@@ -292,15 +257,10 @@ export default function CreateTest() {
               <CardDescription>Upload a JEE-style question paper PDF</CardDescription>
             </CardHeader>
             <CardContent>
-              <label
-                htmlFor="pdf-upload"
-                className={cn(
-                  'flex flex-col items-center justify-center h-40 md:h-48 border-2 border-dashed rounded-lg cursor-pointer transition-all',
-                  isProcessing
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:border-primary/50 hover:bg-accent'
-                )}
-              >
+              <label htmlFor="pdf-upload" className={cn(
+                'flex flex-col items-center justify-center h-40 md:h-48 border-2 border-dashed rounded-lg cursor-pointer transition-all',
+                isProcessing ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-accent'
+              )}>
                 {isProcessing ? (
                   <div className="flex flex-col items-center gap-2">
                     <Loader2 className="h-8 md:h-10 w-8 md:w-10 text-primary animate-spin" />
@@ -310,22 +270,14 @@ export default function CreateTest() {
                   <>
                     <FileText className="h-8 md:h-10 w-8 md:w-10 text-muted-foreground mb-2" />
                     <p className="text-sm font-medium">Click to upload PDF</p>
-                    <p className="text-xs text-muted-foreground mt-1">Supports unlimited pages</p>
+                    <p className="text-xs text-muted-foreground mt-1">Any JEE/NEET question paper</p>
                   </>
                 )}
-                <input
-                  id="pdf-upload"
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  disabled={isProcessing}
-                />
+                <input id="pdf-upload" type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" disabled={isProcessing} />
               </label>
             </CardContent>
           </Card>
 
-          {/* Manual Input */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base md:text-lg">
@@ -336,17 +288,13 @@ export default function CreateTest() {
             </CardHeader>
             <CardContent className="space-y-4">
               <Textarea
-                placeholder="Paste your questions here...&#10;&#10;Example format:&#10;1. What is the SI unit of force?&#10;(A) Newton&#10;(B) Joule&#10;(C) Watt&#10;(D) Pascal"
+                placeholder="Paste your questions here..."
                 value={pdfText}
                 onChange={(e) => setPdfText(e.target.value)}
                 className="min-h-[120px] md:min-h-[150px]"
               />
-              <Button
-                onClick={handleManualTextInput}
-                variant="outline"
-                className="w-full"
-                disabled={!pdfText.trim()}
-              >
+              <Button onClick={() => { if (pdfText.trim()) setStep('configure'); else toast.error('Enter text first'); }}
+                variant="outline" className="w-full" disabled={!pdfText.trim()}>
                 Use This Text
               </Button>
             </CardContent>
@@ -354,122 +302,68 @@ export default function CreateTest() {
         </div>
       )}
 
+      {/* Configure Step */}
       {step === 'configure' && (
         <Card className="max-w-xl mx-auto">
           <CardHeader>
             <CardTitle>Configure Test</CardTitle>
-            <CardDescription>Set test parameters before extraction</CardDescription>
+            <CardDescription>Set test parameters before AI extraction</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="testName">Test Name</Label>
-              <Input
-                id="testName"
-                value={testName}
-                onChange={(e) => setTestName(e.target.value)}
-                placeholder="e.g., JEE Main 2024 Paper 1"
-              />
+              <Input id="testName" value={testName} onChange={(e) => setTestName(e.target.value)} placeholder="e.g., JEE Main 2024 Paper 1" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="duration">Duration (minutes)</Label>
-              <Input
-                id="duration"
-                type="number"
-                value={duration}
-                onChange={(e) => setDuration(Number(e.target.value))}
-                min={1}
-                max={300}
-              />
+              <Input id="duration" type="number" value={duration} onChange={(e) => setDuration(Number(e.target.value))} min={1} max={300} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="positiveMarking">Correct (+)</Label>
-                <Input
-                  id="positiveMarking"
-                  type="number"
-                  value={positiveMarking}
-                  onChange={(e) => setPositiveMarking(Number(e.target.value))}
-                  min={1}
-                  max={10}
-                />
+                <Label>Correct (+)</Label>
+                <Input type="number" value={positiveMarking} onChange={(e) => setPositiveMarking(Number(e.target.value))} min={1} max={10} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="negativeMarking">Wrong (-)</Label>
-                <Input
-                  id="negativeMarking"
-                  type="number"
-                  value={negativeMarking}
-                  onChange={(e) => setNegativeMarking(Number(e.target.value))}
-                  min={0}
-                  max={10}
-                />
+                <Label>Wrong (-)</Label>
+                <Input type="number" value={negativeMarking} onChange={(e) => setNegativeMarking(Number(e.target.value))} min={0} max={10} />
               </div>
             </div>
-            
-            {/* Image Mode Toggle */}
-            <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border">
-              <div className="space-y-0.5">
-                <Label htmlFor="imageMode" className="text-sm font-medium">Image Mode (Vision)</Label>
-                <p className="text-xs text-muted-foreground">Better for PDFs with diagrams/circuits</p>
-              </div>
-              <Switch
-                id="imageMode"
-                checked={useImageMode}
-                onCheckedChange={setUseImageMode}
-              />
-            </div>
-            
+
             <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
               <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
-              <p className="text-sm">
-                AI will extract questions with LaTeX math, detect diagrams, and identify subjects
-              </p>
+              <p className="text-sm">AI will extract questions with LaTeX math, detect diagrams & subjects automatically</p>
             </div>
-            
+
             {/* PDF Page Preview */}
             {pdfPageImages.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm">PDF Preview ({pdfPageImages.length} pages)</Label>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => setShowPageViewer(true)}
-                  >
-                    <ZoomIn className="h-4 w-4 mr-1" />
-                    View Pages
+                  <Button variant="ghost" size="sm" onClick={() => setShowPageViewer(true)}>
+                    <ZoomIn className="h-4 w-4 mr-1" /> View Pages
                   </Button>
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-2">
                   {pdfPageImages.slice(0, 4).map((page) => (
-                    <img
-                      key={page.pageNumber}
-                      src={page.imageDataUrl}
-                      alt={`Page ${page.pageNumber}`}
+                    <img key={page.pageNumber} src={page.imageDataUrl} alt={`Page ${page.pageNumber}`}
                       className="h-20 w-auto rounded border border-border cursor-pointer hover:ring-2 hover:ring-primary"
-                      onClick={() => {
-                        setSelectedPage(page.pageNumber);
-                        setShowPageViewer(true);
-                      }}
-                    />
+                      onClick={() => setShowPageViewer(true)} />
                   ))}
                   {pdfPageImages.length > 4 && (
-                    <div 
-                      className="h-20 w-16 flex items-center justify-center rounded border border-border bg-muted cursor-pointer hover:bg-accent"
-                      onClick={() => setShowPageViewer(true)}
-                    >
+                    <div className="h-20 w-16 flex items-center justify-center rounded border border-border bg-muted cursor-pointer hover:bg-accent"
+                      onClick={() => setShowPageViewer(true)}>
                       <span className="text-xs text-muted-foreground">+{pdfPageImages.length - 4}</span>
                     </div>
                   )}
                 </div>
               </div>
             )}
-            
-            {/* Retry & Crop buttons */}
+
+            {/* Retry on failure */}
             {extractionFailed && (
               <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                 <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
-                <p className="text-sm text-destructive flex-1">Extraction failed. Try again or use manual crop tool.</p>
+                <p className="text-sm text-destructive flex-1">Extraction failed. Try again or use manual crop.</p>
                 <Button variant="outline" size="sm" onClick={extractQuestions} disabled={isProcessing} className="gap-1">
                   <RefreshCw className="h-3 w-3" /> Retry
                 </Button>
@@ -483,20 +377,12 @@ export default function CreateTest() {
             )}
 
             <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setStep('upload')}>
-                Back
-              </Button>
+              <Button variant="outline" onClick={() => setStep('upload')}>Back</Button>
               <Button onClick={extractQuestions} disabled={isProcessing} className="flex-1">
                 {isProcessing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Extracting...
-                  </>
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Extracting...</>
                 ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Extract Questions
-                  </>
+                  <><Sparkles className="mr-2 h-4 w-4" />Extract Questions</>
                 )}
               </Button>
             </div>
@@ -504,14 +390,14 @@ export default function CreateTest() {
         </Card>
       )}
 
+      {/* Review Step */}
       {step === 'review' && (
         <div className="space-y-4 md:space-y-6">
-          {/* Extraction Stats */}
           {extractionStats && (
             <div className="flex flex-wrap gap-3">
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-correct/10 border border-correct/20">
                 <CheckCircle className="h-4 w-4 text-correct" />
-                <span className="text-sm font-medium">{extractionStats.totalExtracted} Questions Extracted</span>
+                <span className="text-sm font-medium">{extractionStats.totalExtracted} Questions in {extractionTime}s</span>
               </div>
               {diagramQuestionCount > 0 && (
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-review/10 border border-review/20">
@@ -520,10 +406,7 @@ export default function CreateTest() {
                 </div>
               )}
               {Object.entries(extractionStats.subjectCounts).map(([subject, count]) => (
-                <div
-                  key={subject}
-                  className={cn('px-3 py-2 rounded-lg text-sm', `badge-${subject.toLowerCase()}`)}
-                >
+                <div key={subject} className={cn('px-3 py-2 rounded-lg text-sm', `badge-${subject.toLowerCase()}`)}>
                   {subject}: {count as number}
                 </div>
               ))}
@@ -533,9 +416,7 @@ export default function CreateTest() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base md:text-lg">Review Extracted Questions</CardTitle>
-              <CardDescription>
-                {extractedQuestions.length} questions extracted • Verify before creating test
-              </CardDescription>
+              <CardDescription>{extractedQuestions.length} questions • Verify before creating test</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3 md:space-y-4 max-h-[350px] md:max-h-[400px] overflow-y-auto pr-2">
@@ -543,33 +424,23 @@ export default function CreateTest() {
                   <div key={q.id} className="p-3 md:p-4 rounded-lg border border-border bg-card/50">
                     <div className="flex items-start justify-between gap-2 mb-2 flex-wrap">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="flex h-6 w-6 items-center justify-center rounded bg-primary/20 text-xs font-medium text-primary">
-                          {index + 1}
-                        </span>
-                        <span className={`badge-${q.subject.toLowerCase()} px-2 py-0.5 rounded text-xs`}>
-                          {q.subject}
-                        </span>
+                        <span className="flex h-6 w-6 items-center justify-center rounded bg-primary/20 text-xs font-medium text-primary">{index + 1}</span>
+                        <span className={`badge-${q.subject.toLowerCase()} px-2 py-0.5 rounded text-xs`}>{q.subject}</span>
                         <span className="text-xs text-muted-foreground">{q.chapter}</span>
                         {q.hasDiagram && (
                           <span className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-review/10 text-review border border-review/20">
-                            <Image className="h-3 w-3" />
-                            Diagram
+                            <Image className="h-3 w-3" /> Diagram
                           </span>
                         )}
                       </div>
-                       {q.correctAnswer && (
-                        <span className="text-xs text-muted-foreground italic">✓ Has Answer Key</span>
-                      )}
+                      {q.correctAnswer && <span className="text-xs text-muted-foreground italic">✓ Answer: {q.correctAnswer}</span>}
                     </div>
                     <div className="text-sm mb-2 line-clamp-3">
                       <LatexRenderer content={q.question} />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
                       {Object.entries(q.options).map(([key, value]) => (
-                        <div
-                          key={key}
-                          className="p-1.5 rounded"
-                        >
+                        <div key={key} className="p-1.5 rounded">
                           ({key}) {value ? <LatexRenderer content={value} /> : <span className="italic">Empty</span>}
                         </div>
                       ))}
@@ -580,38 +451,15 @@ export default function CreateTest() {
             </CardContent>
           </Card>
 
-          {/* Answer Key Detected Banner */}
           {extractedQuestions.some(q => q.correctAnswer) && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-correct/10 border border-correct/20">
               <CheckCircle className="h-5 w-5 text-correct flex-shrink-0" />
-              <p className="text-sm text-correct">
-                ✅ Answer key detected from PDF! You won't need to enter answers after the test.
-              </p>
-            </div>
-          )}
-
-          {!extractedQuestions.some(q => q.correctAnswer) && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-review/10 border border-review/20">
-              <AlertCircle className="h-5 w-5 text-review flex-shrink-0" />
-              <p className="text-sm text-review">
-                No answer key detected. You can upload an answer key PDF/image after submitting the test.
-              </p>
-            </div>
-          )}
-
-          {extractedQuestions.some((q) => !q.options.A || !q.options.B) && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-review/10 border border-review/20">
-              <AlertCircle className="h-5 w-5 text-review flex-shrink-0" />
-              <p className="text-sm text-review">
-                Some questions have missing options. You may want to edit them after creation.
-              </p>
+              <p className="text-sm text-correct">✅ Answer key detected from PDF!</p>
             </div>
           )}
 
           <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setStep('configure')}>
-              Back
-            </Button>
+            <Button variant="outline" onClick={() => setStep('configure')}>Back</Button>
             <Button onClick={handleCreateTest} className="flex-1 glow-primary">
               Create Test ({extractedQuestions.length} Questions)
             </Button>
@@ -622,19 +470,13 @@ export default function CreateTest() {
       {/* PDF Page Viewer Dialog */}
       <Dialog open={showPageViewer} onOpenChange={setShowPageViewer}>
         <DialogContent className="max-w-4xl max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle>PDF Pages</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>PDF Pages</DialogTitle></DialogHeader>
           <ScrollArea className="h-[70vh]">
             <div className="space-y-4">
               {pdfPageImages.map((page) => (
                 <div key={page.pageNumber} className="space-y-2">
                   <p className="text-sm font-medium">Page {page.pageNumber}</p>
-                  <img
-                    src={page.imageDataUrl}
-                    alt={`Page ${page.pageNumber}`}
-                    className="w-full rounded-lg border border-border"
-                  />
+                  <img src={page.imageDataUrl} alt={`Page ${page.pageNumber}`} className="w-full rounded-lg border border-border" />
                 </div>
               ))}
             </div>
@@ -648,7 +490,7 @@ export default function CreateTest() {
         onOpenChange={setShowCropTool}
         pages={pdfPageImages}
         onCroppedQuestions={(crops) => {
-          toast.success(`${crops.length} regions cropped! You can use these for reference.`);
+          toast.success(`${crops.length} regions cropped successfully!`);
         }}
       />
     </MainLayout>
