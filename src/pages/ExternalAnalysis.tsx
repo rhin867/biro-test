@@ -12,14 +12,14 @@ import { Test, Question, TestAttempt, QuestionAttempt, Subject } from '@/types/e
 import { calculateTestResult } from '@/lib/exam-utils';
 import { supabase } from '@/integrations/supabase/client';
 import { fileToBase64 } from '@/lib/pdf-cropper';
-import { getUserApiKey } from './Settings';
-import { Upload, FileText, Loader2, BarChart, Clock, Send, Image, Video, Monitor } from 'lucide-react';
+import { Upload, FileText, Loader2, BarChart, Clock, Send, Image, Monitor, RefreshCw } from 'lucide-react';
 
 export default function ExternalAnalysis() {
   const navigate = useNavigate();
   const [testFile, setTestFile] = useState<File | null>(null);
   const [ansFile, setAnsFile] = useState<File | null>(null);
   const [userAnswers, setUserAnswers] = useState('');
+  const [userAnswerFile, setUserAnswerFile] = useState<File | null>(null);
   const [testName, setTestName] = useState('');
   const [duration, setDuration] = useState(180);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -43,47 +43,39 @@ export default function ExternalAnalysis() {
   const handleStartRecording = () => {
     setIsRecording(true);
     setRecordStartTime(Date.now());
-    toast.success('Recording started! Take your test on the other platform and come back when done.');
+    toast.success('Timer started! Take your test and come back when done.');
   };
 
   const handleStopRecording = () => {
     if (recordStartTime) {
       const elapsed = Math.round((Date.now() - recordStartTime) / 60000);
-      setDuration(elapsed);
-      toast.success(`Recorded ${elapsed} minutes of test time`);
+      setDuration(elapsed || 1);
+      toast.success(`Recorded ${elapsed} minutes`);
     }
     setIsRecording(false);
     setRecordStartTime(null);
   };
 
-  const handleStartScreen = async () => {
-    try {
-      // Request screen sharing (just for timing/awareness, we don't actually capture)
-      setScreenMode(true);
-      setIsRecording(true);
-      setRecordStartTime(Date.now());
-      toast.success('Screen monitoring started! Take your test on the other platform. Come back and stop when done.');
-    } catch {
-      toast.error('Screen sharing not supported in this browser');
-    }
+  const handleStartScreen = () => {
+    setScreenMode(true);
+    setIsRecording(true);
+    setRecordStartTime(Date.now());
+    toast.success('Screen monitoring started! Take your test on another platform.');
   };
 
   const handleProcess = async () => {
     if (!testFile) { toast.error('Upload your test PDF/Image'); return; }
-    if (!userAnswers.trim() && !ansFile) { toast.error('Enter your answers or upload answer file'); return; }
-
-    const apiKey = getUserApiKey();
-    if (!apiKey) { toast.error('Please set your Gemini API key in Settings first'); return; }
+    if (!userAnswers.trim() && !ansFile && !userAnswerFile) { toast.error('Enter your answers, upload answer file, or upload your answer image'); return; }
 
     setIsProcessing(true);
-    toast.info('Processing test and answers (30-40 seconds)...');
+    toast.info('Processing test and answers (20-40 seconds)...');
 
     try {
       const testBase64 = await fileToBase64(testFile);
       const mimeType = testFile.type || 'application/pdf';
-      
+
       const { data: testData, error: testError } = await supabase.functions.invoke('extract-questions', {
-        body: { pdfBase64: testBase64, mimeType, userApiKey: apiKey },
+        body: { pdfBase64: testBase64, mimeType },
       });
       if (testError || testData?.error) throw new Error(testData?.error || 'Failed to extract questions');
 
@@ -95,23 +87,39 @@ export default function ExternalAnalysis() {
           body: {
             pdfBase64: ansBase64, mimeType: ansFile.type,
             extractAnswerKeyOnly: true, totalQuestions: testData.questions?.length || 75,
-            userApiKey: apiKey,
           },
         });
         if (ansData?.answerKey) answerKey = ansData.answerKey;
       }
 
-      // Parse user answers
+      // Parse user answers - from text or from uploaded image
       const userAnsMap: Record<number, string> = {};
-      const cleaned = userAnswers.trim().toUpperCase();
-      if (/^[ABCD]+$/.test(cleaned)) {
-        cleaned.split('').forEach((a, i) => { userAnsMap[i + 1] = a; });
-      } else {
-        const matches = cleaned.match(/(\d+)\s*[-.:)\]]\s*([ABCD])/g);
-        matches?.forEach(m => {
-          const parts = m.match(/(\d+)\s*[-.:)\]]\s*([ABCD])/);
-          if (parts) userAnsMap[parseInt(parts[1])] = parts[2];
+      
+      if (userAnswerFile) {
+        // Extract answers from uploaded image/PDF
+        const uaBase64 = await fileToBase64(userAnswerFile);
+        const { data: uaData } = await supabase.functions.invoke('extract-questions', {
+          body: {
+            pdfBase64: uaBase64, mimeType: userAnswerFile.type,
+            extractAnswerKeyOnly: true, totalQuestions: testData.questions?.length || 75,
+          },
         });
+        if (uaData?.answerKey) {
+          Object.entries(uaData.answerKey).forEach(([k, v]) => {
+            userAnsMap[parseInt(k)] = v as string;
+          });
+        }
+      } else if (userAnswers.trim()) {
+        const cleaned = userAnswers.trim().toUpperCase();
+        if (/^[ABCD\s,]+$/.test(cleaned)) {
+          cleaned.replace(/[\s,]+/g, '').split('').forEach((a, i) => { userAnsMap[i + 1] = a; });
+        } else {
+          const matches = cleaned.match(/(\d+)\s*[-.:)\]]\s*([ABCD])/g);
+          matches?.forEach(m => {
+            const parts = m.match(/(\d+)\s*[-.:)\]]\s*([ABCD])/);
+            if (parts) userAnsMap[parseInt(parts[1])] = parts[2];
+          });
+        }
       }
 
       // Build test
@@ -133,7 +141,7 @@ export default function ExternalAnalysis() {
         description: 'Imported from external platform', createdAt: new Date().toISOString(),
         duration, questions, subjects, totalMarks: questions.length * 4,
         positiveMarking: 4, negativeMarking: 1,
-        hasAnswerKey: Object.keys(answerKey).length > 0,
+        hasAnswerKey: Object.keys(answerKey).length > 0 || questions.some(q => q.correctAnswer),
       };
       saveTest(test);
 
@@ -168,7 +176,7 @@ export default function ExternalAnalysis() {
       }
     } catch (error: any) {
       console.error(error);
-      toast.error(error.message || 'Processing failed. Check your API key.');
+      toast.error(error.message || 'Processing failed. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -176,7 +184,7 @@ export default function ExternalAnalysis() {
 
   return (
     <MainLayout>
-      <PageHeader title="External Test Analysis" description="Analyze tests from any platform with advanced insights" />
+      <PageHeader title="External Test Analysis" description="Analyze tests from any platform with AI-powered insights" />
 
       {/* Screen Monitor Banner */}
       {isRecording && (
@@ -184,7 +192,7 @@ export default function ExternalAnalysis() {
           <CardContent className="pt-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="h-3 w-3 rounded-full bg-red-500 animate-pulse" />
-              <span className="font-medium">{screenMode ? 'Screen monitoring active' : 'Recording test time'}...</span>
+              <span className="font-medium">{screenMode ? 'Screen monitoring' : 'Timer'} active</span>
               <span className="text-lg font-mono font-bold text-primary">{elapsedDisplay}</span>
             </div>
             <Button variant="destructive" onClick={handleStopRecording}>Stop & Save Time</Button>
@@ -192,14 +200,13 @@ export default function ExternalAnalysis() {
         </Card>
       )}
 
-      {/* Quick Actions */}
       {!isRecording && (
         <div className="flex flex-wrap gap-3 mb-6">
           <Button variant="outline" onClick={handleStartRecording} className="gap-2">
-            <Clock className="h-4 w-4" /> Start Timer (Manual)
+            <Clock className="h-4 w-4" /> Start Timer
           </Button>
           <Button variant="outline" onClick={handleStartScreen} className="gap-2">
-            <Monitor className="h-4 w-4" /> Start Screen Monitor
+            <Monitor className="h-4 w-4" /> Screen Monitor
           </Button>
         </div>
       )}
@@ -209,7 +216,7 @@ export default function ExternalAnalysis() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Test Paper</CardTitle>
-            <CardDescription>Upload PDF, image, or photo of the question paper</CardDescription>
+            <CardDescription>Upload PDF or image of the question paper</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <label htmlFor="test-file"
@@ -223,7 +230,7 @@ export default function ExternalAnalysis() {
               ) : (
                 <>
                   <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                  <p className="text-sm">Upload PDF / Image / Photo</p>
+                  <p className="text-sm">Upload PDF / Image</p>
                   <p className="text-xs text-muted-foreground">PDF, JPG, PNG supported</p>
                 </>
               )}
@@ -238,7 +245,7 @@ export default function ExternalAnalysis() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><BarChart className="h-5 w-5 text-correct" />Answer Key</CardTitle>
-            <CardDescription>Upload answer key as PDF, image, or enter manually</CardDescription>
+            <CardDescription>Upload answer key (PDF/image) or enter manually</CardDescription>
           </CardHeader>
           <CardContent>
             <label htmlFor="ans-file"
@@ -251,11 +258,11 @@ export default function ExternalAnalysis() {
               ) : (
                 <>
                   <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                  <p className="text-sm">Upload Answer Key (PDF/Image/Video)</p>
+                  <p className="text-sm">Upload Answer Key (PDF/Image)</p>
                   <p className="text-xs text-muted-foreground">Or enter answers below</p>
                 </>
               )}
-              <input id="ans-file" type="file" accept=".pdf,image/*,video/*" className="hidden"
+              <input id="ans-file" type="file" accept=".pdf,image/*" className="hidden"
                 onChange={e => setAnsFile(e.target.files?.[0] || null)} />
             </label>
           </CardContent>
@@ -265,11 +272,36 @@ export default function ExternalAnalysis() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Send className="h-5 w-5 text-primary" />Your Chosen Answers</CardTitle>
-            <CardDescription>Enter the answers you selected (format: ABCDABCD or 1-A, 2-B, 3-C)</CardDescription>
+            <CardDescription>Enter answers as text, or upload an image/PDF of your answer sheet</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Textarea placeholder="ABCDABCD... or 1-A, 2-B, 3-C..." value={userAnswers}
-              onChange={e => setUserAnswers(e.target.value)} rows={3} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Type your answers</Label>
+                <Textarea placeholder="ABCDABCD... or 1-A, 2-B, 3-C..." value={userAnswers}
+                  onChange={e => setUserAnswers(e.target.value)} rows={3} />
+              </div>
+              <div className="space-y-2">
+                <Label>Or upload answer image/PDF</Label>
+                <label htmlFor="user-ans-file"
+                  className="flex flex-col items-center justify-center h-24 border-2 border-dashed rounded-lg cursor-pointer border-border hover:border-primary/50">
+                  {userAnswerFile ? (
+                    <div className="text-center">
+                      <Image className="h-6 w-6 text-correct mx-auto mb-1" />
+                      <p className="text-xs font-medium">{userAnswerFile.name}</p>
+                    </div>
+                  ) : (
+                    <>
+                      <Image className="h-6 w-6 text-muted-foreground mb-1" />
+                      <p className="text-xs">Upload your marked answers</p>
+                      <p className="text-xs text-muted-foreground">Image or PDF of your OMR/answers</p>
+                    </>
+                  )}
+                  <input id="user-ans-file" type="file" accept=".pdf,image/*" className="hidden"
+                    onChange={e => setUserAnswerFile(e.target.files?.[0] || null)} />
+                </label>
+              </div>
+            </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-muted-foreground" />
