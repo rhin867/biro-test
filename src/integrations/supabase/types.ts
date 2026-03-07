@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      community_messages: {
+        Row: {
+          author: string
+          content: string
+          created_at: string | null
+          downvotes: number | null
+          id: string
+          msg_type: string | null
+          post_type: string | null
+          upvotes: number | null
+        }
+        Insert: {
+          author: string
+          content: string
+          created_at?: string | null
+          downvotes?: number | null
+          id?: string
+          msg_type?: string | null
+          post_type?: string | null
+          upvotes?: number | null
+        }
+        Update: {
+          author?: string
+          content?: string
+          created_at?: string | null
+          downvotes?: number | null
+          id?: string
+          msg_type?: string | null
+          post_type?: string | null
+          upvotes?: number | null
+        }
+        Relationships: []
+      }
       mistake_book: {
         Row: {
           added_at: string
@@ -97,6 +130,30 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      shared_tests: {
+        Row: {
+          created_at: string | null
+          creator_name: string | null
+          id: string
+          share_code: string
+          test_data: Json
+        }
+        Insert: {
+          created_at?: string | null
+          creator_name?: string | null
+          id?: string
+          share_code: string
+          test_data: Json
+        }
+        Update: {
+          created_at?: string | null
+          creator_name?: string | null
+          id?: string
+          share_code?: string
+          test_data?: Json
         }
         Relationships: []
       }
