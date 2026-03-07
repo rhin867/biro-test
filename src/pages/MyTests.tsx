@@ -4,44 +4,29 @@ import { MainLayout, PageHeader } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { TestShareDialog } from '@/components/exam/TestShareDialog';
-import { getTests, getResultsByTestId, deleteTest, generateShareCode } from '@/lib/storage';
+import { getTests, getResultsByTestId, deleteTest, generateShareCode, saveTest } from '@/lib/storage';
 import { formatTimeMinutes } from '@/lib/exam-utils';
 import {
-  Plus,
-  Play,
-  BarChart3,
-  Trash2,
-  Clock,
-  FileText,
-  Target,
-  MoreVertical,
-  Share2,
-  Key,
-  CheckCircle2,
+  Plus, Play, BarChart3, Trash2, Clock, FileText, Target, MoreVertical, Share2, Key, CheckCircle2, Pencil,
 } from 'lucide-react';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
 export default function MyTests() {
   const [tests, setTests] = useState(getTests());
+  const [renameDialog, setRenameDialog] = useState<{ id: string; name: string } | null>(null);
+  const [newName, setNewName] = useState('');
 
   const handleDeleteTest = (testId: string) => {
     deleteTest(testId);
@@ -53,17 +38,23 @@ export default function MyTests() {
     return generateShareCode(testId);
   };
 
+  const handleRename = () => {
+    if (!renameDialog || !newName.trim()) return;
+    const test = tests.find(t => t.id === renameDialog.id);
+    if (test) {
+      test.name = newName.trim();
+      saveTest(test);
+      setTests(getTests());
+      toast.success('Test renamed');
+    }
+    setRenameDialog(null);
+  };
+
   return (
     <MainLayout>
-      <PageHeader
-        title="My Tests"
-        description={`${tests.length} tests available`}
-      >
+      <PageHeader title="My Tests" description={`${tests.length} tests available`}>
         <Link to="/create">
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            Create New Test
-          </Button>
+          <Button className="gap-2"><Plus className="h-4 w-4" /> Create New Test</Button>
         </Link>
       </PageHeader>
 
@@ -72,15 +63,8 @@ export default function MyTests() {
           <CardContent>
             <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">No Tests Yet</h3>
-            <p className="text-muted-foreground mb-4">
-              Create your first test by uploading a PDF
-            </p>
-            <Link to="/create">
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                Create Test
-              </Button>
-            </Link>
+            <p className="text-muted-foreground mb-4">Create your first test by uploading a PDF</p>
+            <Link to="/create"><Button className="gap-2"><Plus className="h-4 w-4" /> Create Test</Button></Link>
           </CardContent>
         </Card>
       ) : (
@@ -98,54 +82,39 @@ export default function MyTests() {
                     <div className="flex-1">
                       <CardTitle className="text-lg line-clamp-1 flex items-center gap-2">
                         {test.name}
-                        {test.hasAnswerKey && (
-                          <CheckCircle2 className="h-4 w-4 text-correct" />
-                        )}
+                        {test.hasAnswerKey && <CheckCircle2 className="h-4 w-4 text-correct" />}
                       </CardTitle>
-                      <CardDescription className="mt-1">
-                        {new Date(test.createdAt).toLocaleDateString()}
-                      </CardDescription>
+                      <CardDescription className="mt-1">{new Date(test.createdAt).toLocaleDateString()}</CardDescription>
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link to={`/exam/${test.id}`}>Start Test</Link>
+                        <DropdownMenuItem asChild><Link to={`/exam/${test.id}`}>Start Test</Link></DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setRenameDialog({ id: test.id, name: test.name }); setNewName(test.name); }}>
+                          <Pencil className="h-3 w-3 mr-2" /> Rename
                         </DropdownMenuItem>
                         {results.length > 0 && (
                           <DropdownMenuItem asChild>
-                            <Link to={`/analysis/${results[results.length - 1].attemptId}`}>
-                              View Analysis
-                            </Link>
+                            <Link to={`/analysis/${results[results.length - 1].attemptId}`}>View Analysis</Link>
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <DropdownMenuItem
-                              onSelect={(e) => e.preventDefault()}
-                              className="text-destructive focus:text-destructive"
-                            >
+                            <DropdownMenuItem onSelect={e => e.preventDefault()} className="text-destructive focus:text-destructive">
                               Delete Test
                             </DropdownMenuItem>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete Test?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently delete this test and all its attempts.
-                              </AlertDialogDescription>
+                              <AlertDialogDescription>This will permanently delete this test and all its attempts.</AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDeleteTest(test.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
+                              <AlertDialogAction onClick={() => handleDeleteTest(test.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                                 Delete
                               </AlertDialogAction>
                             </AlertDialogFooter>
@@ -156,21 +125,16 @@ export default function MyTests() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Test Info */}
                   <div className="flex flex-wrap gap-2">
-                    {test.subjects.map((subject) => (
-                      <Badge key={subject} variant="outline" className={`badge-${subject.toLowerCase()}`}>
-                        {subject}
-                      </Badge>
+                    {test.subjects.map(subject => (
+                      <Badge key={subject} variant="outline" className={`badge-${subject.toLowerCase()}`}>{subject}</Badge>
                     ))}
                     {!test.hasAnswerKey && (
                       <Badge variant="outline" className="text-yellow-500 border-yellow-500/30">
-                        <Key className="h-3 w-3 mr-1" />
-                        No Key
+                        <Key className="h-3 w-3 mr-1" /> No Key
                       </Badge>
                     )}
                   </div>
-
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="rounded-lg bg-muted p-2">
                       <FileText className="h-4 w-4 mx-auto text-muted-foreground" />
@@ -188,41 +152,23 @@ export default function MyTests() {
                       <p className="text-xs text-muted-foreground">Marks</p>
                     </div>
                   </div>
-
-                  {/* Best Score */}
                   {bestResult && (
                     <div className="flex items-center justify-between p-2 rounded-lg bg-correct/10 border border-correct/20">
                       <span className="text-sm text-muted-foreground">Best Score</span>
-                      <span className="font-medium text-correct">
-                        {bestResult.score}/{bestResult.maxScore} ({bestResult.accuracy.toFixed(1)}%)
-                      </span>
+                      <span className="font-medium text-correct">{bestResult.score}/{bestResult.maxScore} ({bestResult.accuracy.toFixed(1)}%)</span>
                     </div>
                   )}
-
-                  {/* Attempt Count */}
                   {results.length > 0 && (
-                    <p className="text-xs text-center text-muted-foreground">
-                      {results.length} attempt{results.length !== 1 ? 's' : ''}
-                    </p>
+                    <p className="text-xs text-center text-muted-foreground">{results.length} attempt{results.length !== 1 ? 's' : ''}</p>
                   )}
-
-                  {/* Actions */}
                   <div className="flex gap-2">
                     <Link to={`/exam/${test.id}`} className="flex-1">
-                      <Button className="w-full gap-2">
-                        <Play className="h-4 w-4" />
-                        Start Test
-                      </Button>
+                      <Button className="w-full gap-2"><Play className="h-4 w-4" /> Start Test</Button>
                     </Link>
-                    <TestShareDialog 
-                      test={test} 
-                      onGenerateShareCode={() => handleGenerateShareCode(test.id)}
-                    />
+                    <TestShareDialog test={test} onGenerateShareCode={() => handleGenerateShareCode(test.id)} />
                     {results.length > 0 && (
                       <Link to={`/analysis/${results[results.length - 1].attemptId}`}>
-                        <Button variant="outline" size="icon">
-                          <BarChart3 className="h-4 w-4" />
-                        </Button>
+                        <Button variant="outline" size="icon"><BarChart3 className="h-4 w-4" /></Button>
                       </Link>
                     )}
                   </div>
@@ -232,6 +178,19 @@ export default function MyTests() {
           })}
         </div>
       )}
+
+      {/* Rename Dialog */}
+      <Dialog open={!!renameDialog} onOpenChange={open => !open && setRenameDialog(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Rename Test</DialogTitle></DialogHeader>
+          <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Enter new name"
+            onKeyDown={e => e.key === 'Enter' && handleRename()} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameDialog(null)}>Cancel</Button>
+            <Button onClick={handleRename} disabled={!newName.trim()}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }

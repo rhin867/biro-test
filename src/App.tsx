@@ -21,6 +21,7 @@ import Community from "./pages/Community";
 import AdminPanel from "./pages/AdminPanel";
 import ExternalAnalysis from "./pages/ExternalAnalysis";
 import Guide from "./pages/Guide";
+import BiroBrain from "./pages/BiroBrain";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const App = () => (
             <Route path="/admin" element={<AdminPanel />} />
             <Route path="/external-analysis" element={<ExternalAnalysis />} />
             <Route path="/guide" element={<Guide />} />
+            <Route path="/biro-brain" element={<BiroBrain />} />
             <Route path="/analysis" element={<History />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

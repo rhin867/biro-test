@@ -5,6 +5,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { getSubjectColor } from '@/lib/exam-utils';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
@@ -18,7 +19,7 @@ interface QuestionDisplayProps {
   onAnswerSelect: (answer: string) => void;
   showCorrectAnswer?: boolean;
   className?: string;
-   pdfPageImages?: { pageNumber: number; imageDataUrl: string }[];
+  pdfPageImages?: { pageNumber: number; imageDataUrl: string }[];
 }
 
 export function QuestionDisplay({
@@ -29,29 +30,27 @@ export function QuestionDisplay({
   onAnswerSelect,
   showCorrectAnswer = false,
   className,
-   pdfPageImages = [],
+  pdfPageImages = [],
 }: QuestionDisplayProps) {
   const subjectColor = getSubjectColor(question.subject);
-   const [showDiagram, setShowDiagram] = useState(false);
+  const [showDiagram, setShowDiagram] = useState(false);
+
+  // Detect if this is a numerical/integer type question (no valid options)
+  const hasValidOptions = Object.values(question.options).some(v => v && v.trim() !== '');
+  const isNumerical = question.type === 'Numerical' || !hasValidOptions;
 
   const getOptionClass = (option: string) => {
     if (!showCorrectAnswer) {
       return selectedAnswer === option ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50';
     }
-    
-    if (option === question.correctAnswer) {
-      return 'border-correct bg-correct/10';
-    }
-    if (selectedAnswer === option && option !== question.correctAnswer) {
-      return 'border-incorrect bg-incorrect/10';
-    }
+    if (option === question.correctAnswer) return 'border-correct bg-correct/10';
+    if (selectedAnswer === option && option !== question.correctAnswer) return 'border-incorrect bg-incorrect/10';
     return 'border-border opacity-60';
   };
 
-   // Find the PDF page image for this question
-   const questionPageImage = question.pdfPageNumber 
-     ? pdfPageImages.find(p => p.pageNumber === question.pdfPageNumber)
-     : null;
+  const questionPageImage = question.pdfPageNumber 
+    ? pdfPageImages.find(p => p.pageNumber === question.pdfPageNumber)
+    : null;
 
   return (
     <div className={cn('space-y-6', className)}>
@@ -62,35 +61,24 @@ export function QuestionDisplay({
             {questionNumber}
           </span>
           <div>
-            <p className="text-sm text-muted-foreground">
-              Question {questionNumber} of {totalQuestions}
-            </p>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant="outline" className={`badge-${subjectColor}`}>
-                {question.subject}
-              </Badge>
-              <Badge variant="outline" className="text-xs">
-                {question.chapter}
-              </Badge>
-              <Badge variant="secondary" className="text-xs">
-                {question.type}
-              </Badge>
-               {question.hasDiagram && (
-                 <Badge variant="outline" className="text-xs bg-review/10 text-review border-review">
-                   <ImageIcon className="h-3 w-3 mr-1" />
-                   Has Diagram
-                 </Badge>
-               )}
+            <p className="text-sm text-muted-foreground">Question {questionNumber} of {totalQuestions}</p>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <Badge variant="outline" className={`badge-${subjectColor}`}>{question.subject}</Badge>
+              <Badge variant="outline" className="text-xs">{question.chapter}</Badge>
+              <Badge variant="secondary" className="text-xs">{isNumerical ? 'Numerical' : question.type}</Badge>
+              {question.hasDiagram && (
+                <Badge variant="outline" className="text-xs bg-review/10 text-review border-review">
+                  <ImageIcon className="h-3 w-3 mr-1" /> Has Diagram
+                </Badge>
+              )}
             </div>
           </div>
         </div>
-        {/* View Original PDF Page Button */}
         {(question.hasDiagram || question.croppedImageUrl || questionPageImage) && (
           <Dialog open={showDiagram} onOpenChange={setShowDiagram}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
-                <ZoomIn className="h-4 w-4" />
-                View Original
+                <ZoomIn className="h-4 w-4" /> View Original
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
@@ -99,21 +87,11 @@ export function QuestionDisplay({
               </DialogHeader>
               <div className="mt-4">
                 {question.croppedImageUrl ? (
-                  <img
-                    src={question.croppedImageUrl}
-                    alt={`Question ${questionNumber}`}
-                    className="w-full rounded-lg border border-border"
-                  />
+                  <img src={question.croppedImageUrl} alt={`Question ${questionNumber}`} className="w-full rounded-lg border border-border" />
                 ) : questionPageImage ? (
-                  <img
-                    src={questionPageImage.imageDataUrl}
-                    alt={`PDF Page ${question.pdfPageNumber}`}
-                    className="w-full rounded-lg border border-border"
-                  />
+                  <img src={questionPageImage.imageDataUrl} alt={`PDF Page ${question.pdfPageNumber}`} className="w-full rounded-lg border border-border" />
                 ) : (
-                  <div className="p-8 text-center text-muted-foreground">
-                    Original PDF page image not available
-                  </div>
+                  <div className="p-8 text-center text-muted-foreground">Original PDF page image not available</div>
                 )}
               </div>
             </DialogContent>
@@ -126,60 +104,63 @@ export function QuestionDisplay({
         <div className="text-lg leading-relaxed whitespace-pre-wrap">
           <LatexRenderer content={question.question} />
         </div>
-        {question.imageUrl && (
-          <img
-            src={question.imageUrl}
-            alt="Question diagram"
-            className="mt-4 max-h-64 rounded-lg object-contain"
-          />
+        {/* Show diagram directly below question */}
+        {question.croppedImageUrl && (
+          <img src={question.croppedImageUrl} alt="Question diagram" className="mt-4 max-h-64 rounded-lg object-contain border border-border" />
         )}
-        {question.croppedImageUrl && !question.imageUrl && (
-          <img
-            src={question.croppedImageUrl}
-            alt="Question diagram"
-            className="mt-4 max-h-64 rounded-lg object-contain border border-border"
-          />
+        {question.imageUrl && !question.croppedImageUrl && (
+          <img src={question.imageUrl} alt="Question diagram" className="mt-4 max-h-64 rounded-lg object-contain" />
+        )}
+        {!question.croppedImageUrl && !question.imageUrl && question.hasDiagram && questionPageImage && (
+          <div className="mt-4 p-3 rounded-lg bg-muted/50 border border-border">
+            <p className="text-xs text-muted-foreground mb-2">📷 Diagram from PDF Page {question.pdfPageNumber}:</p>
+            <img src={questionPageImage.imageDataUrl} alt={`Page ${question.pdfPageNumber}`} className="max-h-48 rounded object-contain" />
+          </div>
         )}
       </div>
 
-      {/* Options */}
-      <RadioGroup
-        value={selectedAnswer || ''}
-        onValueChange={onAnswerSelect}
-        className="space-y-3"
-        disabled={showCorrectAnswer}
-      >
-        {(['A', 'B', 'C', 'D'] as const).map((option) => (
-          <Label
-            key={option}
-            htmlFor={`option-${option}`}
-            className={cn(
-              'flex cursor-pointer items-start gap-4 rounded-lg border-2 p-4 transition-all duration-200',
-              getOptionClass(option)
-            )}
-          >
-            <RadioGroupItem
-              value={option}
-              id={`option-${option}`}
-              className="mt-0.5"
-            />
-            <div className="flex-1">
-              <span className="font-semibold text-primary mr-2">({option})</span>
-              <LatexRenderer content={question.options[option]} className="whitespace-pre-wrap" />
+      {/* Numerical Input or MCQ Options */}
+      {isNumerical ? (
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-muted-foreground">Type your numerical answer:</p>
+          <Input
+            type="text"
+            inputMode="decimal"
+            placeholder="Enter your answer (e.g., 42, 3.14, -7)"
+            value={selectedAnswer || ''}
+            onChange={e => onAnswerSelect(e.target.value)}
+            className="text-lg font-mono max-w-xs"
+            disabled={showCorrectAnswer}
+          />
+          {showCorrectAnswer && question.correctAnswer && (
+            <div className="flex items-center gap-2">
+              <Badge className="bg-correct text-correct-foreground">Correct: {question.correctAnswer}</Badge>
+              {selectedAnswer && selectedAnswer !== question.correctAnswer && (
+                <Badge className="bg-incorrect text-incorrect-foreground">Your Answer: {selectedAnswer}</Badge>
+              )}
             </div>
-            {showCorrectAnswer && option === question.correctAnswer && (
-              <Badge className="bg-correct text-correct-foreground">
-                Correct
-              </Badge>
-            )}
-            {showCorrectAnswer && selectedAnswer === option && option !== question.correctAnswer && (
-              <Badge className="bg-incorrect text-incorrect-foreground">
-                Your Answer
-              </Badge>
-            )}
-          </Label>
-        ))}
-      </RadioGroup>
+          )}
+        </div>
+      ) : (
+        <RadioGroup value={selectedAnswer || ''} onValueChange={onAnswerSelect} className="space-y-3" disabled={showCorrectAnswer}>
+          {(['A', 'B', 'C', 'D'] as const).map((option) => (
+            <Label key={option} htmlFor={`option-${option}`}
+              className={cn('flex cursor-pointer items-start gap-4 rounded-lg border-2 p-4 transition-all duration-200', getOptionClass(option))}>
+              <RadioGroupItem value={option} id={`option-${option}`} className="mt-0.5" />
+              <div className="flex-1">
+                <span className="font-semibold text-primary mr-2">({option})</span>
+                <LatexRenderer content={question.options[option]} className="whitespace-pre-wrap" />
+              </div>
+              {showCorrectAnswer && option === question.correctAnswer && (
+                <Badge className="bg-correct text-correct-foreground">Correct</Badge>
+              )}
+              {showCorrectAnswer && selectedAnswer === option && option !== question.correctAnswer && (
+                <Badge className="bg-incorrect text-incorrect-foreground">Your Answer</Badge>
+              )}
+            </Label>
+          ))}
+        </RadioGroup>
+      )}
     </div>
   );
 }
