@@ -129,6 +129,9 @@ export default function MyTests() {
                         <DropdownMenuItem onClick={() => { setRenameDialog({ id: test.id, name: test.name }); setNewName(test.name); }}>
                           <Pencil className="h-3 w-3 mr-2" /> Rename
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setPublishDialog({ id: test.id }); setPublishPw(''); }}>
+                          <Globe className="h-3 w-3 mr-2" /> Make Public
+                        </DropdownMenuItem>
                         {results.length > 0 && (
                           <DropdownMenuItem asChild>
                             <Link to={`/analysis/${results[results.length - 1].attemptId}`}>View Analysis</Link>
