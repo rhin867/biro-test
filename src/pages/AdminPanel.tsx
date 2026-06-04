@@ -189,13 +189,80 @@ export default function AdminPanel() {
         </CardContent></Card>
       </div>
 
-      <Tabs defaultValue="posts">
-        <TabsList className="mb-4">
+      <Tabs defaultValue="passwords">
+        <TabsList className="mb-4 flex-wrap h-auto">
+          <TabsTrigger value="passwords">Passwords</TabsTrigger>
           <TabsTrigger value="posts">Posts</TabsTrigger>
           <TabsTrigger value="ratings">Ratings</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="passwords" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><KeyRound className="h-5 w-5 text-primary" />Test Creation Password</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Current password: <span className="font-mono font-bold">{settings?.test_creation_password}</span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Expires: {settings?.test_creation_password_expires_at
+                  ? new Date(settings.test_creation_password_expires_at).toLocaleString()
+                  : 'Never'}
+              </p>
+              <div>
+                <Label>New password</Label>
+                <Input value={newTestPw} onChange={e => setNewTestPw(e.target.value)} placeholder="New test creation password" />
+              </div>
+              <div>
+                <Label className="text-xs">Valid for (leave all 0 = never expires)</Label>
+                <div className="grid grid-cols-3 gap-2 mt-1">
+                  <div>
+                    <Input type="number" min={0} value={expDays} onChange={e => setExpDays(Number(e.target.value) || 0)} />
+                    <p className="text-xs text-muted-foreground mt-1">Days</p>
+                  </div>
+                  <div>
+                    <Input type="number" min={0} value={expHours} onChange={e => setExpHours(Number(e.target.value) || 0)} />
+                    <p className="text-xs text-muted-foreground mt-1">Hours</p>
+                  </div>
+                  <div>
+                    <Input type="number" min={0} value={expMinutes} onChange={e => setExpMinutes(Number(e.target.value) || 0)} />
+                    <p className="text-xs text-muted-foreground mt-1">Minutes</p>
+                  </div>
+                </div>
+              </div>
+              <Button onClick={handleSaveTestPassword} disabled={savingPw} className="w-full">
+                {savingPw ? 'Saving...' : 'Save Test Password & Expiry'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Lock className="h-5 w-5 text-primary" />Owner Panel Passwords</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Current: pw1 = <span className="font-mono">{settings?.admin_password_1}</span>,
+                pw2 = <span className="font-mono">{settings?.admin_password_2}</span>
+              </p>
+              <div>
+                <Label>New 1st password (optional)</Label>
+                <Input value={newAdminPw1} onChange={e => setNewAdminPw1(e.target.value)} placeholder="Leave empty to keep current" />
+              </div>
+              <div>
+                <Label>New 2nd password (optional)</Label>
+                <Input value={newAdminPw2} onChange={e => setNewAdminPw2(e.target.value)} placeholder="Leave empty to keep current" />
+              </div>
+              <Button onClick={handleSaveAdminPasswords} disabled={savingPw} className="w-full">
+                {savingPw ? 'Saving...' : 'Update Owner Passwords'}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
 
         <TabsContent value="posts">
           <Card>
