@@ -22,6 +22,7 @@ import AdminPanel from "./pages/AdminPanel";
 import ExternalAnalysis from "./pages/ExternalAnalysis";
 import Guide from "./pages/Guide";
 import BiroBrain from "./pages/BiroBrain";
+import PublicTests from "./pages/PublicTests";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/external-analysis" element={<ExternalAnalysis />} />
             <Route path="/guide" element={<Guide />} />
             <Route path="/biro-brain" element={<BiroBrain />} />
+            <Route path="/public-tests" element={<PublicTests />} />
             <Route path="/analysis" element={<History />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

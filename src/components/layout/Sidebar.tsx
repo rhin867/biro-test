@@ -7,7 +7,7 @@ import { NTAModeToggle } from '@/components/exam/NTAModeToggle';
 import {
   LayoutDashboard, Plus, FileText, History, BookOpen, Calendar, Download,
   GraduationCap, Menu, X, Target, Settings, MessageSquare, Shield,
-  ExternalLink, HelpCircle, Bot,
+  ExternalLink, HelpCircle, Bot, Globe,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -15,6 +15,7 @@ const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/create', label: 'Create Test', icon: Plus },
   { path: '/tests', label: 'My Tests', icon: FileText },
+  { path: '/public-tests', label: 'Public Tests', icon: Globe },
   { path: '/history', label: 'History', icon: History },
   { path: '/mistakes', label: 'Mistake Book', icon: BookOpen },
   { path: '/goal', label: 'Goal Tracker', icon: Target },
