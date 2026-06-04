@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       community_messages: {
         Row: {
           author: string
@@ -133,6 +151,54 @@ export type Database = {
         }
         Relationships: []
       }
+      public_tests: {
+        Row: {
+          attempts_count: number
+          created_at: string
+          duration: number
+          id: string
+          name: string
+          owner_id: string | null
+          owner_name: string | null
+          password: string | null
+          question_count: number
+          subjects: string[]
+          test_data: Json
+          test_id: string
+          total_marks: number
+        }
+        Insert: {
+          attempts_count?: number
+          created_at?: string
+          duration?: number
+          id?: string
+          name: string
+          owner_id?: string | null
+          owner_name?: string | null
+          password?: string | null
+          question_count?: number
+          subjects?: string[]
+          test_data: Json
+          test_id: string
+          total_marks?: number
+        }
+        Update: {
+          attempts_count?: number
+          created_at?: string
+          duration?: number
+          id?: string
+          name?: string
+          owner_id?: string | null
+          owner_name?: string | null
+          password?: string | null
+          question_count?: number
+          subjects?: string[]
+          test_data?: Json
+          test_id?: string
+          total_marks?: number
+        }
+        Relationships: []
+      }
       shared_tests: {
         Row: {
           created_at: string | null
@@ -221,6 +287,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      test_leaderboard: {
+        Row: {
+          accuracy: number
+          display_name: string
+          id: string
+          max_score: number
+          score: number
+          submitted_at: string
+          test_id: string
+          time_taken: number
+          user_key: string
+        }
+        Insert: {
+          accuracy?: number
+          display_name: string
+          id?: string
+          max_score?: number
+          score?: number
+          submitted_at?: string
+          test_id: string
+          time_taken?: number
+          user_key: string
+        }
+        Update: {
+          accuracy?: number
+          display_name?: string
+          id?: string
+          max_score?: number
+          score?: number
+          submitted_at?: string
+          test_id?: string
+          time_taken?: number
+          user_key?: string
+        }
+        Relationships: []
       }
       tests: {
         Row: {

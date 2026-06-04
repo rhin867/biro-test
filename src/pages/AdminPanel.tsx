@@ -7,10 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Shield, Lock, Trash2, Users, Activity, Clock, Star, BarChart, Ban } from 'lucide-react';
+import { Shield, Lock, Trash2, Users, Activity, Clock, Star, BarChart, Ban, KeyRound } from 'lucide-react';
+import { fetchAppSettings, updateAppSetting, AppSettings } from '@/lib/app-settings';
 
-const ADMIN_PASS_1 = '4918';
-const ADMIN_PASS_2 = '555911';
 const VISIT_LOG_KEY = 'admin_visit_log';
 const BANNED_KEY = 'admin_banned_users';
 
@@ -36,19 +35,72 @@ export default function AdminPanel() {
   const [step, setStep] = useState<'pass1' | 'pass2' | 'authenticated'>('pass1');
   const [pass1, setPass1] = useState('');
   const [pass2, setPass2] = useState('');
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [bannedUsers, setBannedUsers] = useState<string[]>(
     JSON.parse(localStorage.getItem(BANNED_KEY) || '[]')
   );
   const [banInput, setBanInput] = useState('');
 
+  // Password management form state
+  const [newTestPw, setNewTestPw] = useState('');
+  const [expDays, setExpDays] = useState(0);
+  const [expHours, setExpHours] = useState(0);
+  const [expMinutes, setExpMinutes] = useState(0);
+  const [newAdminPw1, setNewAdminPw1] = useState('');
+  const [newAdminPw2, setNewAdminPw2] = useState('');
+  const [savingPw, setSavingPw] = useState(false);
+
+  useEffect(() => {
+    fetchAppSettings().then(setSettings);
+  }, []);
+
   const handlePass1 = () => {
-    if (pass1 === ADMIN_PASS_1) { setStep('pass2'); toast.success('Step 1 verified'); }
+    if (!settings) return toast.error('Loading...');
+    if (pass1 === settings.admin_password_1) { setStep('pass2'); toast.success('Step 1 verified'); }
     else toast.error('Incorrect password');
   };
 
   const handlePass2 = () => {
-    if (pass2 === ADMIN_PASS_2) { setStep('authenticated'); toast.success('Welcome, Admin!'); }
+    if (!settings) return;
+    if (pass2 === settings.admin_password_2) { setStep('authenticated'); toast.success('Welcome, Admin!'); }
     else toast.error('Incorrect password');
+  };
+
+  const handleSaveTestPassword = async () => {
+    if (!settings || !newTestPw.trim()) return toast.error('Enter a password');
+    setSavingPw(true);
+    const totalMs = ((expDays * 24 + expHours) * 60 + expMinutes) * 60 * 1000;
+    const expiresAt = totalMs > 0 ? new Date(Date.now() + totalMs).toISOString() : null;
+    const r1 = await updateAppSetting('test_creation_password', newTestPw.trim(), settings.admin_password_2);
+    const r2 = await updateAppSetting('test_creation_password_expires_at', expiresAt, settings.admin_password_2);
+    setSavingPw(false);
+    if (r1.ok && r2.ok) {
+      toast.success('Test creation password updated');
+      const fresh = await fetchAppSettings();
+      setSettings(fresh);
+      setNewTestPw('');
+    } else {
+      toast.error(r1.error || r2.error || 'Failed to update');
+    }
+  };
+
+  const handleSaveAdminPasswords = async () => {
+    if (!settings) return;
+    if (!newAdminPw1.trim() && !newAdminPw2.trim()) return toast.error('Enter at least one new password');
+    setSavingPw(true);
+    const tasks: Promise<any>[] = [];
+    if (newAdminPw1.trim()) tasks.push(updateAppSetting('admin_password_1', newAdminPw1.trim(), settings.admin_password_2));
+    if (newAdminPw2.trim()) tasks.push(updateAppSetting('admin_password_2', newAdminPw2.trim(), settings.admin_password_2));
+    const results = await Promise.all(tasks);
+    setSavingPw(false);
+    if (results.every(r => r.ok)) {
+      toast.success('Owner passwords updated');
+      const fresh = await fetchAppSettings();
+      setSettings(fresh);
+      setNewAdminPw1(''); setNewAdminPw2('');
+    } else {
+      toast.error(results.find(r => !r.ok)?.error || 'Failed to update');
+    }
   };
 
   if (step !== 'authenticated') {
@@ -137,13 +189,80 @@ export default function AdminPanel() {
         </CardContent></Card>
       </div>
 
-      <Tabs defaultValue="posts">
-        <TabsList className="mb-4">
+      <Tabs defaultValue="passwords">
+        <TabsList className="mb-4 flex-wrap h-auto">
+          <TabsTrigger value="passwords">Passwords</TabsTrigger>
           <TabsTrigger value="posts">Posts</TabsTrigger>
           <TabsTrigger value="ratings">Ratings</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="passwords" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><KeyRound className="h-5 w-5 text-primary" />Test Creation Password</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Current password: <span className="font-mono font-bold">{settings?.test_creation_password}</span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Expires: {settings?.test_creation_password_expires_at
+                  ? new Date(settings.test_creation_password_expires_at).toLocaleString()
+                  : 'Never'}
+              </p>
+              <div>
+                <Label>New password</Label>
+                <Input value={newTestPw} onChange={e => setNewTestPw(e.target.value)} placeholder="New test creation password" />
+              </div>
+              <div>
+                <Label className="text-xs">Valid for (leave all 0 = never expires)</Label>
+                <div className="grid grid-cols-3 gap-2 mt-1">
+                  <div>
+                    <Input type="number" min={0} value={expDays} onChange={e => setExpDays(Number(e.target.value) || 0)} />
+                    <p className="text-xs text-muted-foreground mt-1">Days</p>
+                  </div>
+                  <div>
+                    <Input type="number" min={0} value={expHours} onChange={e => setExpHours(Number(e.target.value) || 0)} />
+                    <p className="text-xs text-muted-foreground mt-1">Hours</p>
+                  </div>
+                  <div>
+                    <Input type="number" min={0} value={expMinutes} onChange={e => setExpMinutes(Number(e.target.value) || 0)} />
+                    <p className="text-xs text-muted-foreground mt-1">Minutes</p>
+                  </div>
+                </div>
+              </div>
+              <Button onClick={handleSaveTestPassword} disabled={savingPw} className="w-full">
+                {savingPw ? 'Saving...' : 'Save Test Password & Expiry'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Lock className="h-5 w-5 text-primary" />Owner Panel Passwords</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Current: pw1 = <span className="font-mono">{settings?.admin_password_1}</span>,
+                pw2 = <span className="font-mono">{settings?.admin_password_2}</span>
+              </p>
+              <div>
+                <Label>New 1st password (optional)</Label>
+                <Input value={newAdminPw1} onChange={e => setNewAdminPw1(e.target.value)} placeholder="Leave empty to keep current" />
+              </div>
+              <div>
+                <Label>New 2nd password (optional)</Label>
+                <Input value={newAdminPw2} onChange={e => setNewAdminPw2(e.target.value)} placeholder="Leave empty to keep current" />
+              </div>
+              <Button onClick={handleSaveAdminPasswords} disabled={savingPw} className="w-full">
+                {savingPw ? 'Saving...' : 'Update Owner Passwords'}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
 
         <TabsContent value="posts">
           <Card>

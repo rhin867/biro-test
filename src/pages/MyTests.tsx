@@ -8,8 +8,10 @@ import { Input } from '@/components/ui/input';
 import { TestShareDialog } from '@/components/exam/TestShareDialog';
 import { getTests, getResultsByTestId, deleteTest, generateShareCode, saveTest } from '@/lib/storage';
 import { formatTimeMinutes } from '@/lib/exam-utils';
+import { supabase } from '@/integrations/supabase/client';
+import { getCurrentDisplayName, getCurrentUserKey } from '@/lib/app-settings';
 import {
-  Plus, Play, BarChart3, Trash2, Clock, FileText, Target, MoreVertical, Share2, Key, CheckCircle2, Pencil,
+  Plus, Play, BarChart3, Trash2, Clock, FileText, Target, MoreVertical, Share2, Key, CheckCircle2, Pencil, Globe,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -27,6 +29,9 @@ export default function MyTests() {
   const [tests, setTests] = useState(getTests());
   const [renameDialog, setRenameDialog] = useState<{ id: string; name: string } | null>(null);
   const [newName, setNewName] = useState('');
+  const [publishDialog, setPublishDialog] = useState<{ id: string } | null>(null);
+  const [publishPw, setPublishPw] = useState('');
+  const [publishing, setPublishing] = useState(false);
 
   const handleDeleteTest = (testId: string) => {
     deleteTest(testId);
@@ -48,6 +53,35 @@ export default function MyTests() {
       toast.success('Test renamed');
     }
     setRenameDialog(null);
+  };
+
+  const handleMakePublic = async () => {
+    if (!publishDialog) return;
+    const test = tests.find(t => t.id === publishDialog.id);
+    if (!test) return;
+    setPublishing(true);
+    try {
+      const { error } = await (supabase as any).from('public_tests').insert({
+        test_id: test.id,
+        name: test.name,
+        subjects: test.subjects,
+        question_count: test.questions.length,
+        duration: test.duration,
+        total_marks: test.totalMarks,
+        test_data: test,
+        owner_name: getCurrentDisplayName(),
+        password: publishPw.trim() || null,
+        attempts_count: 0,
+      });
+      if (error) throw error;
+      toast.success('Test published! Anyone can find it in Public Tests.');
+      setPublishDialog(null);
+      setPublishPw('');
+    } catch (e: any) {
+      toast.error('Failed to publish: ' + (e.message || 'unknown error'));
+    } finally {
+      setPublishing(false);
+    }
   };
 
   return (
@@ -94,6 +128,9 @@ export default function MyTests() {
                         <DropdownMenuItem asChild><Link to={`/exam/${test.id}`}>Start Test</Link></DropdownMenuItem>
                         <DropdownMenuItem onClick={() => { setRenameDialog({ id: test.id, name: test.name }); setNewName(test.name); }}>
                           <Pencil className="h-3 w-3 mr-2" /> Rename
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setPublishDialog({ id: test.id }); setPublishPw(''); }}>
+                          <Globe className="h-3 w-3 mr-2" /> Make Public
                         </DropdownMenuItem>
                         {results.length > 0 && (
                           <DropdownMenuItem asChild>
@@ -188,6 +225,23 @@ export default function MyTests() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setRenameDialog(null)}>Cancel</Button>
             <Button onClick={handleRename} disabled={!newName.trim()}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Publish Public Dialog */}
+      <Dialog open={!!publishDialog} onOpenChange={open => !open && setPublishDialog(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Make Test Public</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Anyone will be able to find and attempt this test from the Public Tests panel.
+            Optionally protect it with a password so only people you share the password with can attempt it.
+          </p>
+          <Input type="text" value={publishPw} onChange={e => setPublishPw(e.target.value)}
+            placeholder="Optional password (leave empty for no password)" />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPublishDialog(null)}>Cancel</Button>
+            <Button onClick={handleMakePublic} disabled={publishing}>{publishing ? 'Publishing...' : 'Publish'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

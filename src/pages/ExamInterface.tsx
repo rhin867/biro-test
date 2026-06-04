@@ -21,6 +21,8 @@ import {
 } from '@/lib/storage';
 import { calculateTestResult } from '@/lib/exam-utils';
 import { Test, TestAttempt, QuestionAttempt, QuestionStatus, Subject, MistakeType } from '@/types/exam';
+import { supabase } from '@/integrations/supabase/client';
+import { getCurrentDisplayName, getCurrentUserKey } from '@/lib/app-settings';
 import { toast } from 'sonner';
 import {
   ChevronLeft,
@@ -324,6 +326,19 @@ export default function ExamInterface() {
     saveAttempt(finalAttempt);
     saveResult(result);
     clearCurrentAttempt();
+
+    // Submit to global leaderboard (best-effort, non-blocking)
+    if (test.hasAnswerKey) {
+      (supabase as any).from('test_leaderboard').insert({
+        test_id: test.id,
+        user_key: getCurrentUserKey(),
+        display_name: getCurrentDisplayName(),
+        score: result.score,
+        max_score: result.maxScore,
+        accuracy: result.accuracy,
+        time_taken: result.timeTaken,
+      }).then(() => {}, () => {});
+    }
 
     toast.success('Test submitted successfully!');
     navigate(`/analysis/${result.attemptId}`);

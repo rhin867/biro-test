@@ -22,6 +22,7 @@ import { MissedConcepts } from '@/components/analysis/MissedConcepts';
 import { PainfulQuestions } from '@/components/analysis/PainfulQuestions';
 import { CompleteAuditTable } from '@/components/analysis/CompleteAuditTable';
 import { TestLearnings } from '@/components/analysis/TestLearnings';
+import { Leaderboard } from '@/components/analysis/Leaderboard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -319,6 +320,12 @@ export default function TestAnalysis() {
         <StatCard title="Skipped" value={result.skipped} icon={MinusCircle} variant="skipped" />
         <StatCard title="Time" value={formatTime(result.timeTaken)} icon={Clock} />
       </div>
+
+      {/* Global Leaderboard */}
+      <div className="mb-8">
+        <Leaderboard testId={result.testId} />
+      </div>
+
 
       {/* Progress Overview */}
       <Card className="mb-8">

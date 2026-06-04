@@ -18,8 +18,9 @@ import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { PDFCropTool } from '@/components/exam/PDFCropTool';
 import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Crop, RefreshCw, Share2, Link2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TestCreationGate } from '@/components/exam/TestCreationGate';
 
-export default function CreateTest() {
+function CreateTestInner() {
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
   const [pdfText, setPdfText] = useState('');
@@ -494,5 +495,13 @@ export default function CreateTest() {
         }}
       />
     </MainLayout>
+  );
+}
+
+export default function CreateTest() {
+  return (
+    <TestCreationGate>
+      <CreateTestInner />
+    </TestCreationGate>
   );
 }
