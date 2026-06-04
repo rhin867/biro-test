@@ -8,8 +8,10 @@ import { Input } from '@/components/ui/input';
 import { TestShareDialog } from '@/components/exam/TestShareDialog';
 import { getTests, getResultsByTestId, deleteTest, generateShareCode, saveTest } from '@/lib/storage';
 import { formatTimeMinutes } from '@/lib/exam-utils';
+import { supabase } from '@/integrations/supabase/client';
+import { getCurrentDisplayName, getCurrentUserKey } from '@/lib/app-settings';
 import {
-  Plus, Play, BarChart3, Trash2, Clock, FileText, Target, MoreVertical, Share2, Key, CheckCircle2, Pencil,
+  Plus, Play, BarChart3, Trash2, Clock, FileText, Target, MoreVertical, Share2, Key, CheckCircle2, Pencil, Globe,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -27,6 +29,9 @@ export default function MyTests() {
   const [tests, setTests] = useState(getTests());
   const [renameDialog, setRenameDialog] = useState<{ id: string; name: string } | null>(null);
   const [newName, setNewName] = useState('');
+  const [publishDialog, setPublishDialog] = useState<{ id: string } | null>(null);
+  const [publishPw, setPublishPw] = useState('');
+  const [publishing, setPublishing] = useState(false);
 
   const handleDeleteTest = (testId: string) => {
     deleteTest(testId);
