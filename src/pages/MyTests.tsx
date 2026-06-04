@@ -228,6 +228,23 @@ export default function MyTests() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Publish Public Dialog */}
+      <Dialog open={!!publishDialog} onOpenChange={open => !open && setPublishDialog(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Make Test Public</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Anyone will be able to find and attempt this test from the Public Tests panel.
+            Optionally protect it with a password so only people you share the password with can attempt it.
+          </p>
+          <Input type="text" value={publishPw} onChange={e => setPublishPw(e.target.value)}
+            placeholder="Optional password (leave empty for no password)" />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPublishDialog(null)}>Cancel</Button>
+            <Button onClick={handleMakePublic} disabled={publishing}>{publishing ? 'Publishing...' : 'Publish'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
