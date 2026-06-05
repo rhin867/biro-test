@@ -288,6 +288,36 @@ export type Database = {
           },
         ]
       }
+      test_creation_usage: {
+        Row: {
+          ai_calls: number
+          created_at: string
+          display_name: string | null
+          id: string
+          test_id: string | null
+          test_name: string | null
+          user_key: string
+        }
+        Insert: {
+          ai_calls?: number
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          test_id?: string | null
+          test_name?: string | null
+          user_key: string
+        }
+        Update: {
+          ai_calls?: number
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          test_id?: string | null
+          test_name?: string | null
+          user_key?: string
+        }
+        Relationships: []
+      }
       test_leaderboard: {
         Row: {
           accuracy: number
