@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { MainLayout, PageHeader } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import telegramQR from '@/assets/telegram-qr.png';
+import { fetchQuotaInfo, QuotaInfo } from '@/lib/app-settings';
 import {
   Upload, FileText, BarChart, Crop, Clock, MessageSquare,
-  Settings, BookOpen, Target, ExternalLink, Zap, Bot, Gamepad2,
+  Settings, BookOpen, Target, ExternalLink, Zap, Bot, Gamepad2, Coins, ShieldCheck,
 } from 'lucide-react';
 
 const sections = [
@@ -108,10 +109,63 @@ const sections = [
 ];
 
 export default function Guide() {
+  const [quota, setQuota] = useState<QuotaInfo | null>(null);
+  useEffect(() => { fetchQuotaInfo().then(setQuota); }, []);
+
   return (
     <MainLayout>
       <PageHeader title="App Guide" description="Learn how to use every feature of Biro Test CBT Analyzer" />
       <div className="space-y-4">
+        {/* Credits & Limits */}
+        <Card className="border-primary/40">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Coins className="h-5 w-5 text-primary" /> Credits, Limits & Usage
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              The app is <span className="font-semibold text-foreground">free to use</span> — you don't pay for AI extractions.
+              To keep the shared AI service healthy, each user has a daily and monthly limit on how many tests they can create.
+            </p>
+            {quota && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-lg bg-secondary/50 border border-border">
+                  <p className="text-xs text-muted-foreground">Today</p>
+                  <p className="text-lg font-bold">{quota.dailyUsed} / {quota.dailyLimit}</p>
+                  <p className="text-xs text-muted-foreground">{quota.dailyRemaining} remaining</p>
+                </div>
+                <div className="p-3 rounded-lg bg-secondary/50 border border-border">
+                  <p className="text-xs text-muted-foreground">This month</p>
+                  <p className="text-lg font-bold">{quota.monthlyUsed} / {quota.monthlyLimit}</p>
+                  <p className="text-xs text-muted-foreground">{quota.monthlyRemaining} remaining</p>
+                </div>
+              </div>
+            )}
+            <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+              <li>1 AI call = 1 PDF extraction (creating one test).</li>
+              <li>Biro-Brain doubt solving and study plan generation do <span className="font-semibold text-foreground">not</span> count toward this quota.</li>
+              <li>Quotas reset automatically at midnight (daily) and at the start of each month.</li>
+              <li>When you're close to your limit, the Create Test page warns you so you can plan ahead.</li>
+              <li>Owners can change these limits in Admin Panel → Quotas.</li>
+            </ul>
+          </CardContent>
+        </Card>
+
+        {/* Security note */}
+        <Card className="border-correct/40">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ShieldCheck className="h-5 w-5 text-correct" /> Security
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-1">
+            <p>All passwords (test-creation password and owner panel passwords) are stored and verified <span className="font-semibold text-foreground">on the server</span>.</p>
+            <p>The browser only sends what you type; it never receives or stores the real password.</p>
+            <p>Owner password changes also require the live owner password to be re-verified server-side.</p>
+          </CardContent>
+        </Card>
+
         {sections.map((section, i) => (
           <Card key={i}>
             <CardHeader className="pb-3">
