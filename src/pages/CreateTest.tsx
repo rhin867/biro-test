@@ -188,33 +188,61 @@ function CreateTestInner() {
     }
   }, [pdfText, pdfFile]);
 
-  const handleCreateTest = () => {
+  const handleCreateTest = async () => {
     if (extractedQuestions.length === 0) {
       toast.error('No questions to create test');
       return;
     }
 
-    const subjects: Subject[] = [...new Set(extractedQuestions.map((q) => q.subject))];
-    const hasAnswerKey = extractedQuestions.some(q => q.correctAnswer);
+    // Server-side quota check
+    try {
+      const { fetchQuotaInfo, logTestCreation } = await import('@/lib/app-settings');
+      const quota = await fetchQuotaInfo();
+      if (quota.exceeded) {
+        toast.error(
+          `Quota reached: ${quota.dailyUsed}/${quota.dailyLimit} today, ${quota.monthlyUsed}/${quota.monthlyLimit} this month. Try again later.`
+        );
+        return;
+      }
 
-    const test: Test = {
-      id: generateId(),
-      name: testName || 'Untitled Test',
-      description: `Created from PDF with ${extractedQuestions.length} questions`,
-      createdAt: new Date().toISOString(),
-      duration,
-      questions: extractedQuestions,
-      subjects,
-      totalMarks: extractedQuestions.length * positiveMarking,
-      positiveMarking,
-      negativeMarking,
-      hasAnswerKey,
-      pdfPageImages: pdfPageImages.length <= 10 ? pdfPageImages : undefined, // Don't store too many images
-    };
+      const subjects: Subject[] = [...new Set(extractedQuestions.map((q) => q.subject))];
+      const hasAnswerKey = extractedQuestions.some(q => q.correctAnswer);
 
-    saveTest(test);
-    toast.success('Test created & saved successfully!');
-    navigate(`/tests`);
+      const test: Test = {
+        id: generateId(),
+        name: testName || 'Untitled Test',
+        description: `Created from PDF with ${extractedQuestions.length} questions`,
+        createdAt: new Date().toISOString(),
+        duration,
+        questions: extractedQuestions,
+        subjects,
+        totalMarks: extractedQuestions.length * positiveMarking,
+        positiveMarking,
+        negativeMarking,
+        hasAnswerKey,
+        // Do NOT embed PDF page images in the test — they blow past the 5 MB localStorage limit
+        // and silently break saveTest, making the test never appear in My Tests.
+        pdfPageImages: undefined,
+      };
+
+      try {
+        saveTest(test);
+      } catch (e) {
+        console.error('saveTest failed', e);
+        toast.error('Could not save test locally (storage full). Try clearing old tests.');
+        return;
+      }
+
+      await logTestCreation({ testId: test.id, testName: test.name, aiCalls: 1 });
+
+      toast.success(
+        `Test saved! Remaining today: ${Math.max(0, quota.dailyRemaining - 1)}/${quota.dailyLimit}`
+      );
+      navigate(`/tests`);
+    } catch (e: any) {
+      console.error(e);
+      toast.error('Failed to save test: ' + (e.message || 'unknown'));
+    }
   };
 
   const diagramQuestionCount = extractedQuestions.filter(q => q.hasDiagram).length;
