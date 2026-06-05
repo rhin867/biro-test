@@ -9,7 +9,8 @@ import {
   fetchAppSettings,
   isTestCreationUnlocked,
   markTestCreationUnlocked,
-  AppSettings,
+  verifyPassword,
+  PublicSettings,
 } from '@/lib/app-settings';
 import { MainLayout, PageHeader } from '@/components/layout/MainLayout';
 
@@ -19,10 +20,11 @@ interface Props {
 
 export function TestCreationGate({ children }: Props) {
   const navigate = useNavigate();
-  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [settings, setSettings] = useState<PublicSettings | null>(null);
   const [password, setPassword] = useState('');
   const [unlocked, setUnlocked] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     fetchAppSettings().then((s) => {
@@ -32,14 +34,17 @@ export function TestCreationGate({ children }: Props) {
     });
   }, []);
 
-  const handleUnlock = () => {
-    if (!settings) return;
-    if (password === settings.test_creation_password) {
-      markTestCreationUnlocked(password);
+  const handleUnlock = async () => {
+    if (!password.trim()) return toast.error('Enter the password');
+    setVerifying(true);
+    const r = await verifyPassword('test_creation', password.trim());
+    setVerifying(false);
+    if (r.ok) {
+      markTestCreationUnlocked(r.expiresAt ?? null);
       setUnlocked(true);
       toast.success('Unlocked! You can create tests now.');
     } else {
-      toast.error('Incorrect password');
+      toast.error(r.error || 'Incorrect password');
     }
   };
 
@@ -69,7 +74,7 @@ export function TestCreationGate({ children }: Props) {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Test creation is protected by a password set by the owner. Ask the owner if you don't have it.
+            Test creation is protected. Password is verified securely on the server — it is never sent to the browser.
           </p>
           <Input
             type="password"
@@ -84,7 +89,9 @@ export function TestCreationGate({ children }: Props) {
             </p>
           )}
           <div className="flex gap-2">
-            <Button onClick={handleUnlock} className="flex-1">Unlock</Button>
+            <Button onClick={handleUnlock} disabled={verifying} className="flex-1">
+              {verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Unlock'}
+            </Button>
             <Button variant="outline" onClick={() => navigate('/')}>Cancel</Button>
           </div>
         </CardContent>

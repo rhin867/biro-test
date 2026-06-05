@@ -1,33 +1,26 @@
 import { supabase } from '@/integrations/supabase/client';
 
-const CACHE_KEY = 'app_settings_cache_v1';
+const CACHE_KEY = 'app_public_settings_cache_v2';
 
-export interface AppSettings {
-  test_creation_password: string;
+export interface PublicSettings {
   test_creation_password_expires_at: string | null;
-  admin_password_1: string;
-  admin_password_2: string;
+  quota_daily_tests: number;
+  quota_monthly_tests: number;
 }
 
-const DEFAULTS: AppSettings = {
-  test_creation_password: '1@n2@e',
+const DEFAULTS: PublicSettings = {
   test_creation_password_expires_at: null,
-  admin_password_1: '4918',
-  admin_password_2: '555911',
+  quota_daily_tests: 5,
+  quota_monthly_tests: 50,
 };
 
-export async function fetchAppSettings(): Promise<AppSettings> {
+export async function fetchAppSettings(): Promise<PublicSettings> {
   try {
-    const { data, error } = await (supabase as any)
-      .from('app_settings')
-      .select('key,value');
+    const { data, error } = await supabase.functions.invoke('get-public-settings', { body: {} });
     if (error || !data) throw error;
-    const settings: any = { ...DEFAULTS };
-    for (const row of data) {
-      settings[row.key] = row.value;
-    }
-    localStorage.setItem(CACHE_KEY, JSON.stringify(settings));
-    return settings;
+    const merged = { ...DEFAULTS, ...data };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(merged));
+    return merged;
   } catch {
     try {
       const cached = localStorage.getItem(CACHE_KEY);
@@ -37,7 +30,7 @@ export async function fetchAppSettings(): Promise<AppSettings> {
   }
 }
 
-export function getCachedAppSettings(): AppSettings {
+export function getCachedAppSettings(): PublicSettings {
   try {
     const cached = localStorage.getItem(CACHE_KEY);
     if (cached) return { ...DEFAULTS, ...JSON.parse(cached) };
@@ -45,8 +38,26 @@ export function getCachedAppSettings(): AppSettings {
   return DEFAULTS;
 }
 
+// Verify a password server-side. Returns { ok, expiresAt? } — password never compared client-side.
+export async function verifyPassword(
+  kind: 'test_creation' | 'admin_1' | 'admin_2',
+  password: string,
+): Promise<{ ok: boolean; error?: string; expiresAt?: string | null }> {
+  try {
+    const { data, error } = await supabase.functions.invoke('verify-password', {
+      body: { kind, password },
+    });
+    if (error) return { ok: false, error: error.message };
+    if (!data?.ok) return { ok: false, error: data?.error || 'Unauthorized' };
+    return { ok: true, expiresAt: data.expiresAt ?? null };
+  } catch (e: any) {
+    return { ok: false, error: e.message };
+  }
+}
+
+// updateAppSetting now requires the live owner password (admin_2). Frontend never stores it.
 export async function updateAppSetting(
-  key: keyof AppSettings,
+  key: string,
   value: any,
   ownerPassword: string,
 ): Promise<{ ok: boolean; error?: string }> {
@@ -56,7 +67,6 @@ export async function updateAppSetting(
     });
     if (error) return { ok: false, error: error.message };
     if (data?.error) return { ok: false, error: data.error };
-    // refresh cache
     await fetchAppSettings();
     return { ok: true };
   } catch (e: any) {
@@ -64,15 +74,19 @@ export async function updateAppSetting(
   }
 }
 
-export function isTestCreationUnlocked(settings: AppSettings): boolean {
+// Local unlock cache: only stores expiry, NEVER the password.
+const UNLOCK_KEY = 'test_creation_unlock_v2';
+
+export function isTestCreationUnlocked(settings: PublicSettings): boolean {
   try {
-    const raw = localStorage.getItem('test_creation_unlock');
+    const raw = localStorage.getItem(UNLOCK_KEY);
     if (!raw) return false;
-    const unlock = JSON.parse(raw);
-    if (unlock.password !== settings.test_creation_password) return false;
-    const expiresAt = settings.test_creation_password_expires_at;
-    if (expiresAt && new Date(expiresAt) < new Date()) {
-      // password is expired - require re-enter
+    const { unlockedUntil } = JSON.parse(raw);
+    if (!unlockedUntil) return false;
+    if (new Date(unlockedUntil) < new Date()) return false;
+    // Also respect server-side expiry if set
+    if (settings.test_creation_password_expires_at &&
+        new Date(settings.test_creation_password_expires_at) < new Date()) {
       return false;
     }
     return true;
@@ -81,11 +95,12 @@ export function isTestCreationUnlocked(settings: AppSettings): boolean {
   }
 }
 
-export function markTestCreationUnlocked(password: string) {
-  localStorage.setItem(
-    'test_creation_unlock',
-    JSON.stringify({ password, unlockedAt: new Date().toISOString() }),
-  );
+export function markTestCreationUnlocked(expiresAt: string | null) {
+  // Cache unlock for up to 24h, or until server-side expiry, whichever is sooner.
+  const max = Date.now() + 24 * 60 * 60 * 1000;
+  const serverExp = expiresAt ? new Date(expiresAt).getTime() : Infinity;
+  const unlockedUntil = new Date(Math.min(max, serverExp)).toISOString();
+  localStorage.setItem(UNLOCK_KEY, JSON.stringify({ unlockedUntil }));
 }
 
 export function getCurrentDisplayName(): string {
@@ -103,4 +118,69 @@ export function getCurrentUserKey(): string {
     localStorage.setItem('user_key', key);
   }
   return key;
+}
+
+// --- Quota tracking ---
+
+export interface QuotaInfo {
+  dailyUsed: number;
+  dailyLimit: number;
+  monthlyUsed: number;
+  monthlyLimit: number;
+  dailyRemaining: number;
+  monthlyRemaining: number;
+  exceeded: boolean;
+}
+
+export async function fetchQuotaInfo(settings?: PublicSettings): Promise<QuotaInfo> {
+  const s = settings ?? (await fetchAppSettings());
+  const userKey = getCurrentUserKey();
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+  let dailyUsed = 0, monthlyUsed = 0;
+  try {
+    const { count: dCount } = await (supabase as any)
+      .from('test_creation_usage')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_key', userKey)
+      .gte('created_at', startOfDay);
+    const { count: mCount } = await (supabase as any)
+      .from('test_creation_usage')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_key', userKey)
+      .gte('created_at', startOfMonth);
+    dailyUsed = dCount || 0;
+    monthlyUsed = mCount || 0;
+  } catch {}
+
+  return {
+    dailyUsed,
+    dailyLimit: s.quota_daily_tests,
+    monthlyUsed,
+    monthlyLimit: s.quota_monthly_tests,
+    dailyRemaining: Math.max(0, s.quota_daily_tests - dailyUsed),
+    monthlyRemaining: Math.max(0, s.quota_monthly_tests - monthlyUsed),
+    exceeded:
+      dailyUsed >= s.quota_daily_tests || monthlyUsed >= s.quota_monthly_tests,
+  };
+}
+
+export async function logTestCreation(opts: {
+  testId: string;
+  testName: string;
+  aiCalls?: number;
+}) {
+  try {
+    await (supabase as any).from('test_creation_usage').insert({
+      user_key: getCurrentUserKey(),
+      display_name: getCurrentDisplayName(),
+      test_id: opts.testId,
+      test_name: opts.testName,
+      ai_calls: opts.aiCalls ?? 1,
+    });
+  } catch (e) {
+    console.warn('logTestCreation failed', e);
+  }
 }
