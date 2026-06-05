@@ -20,6 +20,8 @@ import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, Z
 import { cn } from '@/lib/utils';
 import { TestCreationGate } from '@/components/exam/TestCreationGate';
 
+import { fetchQuotaInfo, QuotaInfo } from '@/lib/app-settings';
+
 function CreateTestInner() {
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -41,6 +43,11 @@ function CreateTestInner() {
   const [showCropTool, setShowCropTool] = useState(false);
   const [extractionFailed, setExtractionFailed] = useState(false);
   const [extractionTime, setExtractionTime] = useState(0);
+  const [quota, setQuota] = useState<QuotaInfo | null>(null);
+
+  React.useEffect(() => { fetchQuotaInfo().then(setQuota); }, []);
+
+
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -422,6 +429,23 @@ function CreateTestInner() {
       {/* Review Step */}
       {step === 'review' && (
         <div className="space-y-4 md:space-y-6">
+          {quota && (
+            <div className={cn(
+              'flex items-center gap-2 px-3 py-2 rounded-lg border text-sm',
+              quota.exceeded
+                ? 'bg-destructive/10 border-destructive/30 text-destructive'
+                : quota.dailyRemaining <= 1
+                  ? 'bg-review/10 border-review/30'
+                  : 'bg-primary/10 border-primary/20'
+            )}>
+              <AlertCircle className="h-4 w-4" />
+              <span>
+                Test creation quota — Today: {quota.dailyUsed}/{quota.dailyLimit} ·
+                This month: {quota.monthlyUsed}/{quota.monthlyLimit}
+                {quota.exceeded && ' · LIMIT REACHED'}
+              </span>
+            </div>
+          )}
           {extractionStats && (
             <div className="flex flex-wrap gap-3">
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-correct/10 border border-correct/20">
