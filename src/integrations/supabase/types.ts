@@ -392,10 +392,57 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_tests_safe: {
+        Row: {
+          attempts_count: number | null
+          created_at: string | null
+          duration: number | null
+          has_password: boolean | null
+          id: string | null
+          name: string | null
+          owner_id: string | null
+          owner_name: string | null
+          question_count: number | null
+          subjects: string[] | null
+          test_data: Json | null
+          test_id: string | null
+          total_marks: number | null
+        }
+        Insert: {
+          attempts_count?: number | null
+          created_at?: string | null
+          duration?: number | null
+          has_password?: never
+          id?: string | null
+          name?: string | null
+          owner_id?: string | null
+          owner_name?: string | null
+          question_count?: number | null
+          subjects?: string[] | null
+          test_data?: Json | null
+          test_id?: string | null
+          total_marks?: number | null
+        }
+        Update: {
+          attempts_count?: number | null
+          created_at?: string | null
+          duration?: number | null
+          has_password?: never
+          id?: string | null
+          name?: string | null
+          owner_id?: string | null
+          owner_name?: string | null
+          question_count?: number | null
+          subjects?: string[] | null
+          test_data?: Json | null
+          test_id?: string | null
+          total_marks?: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      current_request_user_key: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never
