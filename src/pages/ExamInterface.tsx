@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import {
   clearCurrentAttempt,
   generateId,
   getAttempts,
+  loadTestPdfPageImages,
 } from '@/lib/storage';
 import { calculateTestResult } from '@/lib/exam-utils';
 import { Test, TestAttempt, QuestionAttempt, QuestionStatus, Subject, MistakeType } from '@/types/exam';
@@ -63,6 +64,11 @@ export default function ExamInterface() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [showMobilePalette, setShowMobilePalette] = useState(false);
   const { isNTAMode } = useNTAMode();
+  const attemptRef = useRef<TestAttempt | null>(null);
+
+  useEffect(() => {
+    attemptRef.current = attempt;
+  }, [attempt]);
 
   // Initialize test and attempt
   useEffect(() => {
@@ -79,6 +85,9 @@ export default function ExamInterface() {
     }
 
     setTest(loadedTest);
+    loadTestPdfPageImages(testId).then((pages) => {
+      if (pages.length) setTest((current) => current?.id === testId ? { ...current, pdfPageImages: pages } : current);
+    }).catch(() => {});
 
     // Check for existing attempt
     const existingAttempt = getCurrentAttempt();
@@ -110,14 +119,14 @@ export default function ExamInterface() {
 
   // Auto-save attempt periodically
   useEffect(() => {
-    if (!attempt) return;
-    
     const interval = setInterval(() => {
-      setCurrentAttempt(attempt);
+      if (attemptRef.current && !attemptRef.current.isSubmitted) {
+        setCurrentAttempt(attemptRef.current);
+      }
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [attempt]);
+  }, []);
 
   // Current question
   const currentQuestion = test?.questions[currentQuestionIndex];
@@ -300,7 +309,9 @@ export default function ExamInterface() {
   // Handle timer tick
   const handleTimerTick = (remaining: number) => {
     if (attempt) {
-      setAttempt({ ...attempt, timeRemaining: remaining });
+      const updated = { ...attempt, timeRemaining: remaining };
+      setAttempt(updated);
+      attemptRef.current = updated;
     }
   };
 

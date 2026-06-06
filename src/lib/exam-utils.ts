@@ -33,8 +33,8 @@ export function calculateTestResult(test: Test, attempt: TestAttempt): TestResul
 
   test.questions.forEach((question) => {
     const attemptData = attempt.attempts[question.id];
-    const isAttempted = attemptData?.selectedAnswer !== null && attemptData?.selectedAnswer !== undefined;
-    const isCorrect = isAttempted && attemptData.selectedAnswer === question.correctAnswer;
+    const isAttempted = !!attemptData?.selectedAnswer?.trim();
+    const isCorrect = isAttempted && isAnswerCorrect(question, attemptData.selectedAnswer);
     const timeSpent = attemptData?.timeSpent || 0;
 
     let marks = 0;
@@ -42,6 +42,9 @@ export function calculateTestResult(test: Test, attempt: TestAttempt): TestResul
       if (isCorrect) {
         marks = test.positiveMarking;
         totalCorrect++;
+      } else if (question.type === 'MSQ') {
+        marks = 0;
+        totalIncorrect++;
       } else {
         marks = -test.negativeMarking;
         totalIncorrect++;
@@ -80,10 +83,10 @@ export function calculateTestResult(test: Test, attempt: TestAttempt): TestResul
       subjectWise[subject].attempted++;
       if (isCorrect) {
         subjectWise[subject].correct++;
-        subjectWise[subject].score += test.positiveMarking;
+        subjectWise[subject].score += marks;
       } else {
         subjectWise[subject].incorrect++;
-        subjectWise[subject].score -= test.negativeMarking;
+        subjectWise[subject].score += marks;
       }
     } else {
       subjectWise[subject].skipped++;
@@ -146,6 +149,23 @@ export function calculateTestResult(test: Test, attempt: TestAttempt): TestResul
     chapterWise,
     questionResults,
   };
+}
+
+function isAnswerCorrect(question: Question, selectedAnswer: string): boolean {
+  if (!question.correctAnswer) return false;
+  const normalize = (value: string) => value.toUpperCase().replace(/\s+/g, '');
+  if (question.type === 'MSQ') {
+    const toSet = (value: string) => new Set(normalize(value).split(/[,;+|/]*|(?=[A-D])/).filter(Boolean));
+    const selected = toSet(selectedAnswer);
+    const correct = toSet(question.correctAnswer);
+    return selected.size === correct.size && [...selected].every((v) => correct.has(v));
+  }
+  if (question.type === 'Numerical') {
+    const a = Number(selectedAnswer);
+    const b = Number(question.correctAnswer);
+    if (Number.isFinite(a) && Number.isFinite(b)) return Math.abs(a - b) < 1e-6;
+  }
+  return normalize(selectedAnswer) === normalize(question.correctAnswer);
 }
 
 function createEmptySubjectResult(): SubjectResult {
