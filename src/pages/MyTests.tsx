@@ -61,18 +61,10 @@ export default function MyTests() {
     if (!test) return;
     setPublishing(true);
     try {
-      const { error } = await (supabase as any).from('public_tests').insert({
-        test_id: test.id,
-        name: test.name,
-        subjects: test.subjects,
-        question_count: test.questions.length,
-        duration: test.duration,
-        total_marks: test.totalMarks,
-        test_data: test,
-        owner_name: getCurrentDisplayName(),
-        password: publishPw.trim() || null,
-        attempts_count: 0,
+      const { data, error } = await supabase.functions.invoke('publish-public-test', {
+        body: { test, ownerName: getCurrentDisplayName(), password: publishPw.trim() || null },
       });
+      if (data?.error) throw new Error(data.error);
       if (error) throw error;
       toast.success('Test published! Anyone can find it in Public Tests.');
       setPublishDialog(null);

@@ -8,6 +8,7 @@ import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { Send, Bot, User, Loader2, Sparkles, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { getResults } from '@/lib/storage';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -44,13 +45,16 @@ export default function BiroBrain() {
     let assistantContent = '';
 
     try {
+      const context = getResults().slice(-3).map(r =>
+        `${r.testName}: score ${r.score}/${r.maxScore}, accuracy ${r.accuracy.toFixed(1)}%, weak subjects ${Object.entries(r.subjectWise).sort((a, b) => a[1].accuracy - b[1].accuracy).slice(0, 2).map(([s, v]) => `${s} ${v.accuracy.toFixed(0)}%`).join(', ')}`
+      ).join('\n');
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages: [...messages, userMsg] }),
+        body: JSON.stringify({ messages: [...messages, userMsg], context: context || undefined }),
       });
 
       if (!resp.ok || !resp.body) {
