@@ -41,16 +41,20 @@ Deno.serve(async (req) => {
 
     if (pwErr) throw pwErr;
     const currentPw = pwRow?.value;
-    if (!ownerPassword || ownerPassword !== currentPw) {
+    if (!ownerPassword || !currentPw || !(await verifySecret(ownerPassword, currentPw))) {
       return new Response(JSON.stringify({ error: "Unauthorized: invalid owner password" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    const storedValue = key.includes("password") && typeof value === "string"
+      ? await hashSecret(value)
+      : value;
+
     const { error: upErr } = await supabase
       .from("app_settings")
-      .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
+      .upsert({ key, value: storedValue, updated_at: new Date().toISOString() }, { onConflict: "key" });
 
     if (upErr) throw upErr;
 
@@ -64,3 +68,14 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+async function verifySecret(input: string, stored: string): Promise<boolean> {
+  if (stored.startsWith("sha256$")) return stored === await hashSecret(input);
+  return input === stored;
+}
+
+async function hashSecret(value: string): Promise<string> {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return "sha256$" + Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}

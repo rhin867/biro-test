@@ -81,7 +81,7 @@ serve(async (req) => {
     }
 
     const transformedQuestions = (parsed.questions || []).map((q: any, index: number) => ({
-      questionNumber: q.id || index + 1,
+      questionNumber: Number(q.questionNumber || q.id || index + 1),
       subject: q.subject || "Physics",
       chapter: q.chapter || "General",
       question: q.question || q.text || "",
@@ -123,14 +123,19 @@ async function callLovableAI(apiKey: string, systemPrompt: string, pdfText?: str
   ];
 
   if (pdfBase64) {
-    // Use vision/multimodal with image_url for base64 content
+    const isPdf = (mimeType || 'application/pdf').includes('pdf');
     const dataUrl = `data:${mimeType || 'application/pdf'};base64,${pdfBase64}`;
     messages.push({
       role: "user",
-      content: [
-        { type: "text", text: "Extract ALL questions from this document. Return STRICT JSON only." },
-        { type: "image_url", image_url: { url: dataUrl } }
-      ]
+      content: isPdf
+        ? [
+            { type: "text", text: "Extract ALL questions from this PDF document. Return STRICT JSON only." },
+            { type: "document", source: { type: "base64", media_type: mimeType || "application/pdf", data: pdfBase64 } }
+          ]
+        : [
+            { type: "text", text: "Extract ALL questions from this image. Return STRICT JSON only." },
+            { type: "image_url", image_url: { url: dataUrl } }
+          ]
     });
   } else if (pdfText) {
     messages.push({
