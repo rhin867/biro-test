@@ -134,36 +134,19 @@ export interface QuotaInfo {
 
 export async function fetchQuotaInfo(settings?: PublicSettings): Promise<QuotaInfo> {
   const s = settings ?? (await fetchAppSettings());
-  const userKey = getCurrentUserKey();
-  const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-
-  let dailyUsed = 0, monthlyUsed = 0;
   try {
-    const { count: dCount } = await (supabase as any)
-      .from('test_creation_usage')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_key', userKey)
-      .gte('created_at', startOfDay);
-    const { count: mCount } = await (supabase as any)
-      .from('test_creation_usage')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_key', userKey)
-      .gte('created_at', startOfMonth);
-    dailyUsed = dCount || 0;
-    monthlyUsed = mCount || 0;
+    const { data, error } = await supabase.functions.invoke('quota-status', { body: {} });
+    if (!error && data) return { ...data, dailyLimit: data.dailyLimit ?? s.quota_daily_tests, monthlyLimit: data.monthlyLimit ?? s.quota_monthly_tests };
   } catch {}
 
   return {
-    dailyUsed,
+    dailyUsed: 0,
     dailyLimit: s.quota_daily_tests,
-    monthlyUsed,
+    monthlyUsed: 0,
     monthlyLimit: s.quota_monthly_tests,
-    dailyRemaining: Math.max(0, s.quota_daily_tests - dailyUsed),
-    monthlyRemaining: Math.max(0, s.quota_monthly_tests - monthlyUsed),
-    exceeded:
-      dailyUsed >= s.quota_daily_tests || monthlyUsed >= s.quota_monthly_tests,
+    dailyRemaining: s.quota_daily_tests,
+    monthlyRemaining: s.quota_monthly_tests,
+    exceeded: false,
   };
 }
 
@@ -172,15 +155,16 @@ export async function logTestCreation(opts: {
   testName: string;
   aiCalls?: number;
 }) {
-  try {
-    await (supabase as any).from('test_creation_usage').insert({
+  const { data, error } = await supabase.functions.invoke('log-test-creation', {
+    body: {
       user_key: getCurrentUserKey(),
       display_name: getCurrentDisplayName(),
       test_id: opts.testId,
       test_name: opts.testName,
       ai_calls: opts.aiCalls ?? 1,
-    });
-  } catch (e) {
-    console.warn('logTestCreation failed', e);
+    },
+  });
+  if (error || data?.error) {
+    throw new Error(data?.error || error?.message || 'Could not record test usage');
   }
 }

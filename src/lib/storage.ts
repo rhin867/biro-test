@@ -12,6 +12,9 @@ const STORAGE_KEYS = {
   SHARE_CODES: 'jee_cbt_share_codes',
 } as const;
 
+const PDF_IMAGE_DB = 'aspirantai_pdf_assets_v1';
+const PDF_IMAGE_STORE = 'page_images';
+
 // Generic storage helpers
 function getItem<T>(key: string, defaultValue: T): T {
   try {
@@ -56,7 +59,7 @@ export function updateTestAnswerKey(testId: string, answerKey: AnswerKey): void 
     // Also apply to questions
     tests[testIndex].questions = tests[testIndex].questions.map(q => ({
       ...q,
-      correctAnswer: answerKey[q.id] || q.correctAnswer,
+      correctAnswer: answerKey[String(q.questionNumber)] || answerKey[q.id] || q.correctAnswer,
     }));
     
     setItem(STORAGE_KEYS.TESTS, tests);
@@ -240,4 +243,37 @@ export function clearAllData(): void {
 // Generate unique IDs
 export function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+}
+
+function openPdfImageDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(PDF_IMAGE_DB, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore(PDF_IMAGE_STORE);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function saveTestPdfPageImages(testId: string, pages: NonNullable<Test['pdfPageImages']>): Promise<void> {
+  if (!pages.length || typeof indexedDB === 'undefined') return;
+  const db = await openPdfImageDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(PDF_IMAGE_STORE, 'readwrite');
+    tx.objectStore(PDF_IMAGE_STORE).put(pages, testId);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}
+
+export async function loadTestPdfPageImages(testId: string): Promise<NonNullable<Test['pdfPageImages']>> {
+  if (typeof indexedDB === 'undefined') return [];
+  const db = await openPdfImageDb();
+  const pages = await new Promise<NonNullable<Test['pdfPageImages']>>((resolve, reject) => {
+    const request = db.transaction(PDF_IMAGE_STORE, 'readonly').objectStore(PDF_IMAGE_STORE).get(testId);
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(request.error);
+  });
+  db.close();
+  return pages;
 }

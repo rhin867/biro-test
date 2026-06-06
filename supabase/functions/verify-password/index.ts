@@ -12,12 +12,6 @@ const KIND_TO_KEY: Record<string, string> = {
   admin_2: "admin_password_2",
 };
 
-const DEFAULTS: Record<string, string> = {
-  test_creation_password: "1@n2@e",
-  admin_password_1: "4918",
-  admin_password_2: "555911",
-};
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -44,15 +38,19 @@ Deno.serve(async (req) => {
     if (error) throw error;
 
     const map = new Map(data?.map((r: any) => [r.key, r.value]) ?? []);
-    const stored = (map.get(key) as string) ?? DEFAULTS[key];
+    const stored = map.get(key) as string | undefined;
     const expiresAt = map.get("test_creation_password_expires_at") as string | null | undefined;
+
+    if (!stored) {
+      return json({ ok: false, error: "Password is not configured. Ask the owner to set it." }, 503);
+    }
 
     // expiry only applies to test_creation
     if (kind === "test_creation" && expiresAt && new Date(expiresAt) < new Date()) {
       return json({ ok: false, error: "Password expired. Ask owner for the new one." }, 401);
     }
 
-    if (password !== stored) {
+    if (!(await verifySecret(password, stored))) {
       return json({ ok: false, error: "Incorrect password" }, 401);
     }
 
@@ -70,4 +68,15 @@ function json(body: any, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+async function verifySecret(input: string, stored: string): Promise<boolean> {
+  if (stored.startsWith("sha256$")) return stored === await hashSecret(input);
+  return input === stored;
+}
+
+async function hashSecret(value: string): Promise<string> {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return "sha256$" + Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }

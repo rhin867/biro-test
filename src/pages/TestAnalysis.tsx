@@ -107,7 +107,7 @@ export default function TestAnalysis() {
     const updatedTest = getTestById(test.id);
     if (updatedTest) {
       const attempts = JSON.parse(localStorage.getItem('jee_cbt_attempts') || '[]');
-      const attempt = attempts.find((a: any) => a.id === result.attemptId.split('-')[0]);
+      const attempt = attempts.find((a: any) => a.id === result.attemptId);
       
       if (attempt) {
         const newResult = calculateTestResult(updatedTest, attempt);
