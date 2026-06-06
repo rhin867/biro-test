@@ -294,6 +294,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          quota_identity: string
           test_id: string | null
           test_name: string | null
           user_key: string
@@ -303,6 +304,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          quota_identity: string
           test_id?: string | null
           test_name?: string | null
           user_key: string
@@ -312,6 +314,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          quota_identity?: string
           test_id?: string | null
           test_name?: string | null
           user_key?: string
