@@ -155,7 +155,7 @@ function isAnswerCorrect(question: Question, selectedAnswer: string): boolean {
   if (!question.correctAnswer) return false;
   const normalize = (value: string) => value.toUpperCase().replace(/\s+/g, '');
   if (question.type === 'MSQ') {
-    const toSet = (value: string) => new Set(normalize(value).split(/[,;+|/]*|(?=[A-D])/).filter(Boolean));
+    const toSet = (value: string) => new Set(value.toUpperCase().replace(/[^A-D]/g, '').split('').filter(Boolean));
     const selected = toSet(selectedAnswer);
     const correct = toSet(question.correctAnswer);
     return selected.size === correct.size && [...selected].every((v) => correct.has(v));
