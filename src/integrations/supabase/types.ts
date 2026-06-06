@@ -404,7 +404,6 @@ export type Database = {
           owner_name: string | null
           question_count: number | null
           subjects: string[] | null
-          test_data: Json | null
           test_id: string | null
           total_marks: number | null
         }
@@ -419,7 +418,6 @@ export type Database = {
           owner_name?: string | null
           question_count?: number | null
           subjects?: string[] | null
-          test_data?: Json | null
           test_id?: string | null
           total_marks?: number | null
         }
@@ -434,7 +432,6 @@ export type Database = {
           owner_name?: string | null
           question_count?: number | null
           subjects?: string[] | null
-          test_data?: Json | null
           test_id?: string | null
           total_marks?: number | null
         }
