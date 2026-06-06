@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { saveTest, generateId } from '@/lib/storage';
+import { saveTest, generateId, saveTestPdfPageImages } from '@/lib/storage';
 import { Test, Question, Subject } from '@/types/exam';
 import { supabase } from '@/integrations/supabase/client';
 import { renderPDFPagesToImages, fileToBase64, PDFPageImage } from '@/lib/pdf-cropper';
@@ -20,7 +20,7 @@ import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, Z
 import { cn } from '@/lib/utils';
 import { TestCreationGate } from '@/components/exam/TestCreationGate';
 
-import { fetchQuotaInfo, QuotaInfo } from '@/lib/app-settings';
+import { fetchQuotaInfo, logTestCreation, QuotaInfo } from '@/lib/app-settings';
 
 function CreateTestInner() {
   const navigate = useNavigate();
@@ -101,9 +101,16 @@ function CreateTestInner() {
     setIsProcessing(true);
     setExtractionFailed(false);
     const startTime = Date.now();
-    toast.info('Extracting questions with AI (20-40 seconds)...');
 
     try {
+      const latestQuota = await fetchQuotaInfo();
+      setQuota(latestQuota);
+      if (latestQuota.exceeded) {
+        toast.error(`Quota reached: ${latestQuota.dailyUsed}/${latestQuota.dailyLimit} today, ${latestQuota.monthlyUsed}/${latestQuota.monthlyLimit} this month.`);
+        return;
+      }
+
+      toast.info('Extracting questions with AI (20-40 seconds)...');
       let requestBody: any = {};
 
       if (pdfFile) {
@@ -154,24 +161,26 @@ function CreateTestInner() {
       const elapsed = Math.round((Date.now() - startTime) / 1000);
       setExtractionTime(elapsed);
 
-      const questions: Question[] = (data.questions || []).map((q: any, index: number) => ({
-        id: generateId(),
-        questionNumber: q.questionNumber || index + 1,
-        subject: q.subject || 'Physics',
-        chapter: q.chapter || 'General',
-        question: q.question || '',
-        options: {
-          A: q.options?.A || '',
-          B: q.options?.B || '',
-          C: q.options?.C || '',
-          D: q.options?.D || '',
-        },
-        correctAnswer: q.correctAnswer || null,
-        type: q.type || 'MCQ',
-        level: 'JEE',
-        hasDiagram: q.hasDiagram || false,
-        pdfPageNumber: q.pdfPageNumber || null,
-      }));
+      const questions: Question[] = (data.questions || []).map((q: any, index: number) => {
+        const options = Array.isArray(q.options)
+          ? { A: q.options[0] || '', B: q.options[1] || '', C: q.options[2] || '', D: q.options[3] || '' }
+          : { A: q.options?.A || '', B: q.options?.B || '', C: q.options?.C || '', D: q.options?.D || '' };
+        const hasOptions = Object.values(options).some(v => String(v).trim());
+        const type = !hasOptions ? 'Numerical' : (q.type === 'MSQ' ? 'MSQ' : 'MCQ');
+        return {
+          id: generateId(),
+          questionNumber: Number(q.questionNumber || index + 1),
+          subject: ['Physics', 'Chemistry', 'Maths'].includes(q.subject) ? q.subject : 'Physics',
+          chapter: q.chapter || 'General',
+          question: q.question || '',
+          options,
+          correctAnswer: q.correctAnswer || null,
+          type,
+          level: 'JEE',
+          hasDiagram: Boolean(q.hasDiagram),
+          pdfPageNumber: q.pdfPageNumber ? Number(q.pdfPageNumber) : null,
+        };
+      });
 
       setExtractedQuestions(questions);
       setExtractionStats({
@@ -203,7 +212,6 @@ function CreateTestInner() {
 
     // Server-side quota check
     try {
-      const { fetchQuotaInfo, logTestCreation } = await import('@/lib/app-settings');
       const quota = await fetchQuotaInfo();
       if (quota.exceeded) {
         toast.error(
@@ -215,8 +223,9 @@ function CreateTestInner() {
       const subjects: Subject[] = [...new Set(extractedQuestions.map((q) => q.subject))];
       const hasAnswerKey = extractedQuestions.some(q => q.correctAnswer);
 
+      const testId = generateId();
       const test: Test = {
-        id: generateId(),
+        id: testId,
         name: testName || 'Untitled Test',
         description: `Created from PDF with ${extractedQuestions.length} questions`,
         createdAt: new Date().toISOString(),
@@ -234,6 +243,7 @@ function CreateTestInner() {
 
       try {
         saveTest(test);
+        await saveTestPdfPageImages(test.id, pdfPageImages);
       } catch (e) {
         console.error('saveTest failed', e);
         toast.error('Could not save test locally (storage full). Try clearing old tests.');
@@ -543,7 +553,16 @@ function CreateTestInner() {
         onOpenChange={setShowCropTool}
         pages={pdfPageImages}
         onCroppedQuestions={(crops) => {
-          toast.success(`${crops.length} regions cropped successfully!`);
+          const targets = extractedQuestions
+            .map((q, index) => ({ q, index }))
+            .filter(({ q }) => q.hasDiagram || q.pdfPageNumber)
+            .sort((a, b) => (a.q.pdfPageNumber || 999) - (b.q.pdfPageNumber || 999) || a.q.questionNumber - b.q.questionNumber);
+          setExtractedQuestions(prev => prev.map((q) => {
+            const targetIndex = targets.findIndex(t => t.q.id === q.id);
+            const crop = targetIndex >= 0 ? crops[targetIndex] : undefined;
+            return crop ? { ...q, croppedImageUrl: crop.dataUrl, hasDiagram: true, pdfPageNumber: crop.pageNumber } : q;
+          }));
+          toast.success(`${crops.length} regions cropped and attached to diagram questions.`);
         }}
       />
     </MainLayout>
