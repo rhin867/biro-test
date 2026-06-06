@@ -20,9 +20,8 @@ interface PublicTestRow {
   question_count: number;
   duration: number;
   total_marks: number;
-  test_data: Test;
   owner_name: string | null;
-  password: string | null;
+  has_password: boolean;
   attempts_count: number;
   created_at: string;
 }
@@ -38,36 +37,32 @@ export default function PublicTests() {
 
   async function load() {
     setLoading(true);
-    const { data } = await (supabase as any)
-      .from('public_tests')
-      .select('*')
-      .order('created_at', { ascending: false });
-    setRows((data || []) as PublicTestRow[]);
+    const { data, error } = await supabase.functions.invoke('list-public-tests', { body: {} });
+    if (error || data?.error) toast.error(data?.error || error?.message || 'Could not load public tests');
+    setRows((data?.rows || []) as PublicTestRow[]);
     setLoading(false);
   }
 
-  const startTest = async (row: PublicTestRow) => {
-    const test = row.test_data;
+  const startTest = async (row: PublicTestRow, password?: string) => {
+    const { data, error } = await supabase.functions.invoke('start-public-test', {
+      body: { id: row.id, password: password || '' },
+    });
+    if (error || data?.error) { toast.error(data?.error || error?.message || 'Could not start test'); return; }
+    const test = data.test as Test;
     if (!getTestById(test.id)) saveTest(test);
-    // increment attempts_count
-    await (supabase as any)
-      .from('public_tests')
-      .update({ attempts_count: row.attempts_count + 1 })
-      .eq('id', row.id);
     navigate(`/exam/${test.id}`);
   };
 
   const handleClick = (row: PublicTestRow) => {
-    if (row.password) { setPwInput(''); setPwDialog(row); }
+    if (row.has_password) { setPwInput(''); setPwDialog(row); }
     else startTest(row);
   };
 
   const handlePwSubmit = () => {
     if (!pwDialog) return;
-    if (pwInput !== pwDialog.password) { toast.error('Incorrect password'); return; }
     const row = pwDialog;
     setPwDialog(null);
-    startTest(row);
+    startTest(row, pwInput);
   };
 
   return (
@@ -87,7 +82,7 @@ export default function PublicTests() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
                   {row.name}
-                  {row.password && <Lock className="h-4 w-4 text-yellow-500" />}
+                  {row.has_password && <Lock className="h-4 w-4 text-yellow-500" />}
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">By {row.owner_name || 'Anonymous'} • {new Date(row.created_at).toLocaleDateString()}</p>
               </CardHeader>
