@@ -120,17 +120,6 @@ export function QuestionDisplay({
         <div className="text-lg leading-relaxed whitespace-pre-wrap">
           <LatexRenderer content={question.question} />
         </div>
-        {/* Show diagram directly below question */}
-        {question.croppedImageUrl && (
-          <img src={question.croppedImageUrl} alt="Question diagram" className="mt-4 max-h-64 rounded-lg object-contain border border-border" />
-        )}
-        {question.imageUrl && !question.croppedImageUrl && (
-          <img src={question.imageUrl} alt="Question diagram" className="mt-4 max-h-64 rounded-lg object-contain" />
-        )}
-        {!question.croppedImageUrl && !question.imageUrl && question.hasDiagram && questionPageImage && (
-          <div className="mt-4 p-3 rounded-lg bg-muted/50 border border-border">
-            <p className="text-xs text-muted-foreground mb-2">📷 Diagram from PDF Page {question.pdfPageNumber}:</p>
-            <img src={questionPageImage.imageDataUrl} alt={`Page ${question.pdfPageNumber}`} className="max-h-48 rounded object-contain" />
         {/* Show diagram directly below question prominently */}
         {question.croppedImageUrl ? (
           <img src={question.croppedImageUrl} alt="Question diagram" className="mt-6 max-w-full rounded-lg object-contain border border-border mx-auto max-h-[400px]" />
@@ -141,7 +130,6 @@ export function QuestionDisplay({
             <p className="text-sm text-muted-foreground mb-3 font-medium">📷 Reference Diagram (Extracted from PDF Page {question.pdfPageNumber}):</p>
             <img src={questionPageImage.imageDataUrl} alt={`Page ${question.pdfPageNumber}`} className="max-w-full rounded object-contain mx-auto border border-border/50 max-h-[600px] shadow-sm" />
           </div>
-        )}
         ) : null}
       </div>
       {/* Numerical Input or MCQ Options */}

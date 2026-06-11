@@ -33,10 +33,11 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    // Use Lovable AI gateway (preferred) or fall back to user API key
+    // Use Lovable AI gateway first, then server/user Gemini fallback.
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const fallbackGeminiKey = userApiKey || Deno.env.get("Biro_test_api_key");
     const useGateway = !!LOVABLE_API_KEY;
-    if (!useGateway && !userApiKey) {
+    if (!useGateway && !fallbackGeminiKey) {
       return new Response(
         JSON.stringify({ error: "AI service not available. Please try again." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -47,11 +48,15 @@ serve(async (req) => {
       : systemPrompt;
     let content: string;
     if (useGateway) {
-      // Use Lovable AI Gateway (OpenAI-compatible)
-      content = await callLovableAI(LOVABLE_API_KEY!, promptContent, pdfText, pdfBase64, mimeType);
+      try {
+        content = await callLovableAI(LOVABLE_API_KEY!, promptContent, pdfText, pdfBase64, mimeType);
+      } catch (gatewayError) {
+        console.warn("Lovable AI gateway failed, using Gemini fallback", gatewayError);
+        if (!fallbackGeminiKey) throw gatewayError;
+        content = await callGeminiDirect(fallbackGeminiKey, promptContent, pdfText, pdfBase64, mimeType);
+      }
     } else {
-      // Fallback to user's Gemini API key
-      content = await callGeminiDirect(userApiKey, promptContent, pdfText, pdfBase64, mimeType);
+      content = await callGeminiDirect(fallbackGeminiKey!, promptContent, pdfText, pdfBase64, mimeType);
     }
     if (!content) {
       throw new Error("No response from AI. The PDF may be too complex or empty.");
@@ -109,27 +114,30 @@ async function callLovableAI(apiKey: string, systemPrompt: string, pdfText?: str
       role: "user",
       content: isPdf
         ? [
-            { type: "text", text: "Extract ALL questions from this PDF document. Return STRICT JSON only." },
-            { type: "document", source: { type: "base64", media_type: mimeType || "application/pdf", data: pdfBase64 } }
+            { type: "text", text: "Convert this complete exam PDF into CBT-ready JSON. Preserve every question, option, answer key if present, pageNumber, and mark diagram/figure questions." },
+            { type: "file", file: { filename: "exam.pdf", file_data: dataUrl } }
           ]
         : [
-            { type: "text", text: "Extract ALL questions from this image. Return STRICT JSON only." },
+            { type: "text", text: "Convert this exam image into CBT-ready JSON. Preserve the question/options and mark diagram/figure questions." },
             { type: "image_url", image_url: { url: dataUrl } }
           ]
-      content: [
-        { type: "text", text: isPdf ? "Extract ALL questions from this document. Return STRICT JSON only." : "Extract ALL questions from this image. Return STRICT JSON only." },
-        // Many OpenAI compatible gateways fail on type: "document", so we treat PDFs as files via image_url (OpenRouter standard for some providers)
-        // or just pass the dataUrl. If this fails, user must provide their own Gemini API key.
-        { type: "image_url", image_url: { url: dataUrl } }
-      ]
     });
   } else if (pdfText) {
     messages.push({
+      role: "user",
+      content: `Convert this extracted exam text into CBT-ready JSON. Preserve question numbers, subjects, options, numerical questions, answer key if visible, and page numbers.\n\n${pdfText}`,
+    });
+  }
+
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
       "Content-Type": "application/json",
+      "Lovable-API-Key": apiKey,
+      "X-Lovable-AIG-SDK": "manual-fetch",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      model: "gemini-2.5-flash",
+      model: "google/gemini-3-flash-preview",
       messages,
       temperature: 0.05,
       max_tokens: 65536,

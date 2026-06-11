@@ -6,20 +6,42 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { saveTest, generateId, saveTestPdfPageImages } from '@/lib/storage';
+import { saveTest, generateId, saveTestPdfPageImages, saveTestQuestionImages } from '@/lib/storage';
 import { Test, Question, Subject } from '@/types/exam';
 import { supabase } from '@/integrations/supabase/client';
 import { renderPDFPagesToImages, fileToBase64, PDFPageImage } from '@/lib/pdf-cropper';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { PDFCropTool } from '@/components/exam/PDFCropTool';
-import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Crop, RefreshCw, Share2, Link2 } from 'lucide-react';
+import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Crop, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TestCreationGate } from '@/components/exam/TestCreationGate';
 import { fetchQuotaInfo, logTestCreation, QuotaInfo } from '@/lib/app-settings';
+import { getUserApiKey } from '@/pages/Settings';
+
+async function cropQuestionBandFromPage(imageDataUrl: string, indexOnPage: number, totalOnPage: number): Promise<string> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new window.Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = imageDataUrl;
+  });
+  const safeTotal = Math.max(1, totalOnPage);
+  const marginX = Math.round(img.width * 0.04);
+  const bandHeight = Math.ceil(img.height / safeTotal);
+  const sourceY = Math.max(0, indexOnPage * bandHeight - Math.round(bandHeight * 0.12));
+  const sourceH = Math.min(img.height - sourceY, Math.round(bandHeight * 1.25));
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width - marginX * 2;
+  canvas.height = sourceH;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return imageDataUrl;
+  ctx.drawImage(img, marginX, sourceY, canvas.width, sourceH, 0, 0, canvas.width, sourceH);
+  return canvas.toDataURL('image/jpeg', 0.82);
+}
+
 function CreateTestInner() {
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -62,9 +84,7 @@ function CreateTestInner() {
       const arrayBuffer = await file.arrayBuffer();
       const bufferForText = arrayBuffer.slice(0);
       const bufferForImages = arrayBuffer.slice(0);
-      const uint8Array = new Uint8Array(arrayBuffer);
       const pdf = await pdfjsLib.getDocument({ data: bufferForText }).promise;
-      const pdf = await pdfjsLib.getDocument({ data: uint8Array }).promise;
       let fullText = '';
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
@@ -76,7 +96,6 @@ function CreateTestInner() {
       setTestName(file.name.replace('.pdf', ''));
       toast.info('Rendering pages for preview & cropping...');
       const pageImages = await renderPDFPagesToImages(bufferForImages, 1.5);
-      const pageImages = await renderPDFPagesToImages(arrayBuffer, 1.5);
       setPdfPageImages(pageImages);
       toast.success(`PDF processed: ${pdf.numPages} pages`);
       setStep('configure');
@@ -100,14 +119,16 @@ function CreateTestInner() {
       }
       toast.info('Extracting questions with AI (20-40 seconds)...');
       let requestBody: any = {};
+      const userApiKey = getUserApiKey();
       if (pdfFile) {
         const base64Data = await fileToBase64(pdfFile);
         requestBody = {
           pdfBase64: base64Data,
           mimeType: 'application/pdf',
+          ...(userApiKey ? { userApiKey } : {}),
         };
       } else {
-        requestBody = { pdfText };
+        requestBody = { pdfText, ...(userApiKey ? { userApiKey } : {}) };
       }
       // Auto-retry up to 2 times
       let data: any = null;
@@ -145,6 +166,9 @@ function CreateTestInner() {
           : { A: q.options?.A || '', B: q.options?.B || '', C: q.options?.C || '', D: q.options?.D || '' };
         const hasOptions = Object.values(options).some(v => String(v).trim());
         const type = !hasOptions ? 'Numerical' : (q.type === 'MSQ' ? 'MSQ' : 'MCQ');
+        const inferredPage = pdfPageImages.length ? Math.min(pdfPageImages.length, Math.max(1, Math.ceil(((index + 1) / Math.max(1, (data.questions || []).length)) * pdfPageImages.length))) : null;
+        const pdfPageNumber = Number(q.pdfPageNumber || q.pageNumber || inferredPage) || null;
+        const hasDiagram = Boolean(q.hasDiagram || q.imageUrl || /diagram|figure|graph|circuit|shown|given below|following/i.test(q.question || ''));
         return {
           id: generateId(),
           questionNumber: Number(q.questionNumber || index + 1),
@@ -155,19 +179,22 @@ function CreateTestInner() {
           correctAnswer: q.correctAnswer || null,
           type,
           level: 'JEE',
-          hasDiagram: Boolean(q.hasDiagram),
-          pdfPageNumber: q.pdfPageNumber ? Number(q.pdfPageNumber) : null,
+          imageUrl: q.imageUrl || undefined,
+          hasDiagram,
+          pdfPageNumber,
         };
       });
-      // Deduct quota immediately after successful extraction
-      try {
-        await logTestCreation({ testId: 'extracted-draft', testName: data.examTitle || 'PDF Extraction', aiCalls: 1 });
-      } catch (e) {
-        console.error('Failed to log quota usage', e);
-      }
-      setExtractedQuestions(questions);
+      const questionsWithImages = await Promise.all(questions.map(async (q) => {
+        if (!q.hasDiagram || q.croppedImageUrl || q.imageUrl || !q.pdfPageNumber) return q;
+        const page = pdfPageImages.find((p) => p.pageNumber === q.pdfPageNumber);
+        if (!page) return q;
+        const samePage = questions.filter((candidate) => candidate.pdfPageNumber === q.pdfPageNumber);
+        const indexOnPage = Math.max(0, samePage.findIndex((candidate) => candidate.id === q.id));
+        return { ...q, croppedImageUrl: await cropQuestionBandFromPage(page.imageDataUrl, indexOnPage, samePage.length) };
+      }));
+      setExtractedQuestions(questionsWithImages);
       setExtractionStats({
-        totalExtracted: data.totalExtracted || questions.length,
+        totalExtracted: data.totalExtracted || questionsWithImages.length,
         subjectCounts: data.subjectCounts || {},
         examTitle: data.examTitle,
       });
@@ -183,7 +210,7 @@ function CreateTestInner() {
     } finally {
       setIsProcessing(false);
     }
-  }, [pdfText, pdfFile]);
+  }, [pdfText, pdfFile, pdfPageImages]);
   const handleCreateTest = async () => {
     if (extractedQuestions.length === 0) {
       toast.error('No questions to create test');
@@ -201,13 +228,22 @@ function CreateTestInner() {
       const subjects: Subject[] = [...new Set(extractedQuestions.map((q) => q.subject))];
       const hasAnswerKey = extractedQuestions.some(q => q.correctAnswer);
       const testId = generateId();
+      const questionImages = Object.fromEntries(
+        extractedQuestions
+          .filter((q) => q.croppedImageUrl?.startsWith('data:'))
+          .map((q) => [q.id, q.croppedImageUrl as string])
+      );
+      const storableQuestions = extractedQuestions.map((q) => q.croppedImageUrl?.startsWith('data:')
+        ? { ...q, croppedImageUrl: undefined }
+        : q
+      );
       const test: Test = {
         id: testId,
         name: testName || 'Untitled Test',
         description: `Created from PDF with ${extractedQuestions.length} questions`,
         createdAt: new Date().toISOString(),
         duration,
-        questions: extractedQuestions,
+        questions: storableQuestions,
         subjects,
         totalMarks: extractedQuestions.length * positiveMarking,
         positiveMarking,
@@ -219,6 +255,7 @@ function CreateTestInner() {
       };
       try {
         saveTest(test);
+        await saveTestQuestionImages(test.id, questionImages);
         await saveTestPdfPageImages(test.id, pdfPageImages);
       } catch (e) {
         console.error('saveTest failed', e);
@@ -226,13 +263,10 @@ function CreateTestInner() {
         return;
       }
       await logTestCreation({ testId: test.id, testName: test.name, aiCalls: 1 });
-      }
       toast.success(
         `Test saved! Remaining today: ${Math.max(0, quota.dailyRemaining - 1)}/${quota.dailyLimit}`
       );
-      // Quota already logged during extraction
-      toast.success('Test saved successfully!');
-      navigate(`/tests`);
+      navigate(`/exam/${test.id}`);
     } catch (e: any) {
       console.error(e);
       toast.error('Failed to save test: ' + (e.message || 'unknown'));

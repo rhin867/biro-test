@@ -30,6 +30,7 @@ function setItem<T>(key: string, value: T): void {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (error) {
     console.error(`Failed to save to localStorage: ${key}`, error);
+    throw error;
   }
 }
 
@@ -266,6 +267,18 @@ export async function saveTestPdfPageImages(testId: string, pages: NonNullable<T
   db.close();
 }
 
+export async function saveTestQuestionImages(testId: string, images: Record<string, string>): Promise<void> {
+  if (!Object.keys(images).length || typeof indexedDB === 'undefined') return;
+  const db = await openPdfImageDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(PDF_IMAGE_STORE, 'readwrite');
+    tx.objectStore(PDF_IMAGE_STORE).put(images, `${testId}:question_images`);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}
+
 export async function loadTestPdfPageImages(testId: string): Promise<NonNullable<Test['pdfPageImages']>> {
   if (typeof indexedDB === 'undefined') return [];
   const db = await openPdfImageDb();
@@ -276,4 +289,16 @@ export async function loadTestPdfPageImages(testId: string): Promise<NonNullable
   });
   db.close();
   return pages;
+}
+
+export async function loadTestQuestionImages(testId: string): Promise<Record<string, string>> {
+  if (typeof indexedDB === 'undefined') return {};
+  const db = await openPdfImageDb();
+  const images = await new Promise<Record<string, string>>((resolve, reject) => {
+    const request = db.transaction(PDF_IMAGE_STORE, 'readonly').objectStore(PDF_IMAGE_STORE).get(`${testId}:question_images`);
+    request.onsuccess = () => resolve(request.result || {});
+    request.onerror = () => reject(request.error);
+  });
+  db.close();
+  return images;
 }
