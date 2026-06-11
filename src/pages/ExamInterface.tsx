@@ -19,6 +19,7 @@ import {
   generateId,
   getAttempts,
   loadTestPdfPageImages,
+  loadTestQuestionImages,
 } from '@/lib/storage';
 import { calculateTestResult } from '@/lib/exam-utils';
 import { Test, TestAttempt, QuestionAttempt, QuestionStatus, Subject, MistakeType } from '@/types/exam';
@@ -80,8 +81,15 @@ export default function ExamInterface() {
       return;
     }
     setTest(loadedTest);
-    loadTestPdfPageImages(testId).then((pages) => {
-      if (pages.length) setTest((current) => current?.id === testId ? { ...current, pdfPageImages: pages } : current);
+    loadTestPdfPageImages(testId).then(async (pages) => {
+      const questionImages = await loadTestQuestionImages(testId);
+      if (pages.length || Object.keys(questionImages).length) {
+        setTest((current) => current?.id === testId ? {
+          ...current,
+          pdfPageImages: pages,
+          questions: current.questions.map((q) => questionImages[q.id] ? { ...q, croppedImageUrl: questionImages[q.id] } : q),
+        } : current);
+      }
     }).catch(() => {});
     // Check for existing attempt
     const existingAttempt = getCurrentAttempt();
