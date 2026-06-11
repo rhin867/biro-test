@@ -11,14 +11,15 @@ ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can read app settings"
   ON public.app_settings FOR SELECT
   USING (true);
-
 INSERT INTO public.app_settings (key, value) VALUES
   ('test_creation_password', to_jsonb('1@n2@e'::text)),
+  ('test_creation_password', to_jsonb('CHANGE_ME'::text)),
   ('test_creation_password_expires_at', 'null'::jsonb),
   ('admin_password_1', to_jsonb('4918'::text)),
   ('admin_password_2', to_jsonb('555911'::text))
+  ('admin_password_1', to_jsonb('CHANGE_ME'::text)),
+  ('admin_password_2', to_jsonb('CHANGE_ME'::text))
 ON CONFLICT (key) DO NOTHING;
-
 -- public_tests: publicly shared test catalog
 CREATE TABLE public.public_tests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -46,7 +47,6 @@ CREATE POLICY "Anyone can increment attempts"
   ON public.public_tests FOR UPDATE USING (true) WITH CHECK (true);
 CREATE POLICY "Owner can delete via owner_id or anon"
   ON public.public_tests FOR DELETE USING (true);
-
 -- test_leaderboard: per-test attempts
 CREATE TABLE public.test_leaderboard (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -67,3 +67,4 @@ CREATE POLICY "Anyone can read leaderboard"
   ON public.test_leaderboard FOR SELECT USING (true);
 CREATE POLICY "Anyone can submit a result"
   ON public.test_leaderboard FOR INSERT WITH CHECK (true);
+
