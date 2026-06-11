@@ -19,16 +19,10 @@ export function AnswerKeyInput({ test, onAnswerKeySubmit, existingKey }: AnswerK
   const [answerKey, setAnswerKey] = useState<AnswerKey>(existingKey || {});
   const [bulkInput, setBulkInput] = useState('');
   const [isProcessingPdf, setIsProcessingPdf] = useState(false);
-  const handleSingleAnswerChange = (questionId: string, answer: string) => {
-    const validAnswer = answer.toUpperCase();
-    if (validAnswer && !['A', 'B', 'C', 'D'].includes(validAnswer)) {
-      return;
-    }
   const handleSingleAnswerChange = (questionNum: string, answer: string) => {
     const validAnswer = answer.toUpperCase().replace(/[^A-D]/g, '');
     setAnswerKey((prev) => ({
       ...prev,
-      [questionId]: validAnswer,
       [questionNum]: validAnswer,
     }));
   };
@@ -205,8 +199,6 @@ export function AnswerKeyInput({ test, onAnswerKeySubmit, existingKey }: AnswerK
                 <Input
                   className="h-10 w-10 text-center uppercase font-medium p-0"
                   maxLength={1}
-                  value={answerKey[q.id] || ''}
-                  onChange={(e) => handleSingleAnswerChange(q.id, e.target.value)}
                   value={answerKey[String(q.questionNumber)] || answerKey[q.id] || ''}
                   onChange={(e) => handleSingleAnswerChange(String(q.questionNumber), e.target.value)}
                   placeholder={String(q.questionNumber)}
