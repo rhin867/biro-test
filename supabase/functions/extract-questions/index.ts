@@ -109,27 +109,29 @@ async function callLovableAI(apiKey: string, systemPrompt: string, pdfText?: str
       role: "user",
       content: isPdf
         ? [
-            { type: "text", text: "Extract ALL questions from this PDF document. Return STRICT JSON only." },
-            { type: "document", source: { type: "base64", media_type: mimeType || "application/pdf", data: pdfBase64 } }
+            { type: "text", text: "Convert this complete exam PDF into CBT-ready JSON. Preserve every question, option, answer key if present, pageNumber, and mark diagram/figure questions." },
+            { type: "file", file: { filename: "exam.pdf", file_data: dataUrl } }
           ]
         : [
-            { type: "text", text: "Extract ALL questions from this image. Return STRICT JSON only." },
+            { type: "text", text: "Convert this exam image into CBT-ready JSON. Preserve the question/options and mark diagram/figure questions." },
             { type: "image_url", image_url: { url: dataUrl } }
           ]
-      content: [
-        { type: "text", text: isPdf ? "Extract ALL questions from this document. Return STRICT JSON only." : "Extract ALL questions from this image. Return STRICT JSON only." },
-        // Many OpenAI compatible gateways fail on type: "document", so we treat PDFs as files via image_url (OpenRouter standard for some providers)
-        // or just pass the dataUrl. If this fails, user must provide their own Gemini API key.
-        { type: "image_url", image_url: { url: dataUrl } }
-      ]
     });
   } else if (pdfText) {
     messages.push({
+      role: "user",
+      content: `Convert this extracted exam text into CBT-ready JSON. Preserve question numbers, subjects, options, numerical questions, answer key if visible, and page numbers.\n\n${pdfText}`,
+    });
+  }
+
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
       "Content-Type": "application/json",
+      "Lovable-API-Key": apiKey,
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      model: "gemini-2.5-flash",
+      model: "google/gemini-3-flash-preview",
       messages,
       temperature: 0.05,
       max_tokens: 65536,
