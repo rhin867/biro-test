@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
@@ -16,7 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { renderPDFPagesToImages, fileToBase64, PDFPageImage } from '@/lib/pdf-cropper';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { PDFCropTool } from '@/components/exam/PDFCropTool';
-import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Crop, RefreshCw, Share2, Link2 } from 'lucide-react';
+import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Crop, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TestCreationGate } from '@/components/exam/TestCreationGate';
 import { fetchQuotaInfo, logTestCreation, QuotaInfo } from '@/lib/app-settings';
