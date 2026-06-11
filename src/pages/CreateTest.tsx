@@ -210,7 +210,7 @@ function CreateTestInner() {
     } finally {
       setIsProcessing(false);
     }
-  }, [pdfText, pdfFile]);
+  }, [pdfText, pdfFile, pdfPageImages]);
   const handleCreateTest = async () => {
     if (extractedQuestions.length === 0) {
       toast.error('No questions to create test');
