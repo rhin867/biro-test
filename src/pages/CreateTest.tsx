@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { saveTest, generateId, saveTestPdfPageImages } from '@/lib/storage';
+import { saveTest, generateId, saveTestPdfPageImages, saveTestQuestionImages } from '@/lib/storage';
 import { Test, Question, Subject } from '@/types/exam';
 import { supabase } from '@/integrations/supabase/client';
 import { renderPDFPagesToImages, fileToBase64, PDFPageImage } from '@/lib/pdf-cropper';
@@ -20,6 +20,28 @@ import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, Z
 import { cn } from '@/lib/utils';
 import { TestCreationGate } from '@/components/exam/TestCreationGate';
 import { fetchQuotaInfo, logTestCreation, QuotaInfo } from '@/lib/app-settings';
+
+async function cropQuestionBandFromPage(imageDataUrl: string, indexOnPage: number, totalOnPage: number): Promise<string> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new window.Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = imageDataUrl;
+  });
+  const safeTotal = Math.max(1, totalOnPage);
+  const marginX = Math.round(img.width * 0.04);
+  const bandHeight = Math.ceil(img.height / safeTotal);
+  const sourceY = Math.max(0, indexOnPage * bandHeight - Math.round(bandHeight * 0.12));
+  const sourceH = Math.min(img.height - sourceY, Math.round(bandHeight * 1.25));
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width - marginX * 2;
+  canvas.height = sourceH;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return imageDataUrl;
+  ctx.drawImage(img, marginX, sourceY, canvas.width, sourceH, 0, 0, canvas.width, sourceH);
+  return canvas.toDataURL('image/jpeg', 0.82);
+}
+
 function CreateTestInner() {
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
