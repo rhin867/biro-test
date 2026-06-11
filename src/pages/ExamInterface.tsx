@@ -275,17 +275,12 @@ export default function ExamInterface() {
     toast.warning('Time is up! Submitting test...');
     handleSubmitTest();
   };
-  // Handle timer tick
-  const handleTimerTick = (remaining: number) => {
-    if (attempt) {
-      const updated = { ...attempt, timeRemaining: remaining };
   const handleTimerTick = useCallback((remaining: number) => {
     if (attemptRef.current) {
       const updated = { ...attemptRef.current, timeRemaining: remaining };
       setAttempt(updated);
       attemptRef.current = updated;
     }
-  };
   }, []);
   // Submit test
   const handleSubmitTest = () => {
