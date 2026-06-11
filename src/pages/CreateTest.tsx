@@ -62,9 +62,7 @@ function CreateTestInner() {
       const arrayBuffer = await file.arrayBuffer();
       const bufferForText = arrayBuffer.slice(0);
       const bufferForImages = arrayBuffer.slice(0);
-      const uint8Array = new Uint8Array(arrayBuffer);
       const pdf = await pdfjsLib.getDocument({ data: bufferForText }).promise;
-      const pdf = await pdfjsLib.getDocument({ data: uint8Array }).promise;
       let fullText = '';
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
@@ -76,7 +74,6 @@ function CreateTestInner() {
       setTestName(file.name.replace('.pdf', ''));
       toast.info('Rendering pages for preview & cropping...');
       const pageImages = await renderPDFPagesToImages(bufferForImages, 1.5);
-      const pageImages = await renderPDFPagesToImages(arrayBuffer, 1.5);
       setPdfPageImages(pageImages);
       toast.success(`PDF processed: ${pdf.numPages} pages`);
       setStep('configure');
