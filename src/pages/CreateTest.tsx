@@ -164,6 +164,9 @@ function CreateTestInner() {
           : { A: q.options?.A || '', B: q.options?.B || '', C: q.options?.C || '', D: q.options?.D || '' };
         const hasOptions = Object.values(options).some(v => String(v).trim());
         const type = !hasOptions ? 'Numerical' : (q.type === 'MSQ' ? 'MSQ' : 'MCQ');
+        const inferredPage = pdfPageImages.length ? Math.min(pdfPageImages.length, Math.max(1, Math.ceil(((index + 1) / Math.max(1, (data.questions || []).length)) * pdfPageImages.length))) : null;
+        const pdfPageNumber = Number(q.pdfPageNumber || q.pageNumber || inferredPage) || null;
+        const hasDiagram = Boolean(q.hasDiagram || q.imageUrl || /diagram|figure|graph|circuit|shown|given below|following/i.test(q.question || ''));
         return {
           id: generateId(),
           questionNumber: Number(q.questionNumber || index + 1),
@@ -174,19 +177,22 @@ function CreateTestInner() {
           correctAnswer: q.correctAnswer || null,
           type,
           level: 'JEE',
-          hasDiagram: Boolean(q.hasDiagram),
-          pdfPageNumber: q.pdfPageNumber ? Number(q.pdfPageNumber) : null,
+          imageUrl: q.imageUrl || undefined,
+          hasDiagram,
+          pdfPageNumber,
         };
       });
-      // Deduct quota immediately after successful extraction
-      try {
-        await logTestCreation({ testId: 'extracted-draft', testName: data.examTitle || 'PDF Extraction', aiCalls: 1 });
-      } catch (e) {
-        console.error('Failed to log quota usage', e);
-      }
-      setExtractedQuestions(questions);
+      const questionsWithImages = await Promise.all(questions.map(async (q) => {
+        if (!q.hasDiagram || q.croppedImageUrl || q.imageUrl || !q.pdfPageNumber) return q;
+        const page = pdfPageImages.find((p) => p.pageNumber === q.pdfPageNumber);
+        if (!page) return q;
+        const samePage = questions.filter((candidate) => candidate.pdfPageNumber === q.pdfPageNumber);
+        const indexOnPage = Math.max(0, samePage.findIndex((candidate) => candidate.id === q.id));
+        return { ...q, croppedImageUrl: await cropQuestionBandFromPage(page.imageDataUrl, indexOnPage, samePage.length) };
+      }));
+      setExtractedQuestions(questionsWithImages);
       setExtractionStats({
-        totalExtracted: data.totalExtracted || questions.length,
+        totalExtracted: data.totalExtracted || questionsWithImages.length,
         subjectCounts: data.subjectCounts || {},
         examTitle: data.examTitle,
       });
