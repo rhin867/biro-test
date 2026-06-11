@@ -129,6 +129,7 @@ async function callLovableAI(apiKey: string, systemPrompt: string, pdfText?: str
     headers: {
       "Content-Type": "application/json",
       "Lovable-API-Key": apiKey,
+      "X-Lovable-AIG-SDK": "manual-fetch",
     },
     body: JSON.stringify({
       model: "google/gemini-3-flash-preview",
