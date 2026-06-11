@@ -20,6 +20,7 @@ import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, Z
 import { cn } from '@/lib/utils';
 import { TestCreationGate } from '@/components/exam/TestCreationGate';
 import { fetchQuotaInfo, logTestCreation, QuotaInfo } from '@/lib/app-settings';
+import { getUserApiKey } from '@/pages/Settings';
 
 async function cropQuestionBandFromPage(imageDataUrl: string, indexOnPage: number, totalOnPage: number): Promise<string> {
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -119,14 +120,16 @@ function CreateTestInner() {
       }
       toast.info('Extracting questions with AI (20-40 seconds)...');
       let requestBody: any = {};
+      const userApiKey = getUserApiKey();
       if (pdfFile) {
         const base64Data = await fileToBase64(pdfFile);
         requestBody = {
           pdfBase64: base64Data,
           mimeType: 'application/pdf',
+          ...(userApiKey ? { userApiKey } : {}),
         };
       } else {
-        requestBody = { pdfText };
+        requestBody = { pdfText, ...(userApiKey ? { userApiKey } : {}) };
       }
       // Auto-retry up to 2 times
       let data: any = null;
