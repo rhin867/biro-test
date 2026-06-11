@@ -138,26 +138,15 @@ export async function logTestCreation(opts: {
   testName: string;
   aiCalls?: number;
 }) {
-  const { data, error } = await supabase.functions.invoke('log-test-creation', {
-    body: {
-      user_key: getCurrentUserKey(),
-      display_name: getCurrentDisplayName(),
-      test_id: opts.testId,
-      test_name: opts.testName,
-      ai_calls: opts.aiCalls ?? 1,
-    },
-  });
-  if (error || data?.error) {
-    throw new Error(data?.error || error?.message || 'Could not record test usage');
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const { data, error } = await supabase.functions.invoke('log-test-creation', {
         body: {
-          user_key: getCurrentUserKey(),
-          display_name: getCurrentDisplayName(),
-          test_id: opts.testId,
-          test_name: opts.testName,
-          ai_calls: opts.aiCalls ?? 1,
+          userKey: getCurrentUserKey(),
+          displayName: getCurrentDisplayName(),
+          testId: opts.testId,
+          testName: opts.testName,
+          aiCalls: opts.aiCalls ?? 1,
         },
       });
       if (!error && !data?.error) return;
