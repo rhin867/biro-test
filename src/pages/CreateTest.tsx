@@ -226,13 +226,22 @@ function CreateTestInner() {
       const subjects: Subject[] = [...new Set(extractedQuestions.map((q) => q.subject))];
       const hasAnswerKey = extractedQuestions.some(q => q.correctAnswer);
       const testId = generateId();
+      const questionImages = Object.fromEntries(
+        extractedQuestions
+          .filter((q) => q.croppedImageUrl?.startsWith('data:'))
+          .map((q) => [q.id, q.croppedImageUrl as string])
+      );
+      const storableQuestions = extractedQuestions.map((q) => q.croppedImageUrl?.startsWith('data:')
+        ? { ...q, croppedImageUrl: undefined }
+        : q
+      );
       const test: Test = {
         id: testId,
         name: testName || 'Untitled Test',
         description: `Created from PDF with ${extractedQuestions.length} questions`,
         createdAt: new Date().toISOString(),
         duration,
-        questions: extractedQuestions,
+        questions: storableQuestions,
         subjects,
         totalMarks: extractedQuestions.length * positiveMarking,
         positiveMarking,
@@ -244,6 +253,7 @@ function CreateTestInner() {
       };
       try {
         saveTest(test);
+        await saveTestQuestionImages(test.id, questionImages);
         await saveTestPdfPageImages(test.id, pdfPageImages);
       } catch (e) {
         console.error('saveTest failed', e);
