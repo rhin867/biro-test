@@ -223,13 +223,10 @@ function CreateTestInner() {
         return;
       }
       await logTestCreation({ testId: test.id, testName: test.name, aiCalls: 1 });
-      }
       toast.success(
         `Test saved! Remaining today: ${Math.max(0, quota.dailyRemaining - 1)}/${quota.dailyLimit}`
       );
-      // Quota already logged during extraction
-      toast.success('Test saved successfully!');
-      navigate(`/tests`);
+      navigate(`/exam/${test.id}`);
     } catch (e: any) {
       console.error(e);
       toast.error('Failed to save test: ' + (e.message || 'unknown'));
