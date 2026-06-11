@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { TestShareDialog } from '@/components/exam/TestShareDialog';
-import { getTests, getResultsByTestId, deleteTest, generateShareCode, saveTest } from '@/lib/storage';
+import { getTests, getResultsByTestId, deleteTest, generateShareCode, saveTest, loadTestQuestionImages } from '@/lib/storage';
 import { formatTimeMinutes } from '@/lib/exam-utils';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentDisplayName, getCurrentUserKey } from '@/lib/app-settings';
@@ -61,8 +61,12 @@ export default function MyTests() {
     if (!test) return;
     setPublishing(true);
     try {
+      const questionImages = await loadTestQuestionImages(test.id);
+      const publishTest = Object.keys(questionImages).length
+        ? { ...test, questions: test.questions.map((q) => questionImages[q.id] ? { ...q, croppedImageUrl: questionImages[q.id], hasDiagram: true } : q) }
+        : test;
       const { data, error } = await supabase.functions.invoke('publish-public-test', {
-        body: { test, ownerName: getCurrentDisplayName(), password: publishPw.trim() || null },
+        body: { test: publishTest, ownerName: getCurrentDisplayName(), password: publishPw.trim() || null },
       });
       if (data?.error) throw new Error(data.error);
       if (error) throw error;
