@@ -33,10 +33,11 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    // Use Lovable AI gateway (preferred) or fall back to user API key
+    // Use Lovable AI gateway first, then server/user Gemini fallback.
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const fallbackGeminiKey = userApiKey || Deno.env.get("Biro_test_api_key");
     const useGateway = !!LOVABLE_API_KEY;
-    if (!useGateway && !userApiKey) {
+    if (!useGateway && !fallbackGeminiKey) {
       return new Response(
         JSON.stringify({ error: "AI service not available. Please try again." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -47,11 +48,15 @@ serve(async (req) => {
       : systemPrompt;
     let content: string;
     if (useGateway) {
-      // Use Lovable AI Gateway (OpenAI-compatible)
-      content = await callLovableAI(LOVABLE_API_KEY!, promptContent, pdfText, pdfBase64, mimeType);
+      try {
+        content = await callLovableAI(LOVABLE_API_KEY!, promptContent, pdfText, pdfBase64, mimeType);
+      } catch (gatewayError) {
+        console.warn("Lovable AI gateway failed, using Gemini fallback", gatewayError);
+        if (!fallbackGeminiKey) throw gatewayError;
+        content = await callGeminiDirect(fallbackGeminiKey, promptContent, pdfText, pdfBase64, mimeType);
+      }
     } else {
-      // Fallback to user's Gemini API key
-      content = await callGeminiDirect(userApiKey, promptContent, pdfText, pdfBase64, mimeType);
+      content = await callGeminiDirect(fallbackGeminiKey!, promptContent, pdfText, pdfBase64, mimeType);
     }
     if (!content) {
       throw new Error("No response from AI. The PDF may be too complex or empty.");
