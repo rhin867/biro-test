@@ -35,14 +35,17 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions }: P
     if (open) { setCurrentPage(0); setCropRegion(null); setCropStart(null); setIsDrawing(false); }
   }, [open]);
 
-  // Get coords relative to the inner wrapper (which contains image + overlay)
+  // Coords relative to the IMAGE element — keeps selection rect and the actual
+  // cropped pixels aligned even if the wrapper has borders/padding/scroll.
   const getRelativeCoords = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    const wrapper = wrapperRef.current;
-    if (!wrapper) return { x: 0, y: 0 };
-    const rect = wrapper.getBoundingClientRect();
+    const img = imgRef.current;
+    if (!img) return { x: 0, y: 0 };
+    const rect = img.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    return { x: clientX - rect.left, y: clientY - rect.top };
+    const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
+    const y = Math.max(0, Math.min(rect.height, clientY - rect.top));
+    return { x, y };
   }, []);
 
   const handleStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
@@ -70,18 +73,18 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions }: P
   const handleCrop = useCallback(() => {
     if (!cropRegion || !page || !imgRef.current) return;
     const img = imgRef.current;
-    const displayW = img.clientWidth;
-    const displayH = img.clientHeight;
+    const rect = img.getBoundingClientRect();
+    const displayW = rect.width;
+    const displayH = rect.height;
     if (displayW === 0 || displayH === 0) return;
 
     const scaleX = img.naturalWidth / displayW;
     const scaleY = img.naturalHeight / displayH;
 
-    const srcX = Math.max(0, cropRegion.x * scaleX);
-    const srcY = Math.max(0, cropRegion.y * scaleY);
-    const srcW = Math.min(img.naturalWidth - srcX, cropRegion.width * scaleX);
-    const srcH = Math.min(img.naturalHeight - srcY, cropRegion.height * scaleY);
-
+    const srcX = Math.max(0, Math.round(cropRegion.x * scaleX));
+    const srcY = Math.max(0, Math.round(cropRegion.y * scaleY));
+    const srcW = Math.min(img.naturalWidth - srcX, Math.round(cropRegion.width * scaleX));
+    const srcH = Math.min(img.naturalHeight - srcY, Math.round(cropRegion.height * scaleY));
     if (srcW < 5 || srcH < 5) return;
 
     const canvas = document.createElement('canvas');

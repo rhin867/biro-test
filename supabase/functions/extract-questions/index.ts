@@ -137,7 +137,7 @@ async function callLovableAI(apiKey: string, systemPrompt: string, pdfText?: str
       "X-Lovable-AIG-SDK": "manual-fetch",
     },
     body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
+      model: "google/gemini-2.5-flash",
       messages,
       temperature: 0.05,
       max_tokens: 65536,
