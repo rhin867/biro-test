@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { TestCreationGate } from '@/components/exam/TestCreationGate';
 import { fetchQuotaInfo, logTestCreation, QuotaInfo } from '@/lib/app-settings';
 import { getUserApiKey } from '@/pages/Settings';
+import { extractQuestionsFromPdf, BIRO_BACKEND_CONFIGURED } from '@/lib/biro-backend';
 
 async function cropQuestionBandFromPage(imageDataUrl: string, indexOnPage: number, totalOnPage: number): Promise<string> {
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -110,65 +111,26 @@ function CreateTestInner() {
     setIsProcessing(true);
     setExtractionFailed(false);
     const startTime = Date.now();
-    try {
-      const latestQuota = await fetchQuotaInfo();
-      setQuota(latestQuota);
-      if (latestQuota.exceeded) {
-        toast.error(`Quota reached: ${latestQuota.dailyUsed}/${latestQuota.dailyLimit} today, ${latestQuota.monthlyUsed}/${latestQuota.monthlyLimit} this month.`);
-        return;
-      }
-      toast.info('Extracting questions with AI (20-40 seconds)...');
-      let requestBody: any = {};
-      const userApiKey = getUserApiKey();
-      if (pdfFile) {
-        const base64Data = await fileToBase64(pdfFile);
-        requestBody = {
-          pdfBase64: base64Data,
-          mimeType: 'application/pdf',
-          ...(userApiKey ? { userApiKey } : {}),
-        };
-      } else {
-        requestBody = { pdfText, ...(userApiKey ? { userApiKey } : {}) };
-      }
-      // Auto-retry up to 2 times
-      let data: any = null;
-      let lastErr: any = null;
-      for (let retry = 0; retry < 2; retry++) {
-        if (retry > 0) {
-          toast.info(`Retrying extraction (attempt ${retry + 1})...`);
-          await new Promise(r => setTimeout(r, 2000));
-        }
-        const result = await supabase.functions.invoke('extract-questions', {
-          body: requestBody,
-        });
-        if (result.error) {
-          lastErr = result.error;
-          continue;
-        }
-        if (result.data?.error) {
-          if (result.data.retryable) {
-            lastErr = new Error(result.data.error);
-            continue;
-          }
-          throw new Error(result.data.error);
-        }
-        data = result.data;
-        break;
-      }
-      if (!data) {
-        throw lastErr || new Error('Extraction failed. Please try again.');
-      }
-      const elapsed = Math.round((Date.now() - startTime) / 1000);
+
+    const finishExtraction = async (data: any, started: number) => {
+      const elapsed = Math.round((Date.now() - started) / 1000);
       setExtractionTime(elapsed);
-      const questions: Question[] = (data.questions || []).map((q: any, index: number) => {
+      const raw = data?.questions || [];
+      const questions: Question[] = raw.map((q: any, index: number) => {
         const options = Array.isArray(q.options)
           ? { A: q.options[0] || '', B: q.options[1] || '', C: q.options[2] || '', D: q.options[3] || '' }
           : { A: q.options?.A || '', B: q.options?.B || '', C: q.options?.C || '', D: q.options?.D || '' };
         const hasOptions = Object.values(options).some(v => String(v).trim());
         const type = !hasOptions ? 'Numerical' : (q.type === 'MSQ' ? 'MSQ' : 'MCQ');
-        const inferredPage = pdfPageImages.length ? Math.min(pdfPageImages.length, Math.max(1, Math.ceil(((index + 1) / Math.max(1, (data.questions || []).length)) * pdfPageImages.length))) : null;
+        const inferredPage = pdfPageImages.length
+          ? Math.min(pdfPageImages.length, Math.max(1, Math.ceil(((index + 1) / Math.max(1, raw.length)) * pdfPageImages.length)))
+          : null;
         const pdfPageNumber = Number(q.pdfPageNumber || q.pageNumber || inferredPage) || null;
-        const hasDiagram = Boolean(q.hasDiagram || q.imageUrl || /diagram|figure|graph|circuit|shown|given below|following/i.test(q.question || ''));
+        const hasDiagram = Boolean(q.hasDiagram || q.imageUrl || q.diagramImage
+          || /diagram|figure|graph|circuit|shown|given below|following/i.test(q.question || ''));
+        const croppedImageUrl = typeof q.diagramImage === 'string' && q.diagramImage.startsWith('data:')
+          ? q.diagramImage
+          : undefined;
         return {
           id: generateId(),
           questionNumber: Number(q.questionNumber || index + 1),
@@ -180,33 +142,70 @@ function CreateTestInner() {
           type,
           level: 'JEE',
           imageUrl: q.imageUrl || undefined,
+          croppedImageUrl,
           hasDiagram,
           pdfPageNumber,
-        };
+        } as Question;
       });
+
       const questionsWithImages = await Promise.all(questions.map(async (q) => {
         if (!q.hasDiagram || q.croppedImageUrl || q.imageUrl || !q.pdfPageNumber) return q;
         const page = pdfPageImages.find((p) => p.pageNumber === q.pdfPageNumber);
         if (!page) return q;
-        const samePage = questions.filter((candidate) => candidate.pdfPageNumber === q.pdfPageNumber);
-        const indexOnPage = Math.max(0, samePage.findIndex((candidate) => candidate.id === q.id));
+        const samePage = questions.filter((c) => c.pdfPageNumber === q.pdfPageNumber);
+        const indexOnPage = Math.max(0, samePage.findIndex((c) => c.id === q.id));
         return { ...q, croppedImageUrl: await cropQuestionBandFromPage(page.imageDataUrl, indexOnPage, samePage.length) };
       }));
+
       setExtractedQuestions(questionsWithImages);
       setExtractionStats({
         totalExtracted: data.totalExtracted || questionsWithImages.length,
         subjectCounts: data.subjectCounts || {},
         examTitle: data.examTitle,
       });
-      if (data.examTitle && data.examTitle !== 'Extracted Test') {
-        setTestName(data.examTitle);
-      }
+      if (data.examTitle && data.examTitle !== 'Extracted Test') setTestName(data.examTitle);
       setStep('review');
-      toast.success(`Extracted ${questions.length} questions in ${elapsed}s`);
+      toast.success(`Extracted ${questionsWithImages.length} questions in ${elapsed}s${data.source ? ` (${data.source})` : ''}`);
+    };
+
+    try {
+      // Quota check FIRST — never burn quota on a call we won't make.
+      const latestQuota = await fetchQuotaInfo();
+      setQuota(latestQuota);
+      if (latestQuota.exceeded) {
+        toast.error(`Quota reached: ${latestQuota.dailyUsed}/${latestQuota.dailyLimit} today, ${latestQuota.monthlyUsed}/${latestQuota.monthlyLimit} this month.`);
+        return;
+      }
+      if (!pdfFile && !pdfText.trim()) {
+        toast.error('Upload a PDF or paste text first.');
+        return;
+      }
+      const userApiKey = getUserApiKey();
+      if (pdfFile) {
+        toast.info(BIRO_BACKEND_CONFIGURED
+          ? 'Extracting via Biro backend (0 AI credits)…'
+          : 'Extracting via AI (set VITE_BIRO_BACKEND_URL to skip credits)…');
+        const pdfBase64 = await fileToBase64(pdfFile);
+        const data = await extractQuestionsFromPdf({
+          pdfBase64,
+          mimeType: 'application/pdf',
+          userApiKey,
+          onStage: (msg) => toast.info(msg),
+        });
+        await finishExtraction(data, startTime);
+      } else {
+        // Pasted text: backend regex parser needs PDF bytes; use AI path.
+        const result = await supabase.functions.invoke('extract-questions', {
+          body: { pdfText, ...(userApiKey ? { userApiKey } : {}) },
+        });
+        if (result.error) throw result.error;
+        if (result.data?.error) throw new Error(result.data.error);
+        await finishExtraction(result.data, startTime);
+      }
     } catch (error: any) {
       console.error('Extraction error:', error);
       setExtractionFailed(true);
-      toast.error(error.message || 'Extraction failed. Click Retry or use Crop Tool.');
+      toast.error(error?.message || 'Extraction failed. Use the Crop Tool to add diagrams manually.');
     } finally {
       setIsProcessing(false);
     }
