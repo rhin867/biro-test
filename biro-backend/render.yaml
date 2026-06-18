@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: biro-backend
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: ENABLE_PIX2TEX
+        value: "false"
