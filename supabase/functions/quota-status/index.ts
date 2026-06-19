@@ -16,8 +16,8 @@ Deno.serve(async (req) => {
 
     const { data: settings } = await supabase.from("app_settings").select("key,value").in("key", ["quota_daily_tests", "quota_monthly_tests"]);
     const map = new Map((settings ?? []).map((r: any) => [r.key, r.value]));
-    const dailyLimit = Number(map.get("quota_daily_tests") ?? 5);
-    const monthlyLimit = Number(map.get("quota_monthly_tests") ?? 50);
+    const dailyLimit = Number(map.get("quota_daily_tests") ?? 25);
+    const monthlyLimit = Number(map.get("quota_monthly_tests") ?? 120);
 
     const { count: dailyUsed } = await supabase.from("test_creation_usage").select("id", { count: "exact", head: true }).eq("quota_identity", identity).gte("created_at", startOfDay);
     const { count: monthlyUsed } = await supabase.from("test_creation_usage").select("id", { count: "exact", head: true }).eq("quota_identity", identity).gte("created_at", startOfMonth);
