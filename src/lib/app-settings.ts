@@ -7,8 +7,8 @@ export interface PublicSettings {
 }
 const DEFAULTS: PublicSettings = {
   test_creation_password_expires_at: null,
-  quota_daily_tests: 5,
-  quota_monthly_tests: 50,
+  quota_daily_tests: 25,
+  quota_monthly_tests: 120,
 };
 export async function fetchAppSettings(): Promise<PublicSettings> {
   try {
