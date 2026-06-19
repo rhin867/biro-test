@@ -26,8 +26,8 @@ Deno.serve(async (req) => {
     if (error) throw error;
     const out: Record<string, any> = {
       test_creation_password_expires_at: null,
-      quota_daily_tests: 5,
-      quota_monthly_tests: 50,
+      quota_daily_tests: 25,
+      quota_monthly_tests: 120,
     };
     for (const r of data ?? []) out[(r as any).key] = (r as any).value;
     return new Response(JSON.stringify(out), {
