@@ -85,7 +85,7 @@ export async function extractQuestionsFromPdf(args: {
       args.onStage?.("Backend unavailable — falling back to AI extraction…");
     }
   } else {
-    args.onStage?.("VITE_BIRO_BACKEND_URL not set — using AI extraction…");
+    args.onStage?.("Using AI extraction (no self-hosted backend configured).");
   }
   return callLovableAI(args.pdfBase64, mimeType, args.userApiKey);
 }
