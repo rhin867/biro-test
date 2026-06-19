@@ -498,19 +498,16 @@ function CreateTestInner() {
                     <div className="text-sm mb-2 line-clamp-3">
                       <LatexRenderer content={q.question} />
                     </div>
-                      <div className="text-sm mb-2 line-clamp-3">
-                        <LatexRenderer content={q.question} />
-                      </div>
-                      <div className="mt-2 mb-2">
-                        {q.croppedImageUrl ? (
-                          <img src={q.croppedImageUrl} className="max-h-32 object-contain rounded border border-border" />
-                        ) : q.hasDiagram && q.pdfPageNumber && pdfPageImages.find(p => p.pageNumber === q.pdfPageNumber) ? (
-                          <div className="p-2 rounded bg-muted/50 border border-border">
-                            <p className="text-xs text-muted-foreground mb-1">Uncropped diagram from Page {q.pdfPageNumber}:</p>
-                            <img src={pdfPageImages.find(p => p.pageNumber === q.pdfPageNumber)!.imageDataUrl} className="max-h-24 object-contain rounded opacity-80" />
-                          </div>
-                        ) : null}
-                      </div>
+                    <div className="mt-2 mb-2">
+                      {q.croppedImageUrl ? (
+                        <img src={q.croppedImageUrl} className="max-h-32 object-contain rounded border border-border" />
+                      ) : q.hasDiagram && q.pdfPageNumber && pdfPageImages.find(p => p.pageNumber === q.pdfPageNumber) ? (
+                        <div className="p-2 rounded bg-muted/50 border border-border">
+                          <p className="text-xs text-muted-foreground mb-1">Uncropped diagram from Page {q.pdfPageNumber}:</p>
+                          <img src={pdfPageImages.find(p => p.pageNumber === q.pdfPageNumber)!.imageDataUrl} className="max-h-24 object-contain rounded opacity-80" />
+                        </div>
+                      ) : null}
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
                       {Object.entries(q.options).map(([key, value]) => (
                         <div key={key} className="p-1.5 rounded">
