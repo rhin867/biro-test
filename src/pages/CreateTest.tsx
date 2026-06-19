@@ -417,9 +417,14 @@ function CreateTestInner() {
               </div>
             )}
             {pdfPageImages.length > 0 && (
-              <Button variant="outline" onClick={() => setShowCropTool(true)} className="gap-2 w-full">
-                <Crop className="h-4 w-4" /> Open Manual Crop Tool
-              </Button>
+              <div className="space-y-2">
+                <Button variant="outline" onClick={() => setShowCropTool(true)} className="gap-2 w-full">
+                  <Crop className="h-4 w-4" /> Open Manual Crop Tool
+                </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  Tip: crop questions yourself to build a test without any AI calls — uses 0 credits.
+                </p>
+              </div>
             )}
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setStep('upload')}>Back</Button>
