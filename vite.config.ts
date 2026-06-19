@@ -26,4 +26,7 @@ export default defineConfig(({ mode }) => ({
       target: "esnext",
     },
   },
+  preview: {
+      allowedHosts: ['biro-test.onrender.com'],
+    },
 }));
