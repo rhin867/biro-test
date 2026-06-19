@@ -417,9 +417,14 @@ function CreateTestInner() {
               </div>
             )}
             {pdfPageImages.length > 0 && (
-              <Button variant="outline" onClick={() => setShowCropTool(true)} className="gap-2 w-full">
-                <Crop className="h-4 w-4" /> Open Manual Crop Tool
-              </Button>
+              <div className="space-y-2">
+                <Button variant="outline" onClick={() => setShowCropTool(true)} className="gap-2 w-full">
+                  <Crop className="h-4 w-4" /> Open Manual Crop Tool
+                </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  Tip: crop questions yourself to build a test without any AI calls — uses 0 credits.
+                </p>
+              </div>
             )}
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setStep('upload')}>Back</Button>
@@ -498,19 +503,16 @@ function CreateTestInner() {
                     <div className="text-sm mb-2 line-clamp-3">
                       <LatexRenderer content={q.question} />
                     </div>
-                      <div className="text-sm mb-2 line-clamp-3">
-                        <LatexRenderer content={q.question} />
-                      </div>
-                      <div className="mt-2 mb-2">
-                        {q.croppedImageUrl ? (
-                          <img src={q.croppedImageUrl} className="max-h-32 object-contain rounded border border-border" />
-                        ) : q.hasDiagram && q.pdfPageNumber && pdfPageImages.find(p => p.pageNumber === q.pdfPageNumber) ? (
-                          <div className="p-2 rounded bg-muted/50 border border-border">
-                            <p className="text-xs text-muted-foreground mb-1">Uncropped diagram from Page {q.pdfPageNumber}:</p>
-                            <img src={pdfPageImages.find(p => p.pageNumber === q.pdfPageNumber)!.imageDataUrl} className="max-h-24 object-contain rounded opacity-80" />
-                          </div>
-                        ) : null}
-                      </div>
+                    <div className="mt-2 mb-2">
+                      {q.croppedImageUrl ? (
+                        <img src={q.croppedImageUrl} className="max-h-32 object-contain rounded border border-border" />
+                      ) : q.hasDiagram && q.pdfPageNumber && pdfPageImages.find(p => p.pageNumber === q.pdfPageNumber) ? (
+                        <div className="p-2 rounded bg-muted/50 border border-border">
+                          <p className="text-xs text-muted-foreground mb-1">Uncropped diagram from Page {q.pdfPageNumber}:</p>
+                          <img src={pdfPageImages.find(p => p.pageNumber === q.pdfPageNumber)!.imageDataUrl} className="max-h-24 object-contain rounded opacity-80" />
+                        </div>
+                      ) : null}
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
                       {Object.entries(q.options).map(([key, value]) => (
                         <div key={key} className="p-1.5 rounded">
@@ -559,6 +561,28 @@ function CreateTestInner() {
         onOpenChange={setShowCropTool}
         pages={pdfPageImages}
         onCroppedQuestions={(crops) => {
+          if (extractedQuestions.length === 0) {
+            // Pure manual mode — build blank questions from crops, 0 AI credits.
+            const manualQuestions: Question[] = crops.map((crop, i) => ({
+              id: generateId(),
+              questionNumber: i + 1,
+              subject: 'Physics',
+              chapter: 'General',
+              question: `Question ${i + 1} (see diagram)`,
+              options: { A: '', B: '', C: '', D: '' },
+              correctAnswer: null,
+              type: 'MCQ',
+              level: 'JEE',
+              croppedImageUrl: crop.dataUrl,
+              hasDiagram: true,
+              pdfPageNumber: crop.pageNumber,
+            } as Question));
+            setExtractedQuestions(manualQuestions);
+            setExtractionStats({ totalExtracted: manualQuestions.length, subjectCounts: { Physics: manualQuestions.length } });
+            setStep('review');
+            toast.success(`${crops.length} questions created from manual crops. Add answer key in My Tests.`);
+            return;
+          }
           const targets = extractedQuestions
             .map((q, index) => ({ q, index }))
             .filter(({ q }) => q.hasDiagram || q.pdfPageNumber)

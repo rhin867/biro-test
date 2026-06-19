@@ -7,7 +7,16 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 
-const BACKEND_URL = (import.meta.env.VITE_BIRO_BACKEND_URL as string | undefined)?.replace(/\/$/, "");
+// Allow runtime override via localStorage so users can point at a deployed
+// backend without re-deploying the frontend. Set in browser console:
+//   localStorage.setItem('biro_backend_url', 'https://your-backend.onrender.com')
+function resolveBackendUrl(): string | undefined {
+  const env = (import.meta.env.VITE_BIRO_BACKEND_URL as string | undefined) || undefined;
+  let runtime: string | undefined;
+  try { runtime = localStorage.getItem('biro_backend_url') || undefined; } catch {}
+  return (runtime || env)?.replace(/\/$/, "") || undefined;
+}
+const BACKEND_URL = resolveBackendUrl();
 
 export interface ExtractedQuestionRaw {
   questionNumber: number;
@@ -76,7 +85,7 @@ export async function extractQuestionsFromPdf(args: {
       args.onStage?.("Backend unavailable — falling back to AI extraction…");
     }
   } else {
-    args.onStage?.("VITE_BIRO_BACKEND_URL not set — using AI extraction…");
+    args.onStage?.("Using AI extraction (no self-hosted backend configured).");
   }
   return callLovableAI(args.pdfBase64, mimeType, args.userApiKey);
 }
