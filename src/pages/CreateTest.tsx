@@ -561,6 +561,28 @@ function CreateTestInner() {
         onOpenChange={setShowCropTool}
         pages={pdfPageImages}
         onCroppedQuestions={(crops) => {
+          if (extractedQuestions.length === 0) {
+            // Pure manual mode — build blank questions from crops, 0 AI credits.
+            const manualQuestions: Question[] = crops.map((crop, i) => ({
+              id: generateId(),
+              questionNumber: i + 1,
+              subject: 'Physics',
+              chapter: 'General',
+              question: `Question ${i + 1} (see diagram)`,
+              options: { A: '', B: '', C: '', D: '' },
+              correctAnswer: null,
+              type: 'MCQ',
+              level: 'JEE',
+              croppedImageUrl: crop.dataUrl,
+              hasDiagram: true,
+              pdfPageNumber: crop.pageNumber,
+            } as Question));
+            setExtractedQuestions(manualQuestions);
+            setExtractionStats({ totalExtracted: manualQuestions.length, subjectCounts: { Physics: manualQuestions.length } });
+            setStep('review');
+            toast.success(`${crops.length} questions created from manual crops. Add answer key in My Tests.`);
+            return;
+          }
           const targets = extractedQuestions
             .map((q, index) => ({ q, index }))
             .filter(({ q }) => q.hasDiagram || q.pdfPageNumber)
