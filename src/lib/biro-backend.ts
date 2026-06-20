@@ -40,6 +40,7 @@ async function callBackend(pdfBase64: string, mimeType: string): Promise<Extract
   "Accept": "application/json",
 },
     body: JSON.stringify({ pdfBase64: pdfBase64, mimeType: mimeType }),
+    signal: AbortSignal.timeout(120000),
   });
   if (!res.ok) throw new Error(`backend ${res.status}`);
   const data = await res.json();
