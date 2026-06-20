@@ -36,7 +36,7 @@ async function callBackend(pdfBase64: string, mimeType: string): Promise<Extract
   const res = await fetch(`${BACKEND_URL}/api/extract`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pdfBase64, mimeType }),
+    body: JSON.stringify({ pdfBase64: pdfBase64, mimeType: mimeType }),
   });
   if (!res.ok) throw new Error(`backend ${res.status}`);
   const data = await res.json();
