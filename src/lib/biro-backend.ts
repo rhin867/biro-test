@@ -1,20 +1,12 @@
 /**
  * Biro Backend client.
  * Calls the self-hosted Python FastAPI service (PyMuPDF + PaddleOCR + Regex)
- * configured via VITE_BIRO_BACKEND_URL. Falls back to the Lovable AI edge
- * function `extract-questions` only when the backend is unreachable, so PDF
- * conversion keeps working even if backend is down OR AI credits exhausted.
+ * Falls back to the Lovable AI edge function if backend is unreachable.
  */
 import { supabase } from "@/integrations/supabase/client";
 
-// Allow runtime override via localStorage so users can point at a deployed
-// backend without re-deploying the frontend. Set in browser console:
-//   localStorage.setItem('biro_backend_url', 'https://your-backend.onrender.com')
 function resolveBackendUrl(): string | undefined {
-  const env = (import.meta.env.VITE_BIRO_BACKEND_URL as string | undefined) || undefined;
-  let runtime: string | undefined;
-  try { runtime = localStorage.getItem('biro_backend_url') || undefined; } catch {}
-  return (runtime || env)?.replace(/\/$/, "") || undefined;
+  return "https://biro-backend.onrender.com";
 }
 const BACKEND_URL = resolveBackendUrl();
 
@@ -28,7 +20,7 @@ export interface ExtractedQuestionRaw {
   type: string;
   hasDiagram: boolean;
   pdfPageNumber: number | null;
-  diagramImage?: string; // base64 data URL
+  diagramImage?: string;
 }
 
 export interface ExtractResult {
@@ -64,11 +56,6 @@ async function callLovableAI(
   return { ...data, source: "lovable-ai" as const };
 }
 
-/**
- * Extract questions, trying the Python backend first.
- * On any backend failure (offline, 5xx, cold-start timeout) → falls back to
- * the Lovable AI edge function so the user is never blocked.
- */
 export async function extractQuestionsFromPdf(args: {
   pdfBase64: string;
   mimeType?: string;
