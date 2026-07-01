@@ -541,9 +541,13 @@ function CreateTestInner() {
             </div>
           )}
           <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setStep('configure')}>Back</Button>
-            <Button onClick={handleCreateTest} className="flex-1 glow-primary">
-              Create Test ({extractedQuestions.length} Questions)
+            <Button variant="outline" onClick={() => setStep('configure')} disabled={isCreating}>Back</Button>
+            <Button onClick={handleCreateTest} disabled={isCreating} className="flex-1 glow-primary">
+              {isCreating ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating…</>
+              ) : (
+                <>Create Test ({extractedQuestions.length} Questions)</>
+              )}
             </Button>
           </div>
         </div>
