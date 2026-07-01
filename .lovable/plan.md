@@ -1,112 +1,148 @@
-# Biro-Test: Zero-Credit PDF → CBT Pipeline + Bug Fixes
+# Biro-Test — Coding-based PDF→CBT + 3-Mode Creation Plan
 
-## Goal
+## Current state (what I verified)
 
-Stop depending on Lovable AI / Gemini credits for PDF extraction. Move the heavy lifting to a **self-hosted Python (FastAPI) backend** that uses PyMuPDF + PaddleOCR + Regex + pix2tex, so conversion keeps working even when AI credits are 0. Also fix the broken manual cropping flow and remaining frontend bugs.(make sure if it is not working then for loses it will direct work on lovable ai/gemini [and it is writing on the ui which is working ai/coding] so that pdf should convert into cbt and also dont it will stop also after fallback).
+- `src/lib/biro-backend.ts` hardcodes `https://biro-backend.onrender.com`. There is no `.env` entry and no `localStorage` override anymore. If the URL is wrong / service down, every PDF silently falls back to Lovable AI and burns credits.
+- No 90s timeout on backend fetch → cold-start hangs.
+- `parser.py` regex misses NTA `(A)` option format on many papers.
+- `ocr_pipeline.py` uses PaddleOCR → OOM on Render free tier.
+- `diagram_cropper.py` uses naive equal horizontal bands → cuts questions mid-text (the "bad crop" case in your diagram).
+- `ExamTimer` initialTime resets every tick → color warnings never fire.
+- `QuestionTimer` never mounted → `timeSpent` always 0 → analytics broken.
+- `storage.ts` swallows quota errors silently.
+- `CreateTest.tsx` "Create Test" button is not debounced → double-tap creates two tests and wastes daily quota.
+- `AnswerKeyInput.tsx` still calls Lovable AI edge fn even when backend URL is set.
+- Admin panel has no UI to manage the "AI-activation password" separately from other passwords.
+- No per-question "type" tag (MCQ / Integer / Numerical / Passage) surfaced in the manual crop tool.
+- Original PDF preview in question palette shows the cropped image, not the source page.
 
 ---
 
-## Architecture (final)
+## Plan (build order)
+
+### 1. Backend URL — proper resolution + timeout
+
+- `src/lib/biro-backend.ts`
+  - `resolveBackendUrl()`: read `import.meta.env.VITE_BIRO_BACKEND_URL`, fall back to `localStorage.getItem('biro_backend_url')`, fall back to `undefined` (no hardcode).
+  - Wrap `callBackend` with `AbortController` + 90s timeout so cold-starts don't hang.
+  - Add `BIRO_BACKEND_STATUS` export used by UI to show "coding mode ready / unavailable".
+- `.env` — add `VITE_BIRO_BACKEND_URL=` line (empty placeholder, user fills after Render deploy).
+- `.env.example` — new file documenting all vars.
+- `.gitignore` — add `.env`, `.env.local`, `.env.production`.
+
+### 2. Python backend fixes (biro-backend/)
+
+- `requirements.txt` — drop PaddleOCR/paddlepaddle, add `pytesseract`.
+- `Dockerfile` — add `tesseract-ocr`, `tesseract-ocr-eng` apt packages.
+- `app/services/ocr_pipeline.py` — rewrite to pdf2image + pytesseract (fits in 512 MB).
+- `app/services/parser.py` — new option regex handling `(A)` / `A)` / `A.` / `(A).`, false-positive filter that requires options within 800 chars of a question start, per-question type inference (`MCQ` / `Numerical` / `Integer` / `AssertionReason`).
+- `app/services/diagram_cropper.py` — replace equal-band split with contour/whitespace detection: render page, find horizontal whitespace bands, snap each diagram-flagged question to the band spanning from just above its Q-number line to just before the next Q-number line. Fallback = top-heavy 65/35 split only when there are exactly 2 questions on a page.
+- `app/routers/extract.py` — accept `pdfBase64` in JSON body (already partially done), also expose `/api/extract-answer-key` and `/api/crop-region` — verify all three respond to CORS from the app origin.
+
+### 3. Three-mode test creation UI (`src/pages/CreateTest.tsx`)
+
+Add a mode selector on the Upload step with three cards matching your diagram:
 
 ```text
-Frontend (Lovable/Vercel)
-   │  PDF upload
-   ▼
-Python FastAPI backend (Render/Railway free tier)
-   │
-   ├─ PDF Detector (PyMuPDF)
-   │     ├─ has selectable text? → TEXT PIPELINE
-   │     └─ scanned?            → OCR PIPELINE (PaddleOCR)
-   │
-   ├─ Regex/NLP Question Parser
-   │     Q.1 / 1. / Q1 → question
-   │     (A) (B) (C) (D) → options
-   │     "Answer: X"   → answer key
-   │
-   ├─ Diagram pipeline
-   │     PyMuPDF embedded images + OpenCV contour crop
-   │     → returned as base64, stored in IndexedDB on frontend
-   │
-   └─ Math pipeline
-         pix2tex on math-region crops → LaTeX strings
-         (frontend already renders with KaTeX)
-
-Output JSON → Supabase `public_tests` / local IndexedDB
+┌──────────────┬───────────────────┬─────────────────────┐
+│ A. Manual    │ B. Auto-Crop      │ C. Lovable AI       │
+│ crop         │ (code + Gemini)   │ (OCR + LaTeX)       │
+│ No password  │ Admin AI-pw       │ Admin AI-pw         │
+│ 0 credits    │ 0 credits or      │ Lovable credits     │
+│              │ user's Gemini key │                     │
+└──────────────┴───────────────────┴─────────────────────┘
 ```
 
-No Lovable AI / Gemini call in the default path. AI gateway becomes an **optional fallback** only when user toggles it.
+Behavior per mode:
+
+- **Manual** — go straight to `PDFCropTool`. User draws each crop AND picks a type dropdown per crop (MCQ / Numerical / Integer / Passage / Assertion-Reason) and subject/section tag. Creates blank `Question[]` with `diagramImage` = crop. 0 credits.
+- **Auto-Crop** — call Python backend first. If backend errors OR returns fewer questions than expected AND user has a Gemini key saved in Settings, retry using their key (routed through `extract-questions` edge fn with `userApiKey` param — Lovable AI is NOT called in this branch, the edge fn already supports BYO key). If no user key, surface a toast telling them to add one in Settings.
+- **Lovable AI** — current path: `extract-questions` edge fn with no user key (uses `LOVABLE_API_KEY`). Requires admin AI-activation password.
+
+Password check runs in a `<TestCreationGate>` dialog before mode B or C actually fires.
+
+### 4. Admin panel — password management (`src/pages/AdminPanel.tsx`)
+
+Split into three named passwords in `app_settings`:
+
+- `pw_ai_activation` — needed for modes B and C.
+- `pw_test_creation` — optional gate on creating any test.
+- `pw_public_publish` — needed to publish a test publicly.
+
+Add UI to view/change each independently. All checked server-side via existing `verify-password` edge fn (extend it to take `{ scope, password }`).
+
+### 5. Race-safe Create button (`CreateTest.tsx`)
+
+- `useRef<boolean>(false)` `creatingRef` flag.
+- Button `disabled={creating}` AND handler returns early if `creatingRef.current === true`.
+- Wrap the entire "log-test-creation → save test → navigate" chain in try/finally that only clears the flag after navigation is committed.
+
+### 6. Question palette shows source PDF page, not crop (`ExamInterface.tsx` / `QuestionPalette.tsx`)
+
+- On question object, keep both `diagramImage` (crop) AND `pdfPageImage` (full rendered page at low DPI, produced by backend during extraction).
+- Palette "View original PDF" button opens a dialog with `pdfPageImage` for the current question.
+- For manual-crop tests, `pdfPageImage` = the full page the user cropped from (we already have the pdf.js page canvas — save it once when crop is drawn).
+
+### 7. Timer + timeSpent fixes
+
+- `ExamTimer.tsx` — accept `initialTime` (fixed total) and `currentRemaining` (live), only sync from parent on first mount, use `initialTime` as denominator in `getTimerClass`.
+- `ExamInterface.tsx` — mount `<QuestionTimer key={q.id} …>` above `<QuestionDisplay>` and pipe `seconds` into `updateAttemptData({ timeSpent: seconds })`.
+
+### 8. Storage full warning (`src/lib/storage.ts` + `App.tsx`)
+
+- `setItem` catches `QuotaExceededError`, dispatches `biro:storage-full` CustomEvent.
+- `App.tsx` listens once and shows a `sonner` toast pointing to Settings → Export.
+
+### 9. Answer key extraction routed through backend (`AnswerKeyInput.tsx`)
+
+- If backend URL resolves → `POST /api/extract-answer-key` (0 credits).
+- Else → existing Lovable AI edge fn with `extractAnswerKeyOnly: true` and optional `userApiKey`.
 
 ---
 
-## What we deliver in this project
+## Technical notes / files touched
 
-### A. Python backend (`biro-backend/` folder added to repo, deployed separately)
+**Frontend**
 
-Files:
+- `.env`, `.env.example`, `.gitignore`
+- `src/lib/biro-backend.ts`
+- `src/lib/storage.ts`
+- `src/App.tsx` (storage-full listener)
+- `src/pages/CreateTest.tsx` (3-mode UI + race-safe button + type/section tagging)
+- `src/pages/AdminPanel.tsx` (3 password fields)
+- `src/pages/ExamInterface.tsx` (QuestionTimer wiring + palette source-PDF dialog)
+- `src/components/exam/ExamTimer.tsx` (initialTime fix)
+- `src/components/exam/PDFCropTool.tsx` (per-crop type + subject/section dropdown)
+- `src/components/exam/AnswerKeyInput.tsx` (backend route)
+- `src/components/exam/QuestionPalette.tsx` (source-PDF button)
 
-- `biro-backend/app/main.py` — FastAPI app, CORS
-- `biro-backend/app/services/pdf_detector.py` — text vs scanned check
-- `biro-backend/app/services/text_pipeline.py` — PyMuPDF text + image extraction
-- `biro-backend/app/services/ocr_pipeline.py` — pdf2image + PaddleOCR
-- `biro-backend/app/services/parser.py` — regex question/option/answer parser, subject/chapter heuristics, `hasDiagram` flag, page number tracking
-- `biro-backend/app/services/diagram_cropper.py` — OpenCV contour-based diagram crop attached to nearest question
-- `biro-backend/app/services/math_pipeline.py` — optional pix2tex (lazy-load, off by default to keep memory low on free tier)
-- `biro-backend/app/routers/extract.py` — `POST /api/extract`, `POST /api/extract-answer-key`, `POST /api/crop-region`
-- `biro-backend/requirements.txt`, `Dockerfile`, `render.yaml` / `railway.toml`, `README.md` deploy guide
+**Backend**
 
-Output JSON matches existing frontend shape (`questionNumber`, `subject`, `chapter`, `question`, `options{A..D}`, `correctAnswer`, `type`, `hasDiagram`, `pdfPageNumber`, plus `diagramImage` base64 when cropped).
+- `biro-backend/requirements.txt`
+- `biro-backend/Dockerfile`
+- `biro-backend/app/services/ocr_pipeline.py`
+- `biro-backend/app/services/parser.py`
+- `biro-backend/app/services/diagram_cropper.py`
+- `biro-backend/app/routers/extract.py` (CORS + response shape)
 
-### B. Frontend integration
+**Cloud (edge fns + migration)**
 
-- New `src/lib/biro-backend.ts` client: calls `VITE_BIRO_BACKEND_URL` first; on network failure falls back to the existing `extract-questions` edge function.
-- `src/pages/CreateTest.tsx`: route extraction through the new client, show real per-page progress logs, attach returned diagrams to the matching question (by `questionNumber`), persist diagrams in IndexedDB (already wired).
-- `src/components/exam/PDFCropTool.tsx`: rewrite the manual crop so the selection rectangle uses the **actual rendered image's bounding rect** (currently uses container coords → wrong crop). Call backend `/api/crop-region` with `{pageNumber, x, y, w, h, scale}` or, when offline, do the crop in-browser with canvas using the corrected coords. Replace currently-broken div-overlay math.
-- `src/pages/ExamInterface.tsx`: render `question.diagramImage` (base64) directly under the question text when present, ensuring diagrams appear **below** the question they belong to.
-- `.env.example`: add `VITE_BIRO_BACKEND_URL=`.
-
-### C. Bug sweep (small focused fixes)
-
-- Biro-Brain: pin model to `google/gemini-2.5-flash` (the `gemini-3-flash-preview` reference still in `extract-questions` is gated; switch its default to `gemini-2.5-flash` too so the AI fallback path doesn't 404).
-- `storage.ts`: ensure answer-key application matches by `questionNumber` (verify, already partially done).
-- `ExamInterface.tsx`: confirm autosave uses `useRef` and doesn't reset on every answer change.
-- `CreateTest.tsx`: quota check runs **before** any extraction call; show remaining daily/monthly count.
-- Move test-creation password + admin passwords fully server-side: ensure no plaintext or hash appears in any frontend bundle (audit `app-settings.ts`, `TestCreationGate.tsx`, `AdminPanel.tsx`). Only the edge function `verify-password` ever sees the secret.
-- Add `.env` to `.gitignore` confirmation.
-
-### D. Deploy guide (in `biro-backend/README.md`)
-
-1. Push `biro-backend/` to a new GitHub repo (or subfolder deploy).
-2. Render.com → New Web Service → Docker → free tier. Auto-detects `Dockerfile`.
-3. Copy the deployed URL → set `VITE_BIRO_BACKEND_URL` in Lovable Cloud env (and Vercel for the GitHub mirror).
-4. Done — extraction now runs on Render, 0 AI credits used.
+- `supabase/functions/verify-password/index.ts` — accept `scope`.
+- `supabase/migrations/*.sql` — add `pw_ai_activation`, `pw_test_creation`, `pw_public_publish` columns to `app_settings` (or JSON blob), plus GRANTs.
 
 ---
 
-## Why this is robust
+## What I need from you before I build
 
-- **PyMuPDF** handles 90% of JEE PDFs (NTA, Allen, Resonance, Aakash digital PDFs all have selectable text).
-- **PaddleOCR** kicks in only for scanned image PDFs — ~92% accuracy, free, no API key.
-- **Regex parser** is deterministic: JEE numbering (`Q.1`, `1.`, `(A)…(D)`, `Answer: B`) is stable enough that we don't need an LLM to parse it.
-- **OpenCV crop + PyMuPDF image extract** gives real diagrams under each question without AI.
-- AI gateway becomes optional → no monthly credit cliff.
+1. **Render backend URL** — the exact `https://biro-backend-xxxx.onrender.com` URL so I can bake it into `.env`. If you don't have it yet, I'll leave `VITE_BIRO_BACKEND_URL` blank and you can set it via DevTools `localStorage.setItem('biro_backend_url', '<url>')` after deploy.
+2. Confirm the **three password scopes** above are the split you want (AI-activation / test-creation / public-publish), or list the exact scopes you want instead.
+3. Confirm **question type dropdown** options for the manual crop tool: MCQ, Numerical, Integer, Passage, Assertion-Reason — add/remove any?
 
----
+Reply with the Render URL (or "leave blank") and answers to 2/3, and I'll implement all 9 sections in one build pass.
 
-## Scope NOT included (call out)
+[https://biro-backend.onrender.com](https://biro-backend.onrender.com)
 
-- I cannot push to your GitHub `rhin867/Biro-tests` repo directly — I'll add the files in this Lovable project; you copy/push them to GitHub.
-- pix2tex math-image → LaTeX is wired but **off by default** (heavy model, ~400MB). Enable with `ENABLE_PIX2TEX=true` env var on the backend once you upgrade Render tier. Until then math stays as plain text + KaTeX rendering of any `$...$` already present.
-- Render free tier sleeps after 15min idle → first extraction after sleep takes ~30s cold start. Acceptable for solo use; upgrade to $7/mo for always-on.
+If it is biro backend url then pls set it(because i cant)
 
----
-
-## Order of work after approval
-
-1. Scaffold `biro-backend/` (all Python files + Dockerfile + README).
-2. Add `src/lib/biro-backend.ts` client and wire `CreateTest.tsx`.
-3. Rewrite `PDFCropTool.tsx` selection math.
-4. Render diagrams under questions in `ExamInterface.tsx`.
-5. Pin Gemini model fallback, audit password leakage.
-6. Commit. You push `biro-backend/` to GitHub and deploy on Render, then paste the URL into the env var.
-
-Approve and I'll build it.
+2. Yes i want three password...
+3. Keep all these question types:MCQ, Numerical, Integer, Passage, Assertion-Reason,and also subject selection nd section selection(like maths/phy/chem subject have 2-3 etc sections)

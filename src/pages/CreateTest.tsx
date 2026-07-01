@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout, PageHeader } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -210,12 +210,20 @@ function CreateTestInner() {
       setIsProcessing(false);
     }
   }, [pdfText, pdfFile, pdfPageImages]);
+  const creatingRef = useRef(false);
+  const [isCreating, setIsCreating] = useState(false);
   const handleCreateTest = async () => {
+    // Race guard — double-tap on slow devices was creating multiple tests and burning quota.
+    if (creatingRef.current) {
+      toast.info('Already creating your test — please wait…');
+      return;
+    }
     if (extractedQuestions.length === 0) {
       toast.error('No questions to create test');
       return;
     }
-    // Server-side quota check
+    creatingRef.current = true;
+    setIsCreating(true);
     try {
       const quota = await fetchQuotaInfo();
       if (quota.exceeded) {
@@ -248,8 +256,6 @@ function CreateTestInner() {
         positiveMarking,
         negativeMarking,
         hasAnswerKey,
-        // Do NOT embed PDF page images in the test — they blow past the 5 MB localStorage limit
-        // and silently break saveTest, making the test never appear in My Tests.
         pdfPageImages: undefined,
       };
       try {
@@ -269,6 +275,9 @@ function CreateTestInner() {
     } catch (e: any) {
       console.error(e);
       toast.error('Failed to save test: ' + (e.message || 'unknown'));
+    } finally {
+      creatingRef.current = false;
+      setIsCreating(false);
     }
   };
   const diagramQuestionCount = extractedQuestions.filter(q => q.hasDiagram).length;
@@ -532,9 +541,13 @@ function CreateTestInner() {
             </div>
           )}
           <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setStep('configure')}>Back</Button>
-            <Button onClick={handleCreateTest} className="flex-1 glow-primary">
-              Create Test ({extractedQuestions.length} Questions)
+            <Button variant="outline" onClick={() => setStep('configure')} disabled={isCreating}>Back</Button>
+            <Button onClick={handleCreateTest} disabled={isCreating} className="flex-1 glow-primary">
+              {isCreating ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating…</>
+              ) : (
+                <>Create Test ({extractedQuestions.length} Questions)</>
+              )}
             </Button>
           </div>
         </div>

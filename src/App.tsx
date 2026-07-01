@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -27,7 +29,13 @@ import Auth from "./pages/Auth";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  useEffect(() => {
+    const handler = () => toast.warning('Local storage is full. Export your data from Settings to avoid losing tests.');
+    window.addEventListener('biro:storage-full', handler);
+    return () => window.removeEventListener('biro:storage-full', handler);
+  }, []);
+  return (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <NTAModeProvider>
@@ -61,6 +69,7 @@ const App = () => (
       </NTAModeProvider>
     </TooltipProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;
