@@ -29,7 +29,13 @@ import Auth from "./pages/Auth";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  useEffect(() => {
+    const handler = () => toast.warning('Local storage is full. Export your data from Settings to avoid losing tests.');
+    window.addEventListener('biro:storage-full', handler);
+    return () => window.removeEventListener('biro:storage-full', handler);
+  }, []);
+  return (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <NTAModeProvider>
