@@ -27,9 +27,18 @@ function getItem<T>(key: string, defaultValue: T): T {
 
 function setItem<T>(key: string, value: T): void {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    const serialized = JSON.stringify(value);
+    if (serialized.length > 1_000_000) {
+      console.warn(`Large storage write: ${key} = ${(serialized.length / 1024).toFixed(0)}KB`);
+    }
+    localStorage.setItem(key, serialized);
   } catch (error) {
     console.error(`Failed to save to localStorage: ${key}`, error);
+    try {
+      window.dispatchEvent(new CustomEvent('biro:storage-full', { detail: { key } }));
+    } catch {
+      // ignore
+    }
     throw error;
   }
 }
