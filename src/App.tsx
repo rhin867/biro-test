@@ -69,6 +69,7 @@ const App = () => {
       </NTAModeProvider>
     </TooltipProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;
