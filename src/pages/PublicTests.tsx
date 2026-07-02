@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Loader2, Globe, Lock, Users, Play } from 'lucide-react';
+import { Loader2, Globe, Lock, Users, Play, Shield, Trash2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { saveTest, getTestById } from '@/lib/storage';
@@ -26,12 +26,23 @@ interface PublicTestRow {
   created_at: string;
 }
 
+const ADMIN_PW_SESSION_KEY = 'admin_owner_pw_session';
+
 export default function PublicTests() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<PublicTestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [pwDialog, setPwDialog] = useState<PublicTestRow | null>(null);
   const [pwInput, setPwInput] = useState('');
+
+  // Admin mode
+  const [adminPw, setAdminPw] = useState<string>(() => sessionStorage.getItem(ADMIN_PW_SESSION_KEY) || '');
+  const [adminDialog, setAdminDialog] = useState(false);
+  const [adminPwInput, setAdminPwInput] = useState('');
+  const [renameRow, setRenameRow] = useState<PublicTestRow | null>(null);
+  const [renameInput, setRenameInput] = useState('');
+  const [deleteRow, setDeleteRow] = useState<PublicTestRow | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => { load(); }, []);
 
@@ -65,9 +76,63 @@ export default function PublicTests() {
     startTest(row, pwInput);
   };
 
+  const handleUnlockAdmin = async () => {
+    if (!adminPwInput.trim()) return toast.error('Enter owner password');
+    setBusy(true);
+    try {
+      const { data } = await supabase.functions.invoke('verify-password', {
+        body: { kind: 'admin_2', password: adminPwInput.trim() },
+      });
+      if (!data?.ok) return toast.error(data?.error || 'Wrong password');
+      sessionStorage.setItem(ADMIN_PW_SESSION_KEY, adminPwInput.trim());
+      setAdminPw(adminPwInput.trim());
+      setAdminDialog(false);
+      setAdminPwInput('');
+      toast.success('Admin mode unlocked for this session');
+    } finally { setBusy(false); }
+  };
+
+  const handleRename = async () => {
+    if (!renameRow || !renameInput.trim() || !adminPw) return;
+    setBusy(true);
+    try {
+      const { data } = await supabase.functions.invoke('admin-manage-public-test', {
+        body: { action: 'rename', id: renameRow.id, name: renameInput.trim(), password: adminPw },
+      });
+      if (data?.error) return toast.error(data.error);
+      toast.success('Renamed');
+      setRenameRow(null);
+      setRenameInput('');
+      load();
+    } finally { setBusy(false); }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteRow || !adminPw) return;
+    setBusy(true);
+    try {
+      const { data } = await supabase.functions.invoke('admin-manage-public-test', {
+        body: { action: 'delete', id: deleteRow.id, password: adminPw },
+      });
+      if (data?.error) return toast.error(data.error);
+      toast.success('Public test deleted');
+      setDeleteRow(null);
+      load();
+    } finally { setBusy(false); }
+  };
+
   return (
     <MainLayout>
-      <PageHeader title="Public Tests" description="Tests shared by the community. Anyone can attempt them." />
+      <PageHeader title="Public Tests" description="Tests shared by the community. Anyone can attempt them.">
+        {adminPw ? (
+          <Badge variant="outline" className="gap-1"><Shield className="h-3 w-3" /> Admin Mode</Badge>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => setAdminDialog(true)} className="gap-1">
+            <Shield className="h-3 w-3" /> Admin
+          </Button>
+        )}
+      </PageHeader>
+
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : rows.length === 0 ? (
@@ -99,12 +164,25 @@ export default function PublicTests() {
                   <Badge variant="outline"><Users className="h-3 w-3 mr-1" /> {row.attempts_count} attempts</Badge>
                   <Button size="sm" onClick={() => handleClick(row)} className="gap-2"><Play className="h-3 w-3" /> Start</Button>
                 </div>
+                {adminPw && (
+                  <div className="flex gap-2 pt-2 border-t border-border">
+                    <Button size="sm" variant="outline" className="flex-1 gap-1"
+                      onClick={() => { setRenameRow(row); setRenameInput(row.name); }}>
+                      <Pencil className="h-3 w-3" /> Rename
+                    </Button>
+                    <Button size="sm" variant="destructive" className="flex-1 gap-1"
+                      onClick={() => setDeleteRow(row)}>
+                      <Trash2 className="h-3 w-3" /> Delete
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
         </div>
       )}
 
+      {/* Password to open password-protected test */}
       <Dialog open={!!pwDialog} onOpenChange={(o) => !o && setPwDialog(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Password Required</DialogTitle></DialogHeader>
@@ -114,6 +192,45 @@ export default function PublicTests() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setPwDialog(null)}>Cancel</Button>
             <Button onClick={handlePwSubmit}>Unlock</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Admin unlock */}
+      <Dialog open={adminDialog} onOpenChange={(o) => !o && setAdminDialog(false)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Owner Access</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Enter the owner password to enable rename / delete on public tests.</p>
+          <Input type="password" value={adminPwInput} onChange={e => setAdminPwInput(e.target.value)}
+            placeholder="Owner password" onKeyDown={e => e.key === 'Enter' && handleUnlockAdmin()} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAdminDialog(false)}>Cancel</Button>
+            <Button onClick={handleUnlockAdmin} disabled={busy}>{busy ? 'Verifying...' : 'Unlock'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename */}
+      <Dialog open={!!renameRow} onOpenChange={(o) => !o && setRenameRow(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Rename Public Test</DialogTitle></DialogHeader>
+          <Input value={renameInput} onChange={e => setRenameInput(e.target.value)}
+            placeholder="New test name" onKeyDown={e => e.key === 'Enter' && handleRename()} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameRow(null)}>Cancel</Button>
+            <Button onClick={handleRename} disabled={busy || !renameInput.trim()}>{busy ? 'Saving...' : 'Save'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirm */}
+      <Dialog open={!!deleteRow} onOpenChange={(o) => !o && setDeleteRow(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Delete "{deleteRow?.name}"?</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">This removes the test from the Public Tests panel for everyone. Local copies on other devices are not affected.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteRow(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={busy}>{busy ? 'Deleting...' : 'Delete'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
