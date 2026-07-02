@@ -62,10 +62,12 @@ export default function MyTests() {
     if (!test) return;
     setPublishing(true);
     try {
+      const finalName = (publishName.trim() || test.name).slice(0, 240);
       const questionImages = await loadTestQuestionImages(test.id);
-      const publishTest = Object.keys(questionImages).length
+      const withImages = Object.keys(questionImages).length
         ? { ...test, questions: test.questions.map((q) => questionImages[q.id] ? { ...q, croppedImageUrl: questionImages[q.id], hasDiagram: true } : q) }
         : test;
+      const publishTest = { ...withImages, name: finalName };
       const { data, error } = await supabase.functions.invoke('publish-public-test', {
         body: { test: publishTest, ownerName: getCurrentDisplayName(), password: publishPw.trim() || null },
       });
@@ -74,6 +76,7 @@ export default function MyTests() {
       toast.success('Test published! Anyone can find it in Public Tests.');
       setPublishDialog(null);
       setPublishPw('');
+      setPublishName('');
     } catch (e: any) {
       toast.error('Failed to publish: ' + (e.message || 'unknown error'));
     } finally {
