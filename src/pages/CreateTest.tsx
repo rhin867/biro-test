@@ -163,7 +163,8 @@ function CreateTestInner() {
         subjectCounts: data.subjectCounts || {},
         examTitle: data.examTitle,
       });
-      if (data.examTitle && data.examTitle !== 'Extracted Test') setTestName(data.examTitle);
+      // Only auto-fill the name if the user hasn't typed one — never overwrite user input.
+      if (!testName.trim() && data.examTitle && data.examTitle !== 'Extracted Test') setTestName(data.examTitle);
       setStep('review');
       toast.success(`Extracted ${questionsWithImages.length} questions in ${elapsed}s${data.source ? ` (${data.source})` : ''}`);
     };

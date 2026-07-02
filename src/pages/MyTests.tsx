@@ -31,6 +31,7 @@ export default function MyTests() {
   const [newName, setNewName] = useState('');
   const [publishDialog, setPublishDialog] = useState<{ id: string } | null>(null);
   const [publishPw, setPublishPw] = useState('');
+  const [publishName, setPublishName] = useState('');
   const [publishing, setPublishing] = useState(false);
 
   const handleDeleteTest = (testId: string) => {
@@ -61,10 +62,12 @@ export default function MyTests() {
     if (!test) return;
     setPublishing(true);
     try {
+      const finalName = (publishName.trim() || test.name).slice(0, 240);
       const questionImages = await loadTestQuestionImages(test.id);
-      const publishTest = Object.keys(questionImages).length
+      const withImages = Object.keys(questionImages).length
         ? { ...test, questions: test.questions.map((q) => questionImages[q.id] ? { ...q, croppedImageUrl: questionImages[q.id], hasDiagram: true } : q) }
         : test;
+      const publishTest = { ...withImages, name: finalName };
       const { data, error } = await supabase.functions.invoke('publish-public-test', {
         body: { test: publishTest, ownerName: getCurrentDisplayName(), password: publishPw.trim() || null },
       });
@@ -73,6 +76,7 @@ export default function MyTests() {
       toast.success('Test published! Anyone can find it in Public Tests.');
       setPublishDialog(null);
       setPublishPw('');
+      setPublishName('');
     } catch (e: any) {
       toast.error('Failed to publish: ' + (e.message || 'unknown error'));
     } finally {
@@ -125,7 +129,7 @@ export default function MyTests() {
                         <DropdownMenuItem onClick={() => { setRenameDialog({ id: test.id, name: test.name }); setNewName(test.name); }}>
                           <Pencil className="h-3 w-3 mr-2" /> Rename
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => { setPublishDialog({ id: test.id }); setPublishPw(''); }}>
+                        <DropdownMenuItem onClick={() => { setPublishDialog({ id: test.id }); setPublishPw(''); setPublishName(test.name); }}>
                           <Globe className="h-3 w-3 mr-2" /> Make Public
                         </DropdownMenuItem>
                         {results.length > 0 && (
@@ -231,13 +235,23 @@ export default function MyTests() {
           <DialogHeader><DialogTitle>Make Test Public</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">
             Anyone will be able to find and attempt this test from the Public Tests panel.
-            Optionally protect it with a password so only people you share the password with can attempt it.
+            Rename it here if you want a different public title, and optionally protect it with a password.
           </p>
-          <Input type="text" value={publishPw} onChange={e => setPublishPw(e.target.value)}
-            placeholder="Optional password (leave empty for no password)" />
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Public test name</label>
+            <Input type="text" value={publishName} onChange={e => setPublishName(e.target.value)}
+              placeholder="Test name shown to others" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Password (optional)</label>
+            <Input type="text" value={publishPw} onChange={e => setPublishPw(e.target.value)}
+              placeholder="Leave empty for no password" />
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPublishDialog(null)}>Cancel</Button>
-            <Button onClick={handleMakePublic} disabled={publishing}>{publishing ? 'Publishing...' : 'Publish'}</Button>
+            <Button onClick={handleMakePublic} disabled={publishing || !publishName.trim()}>
+              {publishing ? 'Publishing...' : 'Publish'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
