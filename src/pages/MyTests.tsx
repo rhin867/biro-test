@@ -31,6 +31,7 @@ export default function MyTests() {
   const [newName, setNewName] = useState('');
   const [publishDialog, setPublishDialog] = useState<{ id: string } | null>(null);
   const [publishPw, setPublishPw] = useState('');
+  const [publishName, setPublishName] = useState('');
   const [publishing, setPublishing] = useState(false);
 
   const handleDeleteTest = (testId: string) => {
