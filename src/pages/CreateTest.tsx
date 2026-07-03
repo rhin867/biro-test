@@ -65,7 +65,15 @@ function CreateTestInner() {
   const [extractionFailed, setExtractionFailed] = useState(false);
   const [extractionTime, setExtractionTime] = useState(0);
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
+  const [extractionMode, setExtractionMode] = useState<'manual' | 'auto' | 'ai'>(BIRO_BACKEND_CONFIGURED ? 'auto' : 'ai');
+  const [backendWarm, setBackendWarm] = useState<'idle' | 'warming' | 'ready' | 'down'>('idle');
   React.useEffect(() => { fetchQuotaInfo().then(setQuota); }, []);
+  // Warm the Render dyno as soon as the user opens the page — kills the "unavailable" first-call error.
+  React.useEffect(() => {
+    if (!BIRO_BACKEND_CONFIGURED) return;
+    setBackendWarm('warming');
+    warmupBackend().then(ok => setBackendWarm(ok ? 'ready' : 'down'));
+  }, []);
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
