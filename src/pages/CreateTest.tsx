@@ -635,25 +635,32 @@ function CreateTestInner() {
         pages={pdfPageImages}
         onCroppedQuestions={(crops) => {
           if (extractedQuestions.length === 0) {
-            // Pure manual mode — build blank questions from crops, 0 AI credits.
-            const manualQuestions: Question[] = crops.map((crop, i) => ({
-              id: generateId(),
-              questionNumber: i + 1,
-              subject: 'Physics',
-              chapter: 'General',
-              question: `Question ${i + 1} (see diagram)`,
-              options: { A: '', B: '', C: '', D: '' },
-              correctAnswer: null,
-              type: 'MCQ',
-              level: 'JEE',
-              croppedImageUrl: crop.dataUrl,
-              hasDiagram: true,
-              pdfPageNumber: crop.pageNumber,
-            } as Question));
+            // Pure manual mode — build questions from crop metadata (subject/type/section/answer).
+            const subjectCounts: Record<string, number> = {};
+            const manualQuestions: Question[] = crops.map((crop, i) => {
+              subjectCounts[crop.subject] = (subjectCounts[crop.subject] || 0) + 1;
+              const isNumericalType = crop.qType === 'Numerical' || crop.qType === 'Integer';
+              return {
+                id: generateId(),
+                questionNumber: i + 1,
+                subject: crop.subject,
+                chapter: crop.section || 'General',
+                question: `Question ${i + 1} (see image)`,
+                options: isNumericalType
+                  ? { A: '', B: '', C: '', D: '' }
+                  : { A: '', B: '', C: '', D: '' },
+                correctAnswer: crop.correctAnswer?.trim() || null,
+                type: crop.qType === 'MSQ' ? 'MSQ' : isNumericalType ? 'Numerical' : 'MCQ',
+                level: 'JEE',
+                croppedImageUrl: crop.dataUrl,
+                hasDiagram: true,
+                pdfPageNumber: crop.pageNumber,
+              } as Question;
+            });
             setExtractedQuestions(manualQuestions);
-            setExtractionStats({ totalExtracted: manualQuestions.length, subjectCounts: { Physics: manualQuestions.length } });
+            setExtractionStats({ totalExtracted: manualQuestions.length, subjectCounts });
             setStep('review');
-            toast.success(`${crops.length} questions created from manual crops. Add answer key in My Tests.`);
+            toast.success(`${crops.length} questions created from manual crops.`);
             return;
           }
           const targets = extractedQuestions
@@ -663,9 +670,9 @@ function CreateTestInner() {
           setExtractedQuestions(prev => prev.map((q) => {
             const targetIndex = targets.findIndex(t => t.q.id === q.id);
             const crop = targetIndex >= 0 ? crops[targetIndex] : undefined;
-            return crop ? { ...q, croppedImageUrl: crop.dataUrl, hasDiagram: true, pdfPageNumber: crop.pageNumber } : q;
+            return crop ? { ...q, croppedImageUrl: crop.dataUrl, hasDiagram: true, pdfPageNumber: crop.pageNumber, subject: crop.subject } : q;
           }));
-          toast.success(`${crops.length} regions cropped and attached to diagram questions.`);
+          toast.success(`${crops.length} regions cropped and attached to questions.`);
         }}
       />
     </MainLayout>
