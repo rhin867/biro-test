@@ -408,9 +408,9 @@ function CreateTestInner() {
               <Label className="text-sm">Extraction Mode</Label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {([
-                  { id: 'manual', title: 'Manual', desc: 'Crop yourself. 0 AI calls.', icon: Crop },
+                  { id: 'manual', title: 'Manual', desc: 'Crop yourself. 0 AI calls.', icon: Crop, disabled: false },
                   { id: 'auto', title: 'Auto-Crop', desc: BIRO_BACKEND_CONFIGURED ? 'Python backend · 0 credits' : 'Backend not configured', icon: Sparkles, disabled: !BIRO_BACKEND_CONFIGURED },
-                  { id: 'ai', title: 'AI (Lovable)', desc: 'Best accuracy · uses credits', icon: Sparkles },
+                  { id: 'ai', title: 'AI (Lovable)', desc: 'Best accuracy · uses credits', icon: Sparkles, disabled: false },
                 ] as const).map(m => (
                   <button
                     key={m.id}
