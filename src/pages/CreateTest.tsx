@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { TestCreationGate } from '@/components/exam/TestCreationGate';
 import { fetchQuotaInfo, logTestCreation, QuotaInfo } from '@/lib/app-settings';
 import { getUserApiKey } from '@/pages/Settings';
-import { extractQuestionsFromPdf, BIRO_BACKEND_CONFIGURED } from '@/lib/biro-backend';
+import { extractQuestionsFromPdf, BIRO_BACKEND_CONFIGURED, warmupBackend } from '@/lib/biro-backend';
 
 async function cropQuestionBandFromPage(imageDataUrl: string, indexOnPage: number, totalOnPage: number): Promise<string> {
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
