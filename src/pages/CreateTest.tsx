@@ -491,9 +491,15 @@ function CreateTestInner() {
             )}
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setStep('upload')}>Back</Button>
-              <Button onClick={extractQuestions} disabled={isProcessing} className="flex-1">
+              <Button
+                onClick={() => extractionMode === 'manual' ? setShowCropTool(true) : extractQuestions()}
+                disabled={isProcessing}
+                className="flex-1"
+              >
                 {isProcessing ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Extracting...</>
+                ) : extractionMode === 'manual' ? (
+                  <><Crop className="mr-2 h-4 w-4" />Open Crop Tool</>
                 ) : (
                   <><Sparkles className="mr-2 h-4 w-4" />Extract Questions</>
                 )}
