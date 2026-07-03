@@ -195,15 +195,22 @@ function CreateTestInner() {
           ? 'Extracting via Biro backend (0 AI credits)…'
           : 'Extracting via AI (set VITE_BIRO_BACKEND_URL to skip credits)…');
         const pdfBase64 = await fileToBase64(pdfFile);
+        // If backend hasn't warmed yet, ping once more before the big call.
+        if (extractionMode === 'auto' && BIRO_BACKEND_CONFIGURED && backendWarm !== 'ready') {
+          toast.info('Waking extraction backend (first call after idle can take ~30s)…');
+          const ok = await warmupBackend();
+          setBackendWarm(ok ? 'ready' : 'down');
+          if (!ok) toast.info('Backend still cold — will fall back to AI if needed.');
+        }
         const data = await extractQuestionsFromPdf({
           pdfBase64,
           mimeType: 'application/pdf',
           userApiKey,
+          forceAI: extractionMode === 'ai',
           onStage: (msg) => toast.info(msg),
         });
         await finishExtraction(data, startTime);
       } else {
-        // Pasted text: backend regex parser needs PDF bytes; use AI path.
         const result = await supabase.functions.invoke('extract-questions', {
           body: { pdfText, ...(userApiKey ? { userApiKey } : {}) },
         });
