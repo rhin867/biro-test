@@ -403,9 +403,47 @@ function CreateTestInner() {
                 <Input type="number" value={negativeMarking} onChange={(e) => setNegativeMarking(Number(e.target.value))} min={0} max={10} />
               </div>
             </div>
+            {/* 3-Mode Extraction Selector */}
+            <div className="space-y-2">
+              <Label className="text-sm">Extraction Mode</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {([
+                  { id: 'manual', title: 'Manual', desc: 'Crop yourself. 0 AI calls.', icon: Crop },
+                  { id: 'auto', title: 'Auto-Crop', desc: BIRO_BACKEND_CONFIGURED ? 'Python backend · 0 credits' : 'Backend not configured', icon: Sparkles, disabled: !BIRO_BACKEND_CONFIGURED },
+                  { id: 'ai', title: 'AI (Lovable)', desc: 'Best accuracy · uses credits', icon: Sparkles },
+                ] as const).map(m => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    disabled={m.disabled}
+                    onClick={() => setExtractionMode(m.id as any)}
+                    className={cn(
+                      'text-left p-2.5 rounded-lg border-2 transition-all',
+                      extractionMode === m.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/40',
+                      m.disabled && 'opacity-50 cursor-not-allowed'
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <m.icon className="h-4 w-4" />
+                      <span className="text-sm font-semibold">{m.title}</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">{m.desc}</p>
+                  </button>
+                ))}
+              </div>
+              {BIRO_BACKEND_CONFIGURED && (
+                <p className="text-[10px] text-muted-foreground">
+                  Backend status: {backendWarm === 'ready' ? '🟢 Ready' : backendWarm === 'warming' ? '🟡 Warming up…' : backendWarm === 'down' ? '🔴 Cold (will retry)' : '⚪ Idle'}
+                </p>
+              )}
+            </div>
             <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
               <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
-              <p className="text-sm">AI will extract questions with LaTeX math, detect diagrams & subjects automatically</p>
+              <p className="text-sm">
+                {extractionMode === 'manual' && 'You will crop each question manually — tag subject / section / type per crop.'}
+                {extractionMode === 'auto' && 'Auto-Crop uses regex + OCR on our Python backend — 0 AI credits.'}
+                {extractionMode === 'ai' && 'AI extracts questions with LaTeX math, subjects and diagrams (uses credits).'}
+              </p>
             </div>
             {/* PDF Page Preview */}
             {pdfPageImages.length > 0 && (
