@@ -45,6 +45,21 @@ export interface ExtractResult {
   source: "python-backend" | "lovable-ai";
 }
 
+/** Ping /health to wake the Render free-tier dyno. Fire-and-forget with short timeout. */
+export async function warmupBackend(): Promise<boolean> {
+  if (!BACKEND_URL) return false;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60_000);
+  try {
+    const res = await fetch(`${BACKEND_URL}/health`, { signal: controller.signal });
+    return res.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function callBackend(pdfBase64: string, mimeType: string): Promise<ExtractResult> {
   if (!BACKEND_URL) throw new Error("no-backend");
   const controller = new AbortController();

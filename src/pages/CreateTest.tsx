@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { TestCreationGate } from '@/components/exam/TestCreationGate';
 import { fetchQuotaInfo, logTestCreation, QuotaInfo } from '@/lib/app-settings';
 import { getUserApiKey } from '@/pages/Settings';
-import { extractQuestionsFromPdf, BIRO_BACKEND_CONFIGURED } from '@/lib/biro-backend';
+import { extractQuestionsFromPdf, BIRO_BACKEND_CONFIGURED, warmupBackend } from '@/lib/biro-backend';
 
 async function cropQuestionBandFromPage(imageDataUrl: string, indexOnPage: number, totalOnPage: number): Promise<string> {
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -65,7 +65,15 @@ function CreateTestInner() {
   const [extractionFailed, setExtractionFailed] = useState(false);
   const [extractionTime, setExtractionTime] = useState(0);
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
+  const [extractionMode, setExtractionMode] = useState<'manual' | 'auto' | 'ai'>(BIRO_BACKEND_CONFIGURED ? 'auto' : 'ai');
+  const [backendWarm, setBackendWarm] = useState<'idle' | 'warming' | 'ready' | 'down'>('idle');
   React.useEffect(() => { fetchQuotaInfo().then(setQuota); }, []);
+  // Warm the Render dyno as soon as the user opens the page — kills the "unavailable" first-call error.
+  React.useEffect(() => {
+    if (!BIRO_BACKEND_CONFIGURED) return;
+    setBackendWarm('warming');
+    warmupBackend().then(ok => setBackendWarm(ok ? 'ready' : 'down'));
+  }, []);
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -187,15 +195,22 @@ function CreateTestInner() {
           ? 'Extracting via Biro backend (0 AI credits)…'
           : 'Extracting via AI (set VITE_BIRO_BACKEND_URL to skip credits)…');
         const pdfBase64 = await fileToBase64(pdfFile);
+        // If backend hasn't warmed yet, ping once more before the big call.
+        if (extractionMode === 'auto' && BIRO_BACKEND_CONFIGURED && backendWarm !== 'ready') {
+          toast.info('Waking extraction backend (first call after idle can take ~30s)…');
+          const ok = await warmupBackend();
+          setBackendWarm(ok ? 'ready' : 'down');
+          if (!ok) toast.info('Backend still cold — will fall back to AI if needed.');
+        }
         const data = await extractQuestionsFromPdf({
           pdfBase64,
           mimeType: 'application/pdf',
           userApiKey,
+          forceAI: extractionMode === 'ai',
           onStage: (msg) => toast.info(msg),
         });
         await finishExtraction(data, startTime);
       } else {
-        // Pasted text: backend regex parser needs PDF bytes; use AI path.
         const result = await supabase.functions.invoke('extract-questions', {
           body: { pdfText, ...(userApiKey ? { userApiKey } : {}) },
         });
@@ -388,9 +403,47 @@ function CreateTestInner() {
                 <Input type="number" value={negativeMarking} onChange={(e) => setNegativeMarking(Number(e.target.value))} min={0} max={10} />
               </div>
             </div>
+            {/* 3-Mode Extraction Selector */}
+            <div className="space-y-2">
+              <Label className="text-sm">Extraction Mode</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {([
+                  { id: 'manual', title: 'Manual', desc: 'Crop yourself. 0 AI calls.', icon: Crop, disabled: false },
+                  { id: 'auto', title: 'Auto-Crop', desc: BIRO_BACKEND_CONFIGURED ? 'Python backend · 0 credits' : 'Backend not configured', icon: Sparkles, disabled: !BIRO_BACKEND_CONFIGURED },
+                  { id: 'ai', title: 'AI (Lovable)', desc: 'Best accuracy · uses credits', icon: Sparkles, disabled: false },
+                ] as const).map(m => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    disabled={m.disabled}
+                    onClick={() => setExtractionMode(m.id as any)}
+                    className={cn(
+                      'text-left p-2.5 rounded-lg border-2 transition-all',
+                      extractionMode === m.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/40',
+                      m.disabled && 'opacity-50 cursor-not-allowed'
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <m.icon className="h-4 w-4" />
+                      <span className="text-sm font-semibold">{m.title}</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">{m.desc}</p>
+                  </button>
+                ))}
+              </div>
+              {BIRO_BACKEND_CONFIGURED && (
+                <p className="text-[10px] text-muted-foreground">
+                  Backend status: {backendWarm === 'ready' ? '🟢 Ready' : backendWarm === 'warming' ? '🟡 Warming up…' : backendWarm === 'down' ? '🔴 Cold (will retry)' : '⚪ Idle'}
+                </p>
+              )}
+            </div>
             <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
               <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
-              <p className="text-sm">AI will extract questions with LaTeX math, detect diagrams & subjects automatically</p>
+              <p className="text-sm">
+                {extractionMode === 'manual' && 'You will crop each question manually — tag subject / section / type per crop.'}
+                {extractionMode === 'auto' && 'Auto-Crop uses regex + OCR on our Python backend — 0 AI credits.'}
+                {extractionMode === 'ai' && 'AI extracts questions with LaTeX math, subjects and diagrams (uses credits).'}
+              </p>
             </div>
             {/* PDF Page Preview */}
             {pdfPageImages.length > 0 && (
@@ -438,9 +491,15 @@ function CreateTestInner() {
             )}
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setStep('upload')}>Back</Button>
-              <Button onClick={extractQuestions} disabled={isProcessing} className="flex-1">
+              <Button
+                onClick={() => extractionMode === 'manual' ? setShowCropTool(true) : extractQuestions()}
+                disabled={isProcessing}
+                className="flex-1"
+              >
                 {isProcessing ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Extracting...</>
+                ) : extractionMode === 'manual' ? (
+                  <><Crop className="mr-2 h-4 w-4" />Open Crop Tool</>
                 ) : (
                   <><Sparkles className="mr-2 h-4 w-4" />Extract Questions</>
                 )}
@@ -576,25 +635,32 @@ function CreateTestInner() {
         pages={pdfPageImages}
         onCroppedQuestions={(crops) => {
           if (extractedQuestions.length === 0) {
-            // Pure manual mode — build blank questions from crops, 0 AI credits.
-            const manualQuestions: Question[] = crops.map((crop, i) => ({
-              id: generateId(),
-              questionNumber: i + 1,
-              subject: 'Physics',
-              chapter: 'General',
-              question: `Question ${i + 1} (see diagram)`,
-              options: { A: '', B: '', C: '', D: '' },
-              correctAnswer: null,
-              type: 'MCQ',
-              level: 'JEE',
-              croppedImageUrl: crop.dataUrl,
-              hasDiagram: true,
-              pdfPageNumber: crop.pageNumber,
-            } as Question));
+            // Pure manual mode — build questions from crop metadata (subject/type/section/answer).
+            const subjectCounts: Record<string, number> = {};
+            const manualQuestions: Question[] = crops.map((crop, i) => {
+              subjectCounts[crop.subject] = (subjectCounts[crop.subject] || 0) + 1;
+              const isNumericalType = crop.qType === 'Numerical' || crop.qType === 'Integer';
+              return {
+                id: generateId(),
+                questionNumber: i + 1,
+                subject: crop.subject,
+                chapter: crop.section || 'General',
+                question: `Question ${i + 1} (see image)`,
+                options: isNumericalType
+                  ? { A: '', B: '', C: '', D: '' }
+                  : { A: '', B: '', C: '', D: '' },
+                correctAnswer: crop.correctAnswer?.trim() || null,
+                type: crop.qType === 'MSQ' ? 'MSQ' : isNumericalType ? 'Numerical' : 'MCQ',
+                level: 'JEE',
+                croppedImageUrl: crop.dataUrl,
+                hasDiagram: true,
+                pdfPageNumber: crop.pageNumber,
+              } as Question;
+            });
             setExtractedQuestions(manualQuestions);
-            setExtractionStats({ totalExtracted: manualQuestions.length, subjectCounts: { Physics: manualQuestions.length } });
+            setExtractionStats({ totalExtracted: manualQuestions.length, subjectCounts });
             setStep('review');
-            toast.success(`${crops.length} questions created from manual crops. Add answer key in My Tests.`);
+            toast.success(`${crops.length} questions created from manual crops.`);
             return;
           }
           const targets = extractedQuestions
@@ -604,9 +670,9 @@ function CreateTestInner() {
           setExtractedQuestions(prev => prev.map((q) => {
             const targetIndex = targets.findIndex(t => t.q.id === q.id);
             const crop = targetIndex >= 0 ? crops[targetIndex] : undefined;
-            return crop ? { ...q, croppedImageUrl: crop.dataUrl, hasDiagram: true, pdfPageNumber: crop.pageNumber } : q;
+            return crop ? { ...q, croppedImageUrl: crop.dataUrl, hasDiagram: true, pdfPageNumber: crop.pageNumber, subject: crop.subject } : q;
           }));
-          toast.success(`${crops.length} regions cropped and attached to diagram questions.`);
+          toast.success(`${crops.length} regions cropped and attached to questions.`);
         }}
       />
     </MainLayout>
