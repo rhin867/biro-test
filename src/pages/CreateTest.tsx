@@ -534,11 +534,32 @@ function CreateTestInner() {
             <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
               <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
               <p className="text-sm">
-                {extractionMode === 'manual' && 'You will crop each question manually — tag subject / section / type per crop.'}
-                {extractionMode === 'auto' && 'Auto-Crop uses regex + OCR on our Python backend — 0 AI credits.'}
-                {extractionMode === 'ai' && 'AI extracts questions with LaTeX math, subjects and diagrams (uses credits).'}
+                {extractionMode === 'manual' && 'You will crop each question manually — tag subject / section / type per crop. No password, 0 AI credits.'}
+                {extractionMode === 'auto' && 'Auto-Crop uses regex + OCR on our Python backend — no password, 0 AI credits.'}
+                {extractionMode === 'ai' && 'AI extracts questions with LaTeX math, subjects and diagrams (uses credits — password required).'}
               </p>
             </div>
+            {/* AI mode password unlock — only shown for AI mode */}
+            {extractionMode === 'ai' && !aiUnlocked && (
+              <div className="space-y-2 p-3 rounded-lg border border-review/30 bg-review/10">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Lock className="h-4 w-4 text-review" /> AI mode is password-protected
+                </div>
+                <p className="text-xs text-muted-foreground">Manual and Auto-Crop don't need a password. Ask the owner for the AI password.</p>
+                <div className="flex gap-2">
+                  <Input
+                    type="password"
+                    placeholder="AI creation password"
+                    value={aiPassword}
+                    onChange={(e) => setAiPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && unlockAI()}
+                  />
+                  <Button onClick={unlockAI} disabled={aiVerifying} variant="secondary">
+                    {aiVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Unlock'}
+                  </Button>
+                </div>
+              </div>
+            )}
             {/* PDF Page Preview */}
             {pdfPageImages.length > 0 && (
               <div className="space-y-2">
