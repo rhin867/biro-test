@@ -450,6 +450,25 @@ function CreateTestInner() {
               </Button>
             </CardContent>
           </Card>
+          <Card className="lg:col-span-2 border-correct/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                <FileUp className="h-5 w-5 text-correct" />
+                Import Test File (.biro.json)
+              </CardTitle>
+              <CardDescription>
+                Got a test file exported from Biro (like pdf2cbt)? Import it — 0 AI, no password, unlimited creations.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <label htmlFor="test-file-import" className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-correct/40 rounded-lg cursor-pointer hover:bg-correct/5 transition-all">
+                <FileUp className="h-6 w-6 text-correct mb-1" />
+                <p className="text-sm font-medium">Click to import a test file</p>
+                <p className="text-xs text-muted-foreground">Instantly creates the test locally</p>
+                <input id="test-file-import" type="file" accept=".json,application/json" onChange={handleImportTestFile} className="hidden" />
+              </label>
+            </CardContent>
+          </Card>
         </div>
       )}
       {/* Configure Step */}
