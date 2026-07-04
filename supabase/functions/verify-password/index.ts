@@ -39,7 +39,9 @@ Deno.serve(async (req) => {
 
     const map = new Map(data?.map((r: any) => [r.key, r.value]) ?? []);
     const stored = map.get(key) as string | undefined;
-    const expiresAt = map.get("test_creation_password_expires_at") as string | null | undefined;
+    // Only treat expiry as valid if it parses as a real date (guards against corrupted values).
+    const rawExp = map.get("test_creation_password_expires_at") as string | null | undefined;
+    const expiresAt = rawExp && !isNaN(new Date(rawExp).getTime()) ? rawExp : null;
 
     if (!stored) {
       return json({ ok: false, error: "Password is not configured. Ask the owner to set it." }, 503);

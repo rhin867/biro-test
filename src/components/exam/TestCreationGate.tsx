@@ -83,7 +83,7 @@ export function TestCreationGate({ children }: Props) {
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
           />
-          {exp && (
+          {exp && !isNaN(new Date(exp).getTime()) && (
             <p className="text-xs text-muted-foreground">
               Current password expires: {new Date(exp).toLocaleString()}
             </p>
