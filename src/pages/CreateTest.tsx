@@ -719,8 +719,11 @@ function CreateTestInner() {
               <p className="text-sm text-correct">✅ Answer key detected from PDF!</p>
             </div>
           )}
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <Button variant="outline" onClick={() => setStep('configure')} disabled={isCreating}>Back</Button>
+            <Button variant="outline" onClick={exportTestFile} disabled={isCreating} className="gap-2">
+              <Download className="h-4 w-4" /> Download Test File (.json)
+            </Button>
             <Button onClick={handleCreateTest} disabled={isCreating} className="flex-1 glow-primary">
               {isCreating ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating…</>
@@ -729,6 +732,9 @@ function CreateTestInner() {
               )}
             </Button>
           </div>
+          <p className="text-xs text-muted-foreground text-center">
+            The downloaded file works like pdf2cbt — anyone can import it on the Create Test page to recreate this test instantly with 0 AI.
+          </p>
         </div>
       )}
       {/* PDF Page Viewer Dialog */}
