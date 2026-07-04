@@ -358,7 +358,7 @@ function CreateTestInner() {
         toast.error('Could not save test locally (storage full). Try clearing old tests.');
         return;
       }
-      await logTestCreation({ testId: test.id, testName: test.name, aiCalls: 1 });
+      await logTestCreation({ testId: test.id, testName: test.name, aiCalls: extractionMode === 'ai' ? 1 : 0 });
       toast.success(
         `Test saved! Remaining today: ${Math.max(0, quota.dailyRemaining - 1)}/${quota.dailyLimit}`
       );
@@ -607,7 +607,11 @@ function CreateTestInner() {
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setStep('upload')}>Back</Button>
               <Button
-                onClick={() => extractionMode === 'manual' ? setShowCropTool(true) : extractQuestions()}
+                onClick={() => {
+                  if (extractionMode === 'manual') return setShowCropTool(true);
+                  if (extractionMode === 'ai' && !aiUnlocked) return toast.error('Enter the AI password above, or switch to Manual / Auto-Crop (no password).');
+                  extractQuestions();
+                }}
                 disabled={isProcessing}
                 className="flex-1"
               >
