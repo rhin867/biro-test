@@ -15,10 +15,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { renderPDFPagesToImages, fileToBase64, PDFPageImage } from '@/lib/pdf-cropper';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { PDFCropTool } from '@/components/exam/PDFCropTool';
-import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Crop, RefreshCw } from 'lucide-react';
+import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Crop, RefreshCw, Download, FileUp, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { TestCreationGate } from '@/components/exam/TestCreationGate';
-import { fetchQuotaInfo, logTestCreation, QuotaInfo } from '@/lib/app-settings';
+import { fetchQuotaInfo, logTestCreation, QuotaInfo, verifyPassword, isTestCreationUnlocked, markTestCreationUnlocked, getCachedAppSettings } from '@/lib/app-settings';
 import { getUserApiKey } from '@/pages/Settings';
 import { extractQuestionsFromPdf, BIRO_BACKEND_CONFIGURED, warmupBackend } from '@/lib/biro-backend';
 
