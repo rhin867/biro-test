@@ -64,8 +64,12 @@ function CreateTestInner() {
   const [extractionFailed, setExtractionFailed] = useState(false);
   const [extractionTime, setExtractionTime] = useState(0);
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
-  const [extractionMode, setExtractionMode] = useState<'manual' | 'auto' | 'ai'>(BIRO_BACKEND_CONFIGURED ? 'auto' : 'ai');
+  const [extractionMode, setExtractionMode] = useState<'manual' | 'auto' | 'ai'>(BIRO_BACKEND_CONFIGURED ? 'auto' : 'manual');
   const [backendWarm, setBackendWarm] = useState<'idle' | 'warming' | 'ready' | 'down'>('idle');
+  // Password is ONLY required for the AI (Lovable) mode. Manual / Auto-Crop / Import are free.
+  const [aiUnlocked, setAiUnlocked] = useState(() => isTestCreationUnlocked(getCachedAppSettings()));
+  const [aiPassword, setAiPassword] = useState('');
+  const [aiVerifying, setAiVerifying] = useState(false);
   React.useEffect(() => { fetchQuotaInfo().then(setQuota); }, []);
   // Warm the Render dyno as soon as the user opens the page — kills the "unavailable" first-call error.
   React.useEffect(() => {
@@ -73,6 +77,78 @@ function CreateTestInner() {
     setBackendWarm('warming');
     warmupBackend().then(ok => setBackendWarm(ok ? 'ready' : 'down'));
   }, []);
+  const unlockAI = async () => {
+    if (!aiPassword.trim()) return toast.error('Enter the password');
+    setAiVerifying(true);
+    const r = await verifyPassword('test_creation', aiPassword.trim());
+    setAiVerifying(false);
+    if (r.ok) {
+      try { markTestCreationUnlocked(r.expiresAt ?? null); } catch { /* never block unlock on cache */ }
+      setAiUnlocked(true);
+      setAiPassword('');
+      toast.success('AI mode unlocked!');
+    } else {
+      toast.error(r.error || 'Incorrect password');
+    }
+  };
+  // ---- pdf2cbt-style test file export/import (0 AI, unlimited) ----
+  const exportTestFile = useCallback(() => {
+    if (extractedQuestions.length === 0) return toast.error('Nothing to export yet');
+    const payload = {
+      format: 'biro-test-v1',
+      exportedAt: new Date().toISOString(),
+      name: testName || 'Untitled Test',
+      duration,
+      positiveMarking,
+      negativeMarking,
+      questions: extractedQuestions,
+    };
+    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${(testName || 'biro-test').replace(/[^\w\- ]+/g, '').trim() || 'biro-test'}.biro.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast.success('Test file downloaded — share it, anyone can import it with 0 AI.');
+  }, [extractedQuestions, testName, duration, positiveMarking, negativeMarking]);
+  const handleImportTestFile = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      if (data.format !== 'biro-test-v1' || !Array.isArray(data.questions) || data.questions.length === 0) {
+        throw new Error('Not a valid Biro test file (.biro.json)');
+      }
+      const questions: Question[] = data.questions.map((q: any) => ({ ...q, id: q.id || generateId() }));
+      const questionImages = Object.fromEntries(
+        questions.filter((q) => q.croppedImageUrl?.startsWith('data:')).map((q) => [q.id, q.croppedImageUrl as string])
+      );
+      const storable = questions.map((q) => q.croppedImageUrl?.startsWith('data:') ? { ...q, croppedImageUrl: undefined } : q);
+      const subjects = [...new Set(storable.map((q) => q.subject))] as Subject[];
+      const pos = Number(data.positiveMarking) || 4;
+      const test: Test = {
+        id: generateId(),
+        name: String(data.name || file.name.replace(/\.biro\.json$|\.json$/i, '')).slice(0, 200),
+        description: `Imported test file (${questions.length} questions) — 0 AI used`,
+        createdAt: new Date().toISOString(),
+        duration: Number(data.duration) || 180,
+        questions: storable,
+        subjects,
+        totalMarks: questions.length * pos,
+        positiveMarking: pos,
+        negativeMarking: Number(data.negativeMarking ?? 1),
+        hasAnswerKey: questions.some((q) => q.correctAnswer),
+      };
+      saveTest(test);
+      await saveTestQuestionImages(test.id, questionImages);
+      toast.success(`Imported "${test.name}" — 0 AI credits, no password, unlimited.`);
+      navigate(`/exam/${test.id}`);
+    } catch (e: any) {
+      toast.error(e.message || 'Invalid test file');
+    } finally {
+      event.target.value = '';
+    }
+  }, [navigate]);
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
