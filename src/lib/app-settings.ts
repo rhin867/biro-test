@@ -87,8 +87,10 @@ export function isTestCreationUnlocked(settings: PublicSettings): boolean {
 }
 export function markTestCreationUnlocked(expiresAt: string | null) {
   // Cache unlock for up to 24h, or until server-side expiry, whichever is sooner.
+  // Guard against invalid/corrupted expiry values (would make toISOString() throw).
   const max = Date.now() + 24 * 60 * 60 * 1000;
-  const serverExp = expiresAt ? new Date(expiresAt).getTime() : Infinity;
+  const parsed = expiresAt ? new Date(expiresAt).getTime() : NaN;
+  const serverExp = Number.isFinite(parsed) ? parsed : Infinity;
   const unlockedUntil = new Date(Math.min(max, serverExp)).toISOString();
   localStorage.setItem(UNLOCK_KEY, JSON.stringify({ unlockedUntil }));
 }

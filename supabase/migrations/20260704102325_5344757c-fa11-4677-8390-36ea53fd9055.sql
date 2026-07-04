@@ -1,0 +1,1 @@
+UPDATE public.app_settings SET value = 'null'::jsonb WHERE key = 'test_creation_password_expires_at' AND value::text LIKE '"sha256$%';

@@ -15,10 +15,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { renderPDFPagesToImages, fileToBase64, PDFPageImage } from '@/lib/pdf-cropper';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { PDFCropTool } from '@/components/exam/PDFCropTool';
-import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Crop, RefreshCw } from 'lucide-react';
+import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Crop, RefreshCw, Download, FileUp, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { TestCreationGate } from '@/components/exam/TestCreationGate';
-import { fetchQuotaInfo, logTestCreation, QuotaInfo } from '@/lib/app-settings';
+import { fetchQuotaInfo, logTestCreation, QuotaInfo, verifyPassword, isTestCreationUnlocked, markTestCreationUnlocked, getCachedAppSettings } from '@/lib/app-settings';
 import { getUserApiKey } from '@/pages/Settings';
 import { extractQuestionsFromPdf, BIRO_BACKEND_CONFIGURED, warmupBackend } from '@/lib/biro-backend';
 
@@ -65,8 +64,12 @@ function CreateTestInner() {
   const [extractionFailed, setExtractionFailed] = useState(false);
   const [extractionTime, setExtractionTime] = useState(0);
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
-  const [extractionMode, setExtractionMode] = useState<'manual' | 'auto' | 'ai'>(BIRO_BACKEND_CONFIGURED ? 'auto' : 'ai');
+  const [extractionMode, setExtractionMode] = useState<'manual' | 'auto' | 'ai'>(BIRO_BACKEND_CONFIGURED ? 'auto' : 'manual');
   const [backendWarm, setBackendWarm] = useState<'idle' | 'warming' | 'ready' | 'down'>('idle');
+  // Password is ONLY required for the AI (Lovable) mode. Manual / Auto-Crop / Import are free.
+  const [aiUnlocked, setAiUnlocked] = useState(() => isTestCreationUnlocked(getCachedAppSettings()));
+  const [aiPassword, setAiPassword] = useState('');
+  const [aiVerifying, setAiVerifying] = useState(false);
   React.useEffect(() => { fetchQuotaInfo().then(setQuota); }, []);
   // Warm the Render dyno as soon as the user opens the page — kills the "unavailable" first-call error.
   React.useEffect(() => {
@@ -74,6 +77,78 @@ function CreateTestInner() {
     setBackendWarm('warming');
     warmupBackend().then(ok => setBackendWarm(ok ? 'ready' : 'down'));
   }, []);
+  const unlockAI = async () => {
+    if (!aiPassword.trim()) return toast.error('Enter the password');
+    setAiVerifying(true);
+    const r = await verifyPassword('test_creation', aiPassword.trim());
+    setAiVerifying(false);
+    if (r.ok) {
+      try { markTestCreationUnlocked(r.expiresAt ?? null); } catch { /* never block unlock on cache */ }
+      setAiUnlocked(true);
+      setAiPassword('');
+      toast.success('AI mode unlocked!');
+    } else {
+      toast.error(r.error || 'Incorrect password');
+    }
+  };
+  // ---- pdf2cbt-style test file export/import (0 AI, unlimited) ----
+  const exportTestFile = useCallback(() => {
+    if (extractedQuestions.length === 0) return toast.error('Nothing to export yet');
+    const payload = {
+      format: 'biro-test-v1',
+      exportedAt: new Date().toISOString(),
+      name: testName || 'Untitled Test',
+      duration,
+      positiveMarking,
+      negativeMarking,
+      questions: extractedQuestions,
+    };
+    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${(testName || 'biro-test').replace(/[^\w\- ]+/g, '').trim() || 'biro-test'}.biro.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast.success('Test file downloaded — share it, anyone can import it with 0 AI.');
+  }, [extractedQuestions, testName, duration, positiveMarking, negativeMarking]);
+  const handleImportTestFile = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      if (data.format !== 'biro-test-v1' || !Array.isArray(data.questions) || data.questions.length === 0) {
+        throw new Error('Not a valid Biro test file (.biro.json)');
+      }
+      const questions: Question[] = data.questions.map((q: any) => ({ ...q, id: q.id || generateId() }));
+      const questionImages = Object.fromEntries(
+        questions.filter((q) => q.croppedImageUrl?.startsWith('data:')).map((q) => [q.id, q.croppedImageUrl as string])
+      );
+      const storable = questions.map((q) => q.croppedImageUrl?.startsWith('data:') ? { ...q, croppedImageUrl: undefined } : q);
+      const subjects = [...new Set(storable.map((q) => q.subject))] as Subject[];
+      const pos = Number(data.positiveMarking) || 4;
+      const test: Test = {
+        id: generateId(),
+        name: String(data.name || file.name.replace(/\.biro\.json$|\.json$/i, '')).slice(0, 200),
+        description: `Imported test file (${questions.length} questions) — 0 AI used`,
+        createdAt: new Date().toISOString(),
+        duration: Number(data.duration) || 180,
+        questions: storable,
+        subjects,
+        totalMarks: questions.length * pos,
+        positiveMarking: pos,
+        negativeMarking: Number(data.negativeMarking ?? 1),
+        hasAnswerKey: questions.some((q) => q.correctAnswer),
+      };
+      saveTest(test);
+      await saveTestQuestionImages(test.id, questionImages);
+      toast.success(`Imported "${test.name}" — 0 AI credits, no password, unlimited.`);
+      navigate(`/exam/${test.id}`);
+    } catch (e: any) {
+      toast.error(e.message || 'Invalid test file');
+    } finally {
+      event.target.value = '';
+    }
+  }, [navigate]);
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -283,7 +358,7 @@ function CreateTestInner() {
         toast.error('Could not save test locally (storage full). Try clearing old tests.');
         return;
       }
-      await logTestCreation({ testId: test.id, testName: test.name, aiCalls: 1 });
+      await logTestCreation({ testId: test.id, testName: test.name, aiCalls: extractionMode === 'ai' ? 1 : 0 });
       toast.success(
         `Test saved! Remaining today: ${Math.max(0, quota.dailyRemaining - 1)}/${quota.dailyLimit}`
       );
@@ -375,6 +450,25 @@ function CreateTestInner() {
               </Button>
             </CardContent>
           </Card>
+          <Card className="lg:col-span-2 border-correct/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                <FileUp className="h-5 w-5 text-correct" />
+                Import Test File (.biro.json)
+              </CardTitle>
+              <CardDescription>
+                Got a test file exported from Biro (like pdf2cbt)? Import it — 0 AI, no password, unlimited creations.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <label htmlFor="test-file-import" className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-correct/40 rounded-lg cursor-pointer hover:bg-correct/5 transition-all">
+                <FileUp className="h-6 w-6 text-correct mb-1" />
+                <p className="text-sm font-medium">Click to import a test file</p>
+                <p className="text-xs text-muted-foreground">Instantly creates the test locally</p>
+                <input id="test-file-import" type="file" accept=".json,application/json" onChange={handleImportTestFile} className="hidden" />
+              </label>
+            </CardContent>
+          </Card>
         </div>
       )}
       {/* Configure Step */}
@@ -440,11 +534,32 @@ function CreateTestInner() {
             <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
               <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
               <p className="text-sm">
-                {extractionMode === 'manual' && 'You will crop each question manually — tag subject / section / type per crop.'}
-                {extractionMode === 'auto' && 'Auto-Crop uses regex + OCR on our Python backend — 0 AI credits.'}
-                {extractionMode === 'ai' && 'AI extracts questions with LaTeX math, subjects and diagrams (uses credits).'}
+                {extractionMode === 'manual' && 'You will crop each question manually — tag subject / section / type per crop. No password, 0 AI credits.'}
+                {extractionMode === 'auto' && 'Auto-Crop uses regex + OCR on our Python backend — no password, 0 AI credits.'}
+                {extractionMode === 'ai' && 'AI extracts questions with LaTeX math, subjects and diagrams (uses credits — password required).'}
               </p>
             </div>
+            {/* AI mode password unlock — only shown for AI mode */}
+            {extractionMode === 'ai' && !aiUnlocked && (
+              <div className="space-y-2 p-3 rounded-lg border border-review/30 bg-review/10">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Lock className="h-4 w-4 text-review" /> AI mode is password-protected
+                </div>
+                <p className="text-xs text-muted-foreground">Manual and Auto-Crop don't need a password. Ask the owner for the AI password.</p>
+                <div className="flex gap-2">
+                  <Input
+                    type="password"
+                    placeholder="AI creation password"
+                    value={aiPassword}
+                    onChange={(e) => setAiPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && unlockAI()}
+                  />
+                  <Button onClick={unlockAI} disabled={aiVerifying} variant="secondary">
+                    {aiVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Unlock'}
+                  </Button>
+                </div>
+              </div>
+            )}
             {/* PDF Page Preview */}
             {pdfPageImages.length > 0 && (
               <div className="space-y-2">
@@ -492,7 +607,11 @@ function CreateTestInner() {
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setStep('upload')}>Back</Button>
               <Button
-                onClick={() => extractionMode === 'manual' ? setShowCropTool(true) : extractQuestions()}
+                onClick={() => {
+                  if (extractionMode === 'manual') return setShowCropTool(true);
+                  if (extractionMode === 'ai' && !aiUnlocked) return toast.error('Enter the AI password above, or switch to Manual / Auto-Crop (no password).');
+                  extractQuestions();
+                }}
                 disabled={isProcessing}
                 className="flex-1"
               >
@@ -600,8 +719,11 @@ function CreateTestInner() {
               <p className="text-sm text-correct">✅ Answer key detected from PDF!</p>
             </div>
           )}
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <Button variant="outline" onClick={() => setStep('configure')} disabled={isCreating}>Back</Button>
+            <Button variant="outline" onClick={exportTestFile} disabled={isCreating} className="gap-2">
+              <Download className="h-4 w-4" /> Download Test File (.json)
+            </Button>
             <Button onClick={handleCreateTest} disabled={isCreating} className="flex-1 glow-primary">
               {isCreating ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating…</>
@@ -610,6 +732,9 @@ function CreateTestInner() {
               )}
             </Button>
           </div>
+          <p className="text-xs text-muted-foreground text-center">
+            The downloaded file works like pdf2cbt — anyone can import it on the Create Test page to recreate this test instantly with 0 AI.
+          </p>
         </div>
       )}
       {/* PDF Page Viewer Dialog */}
@@ -679,9 +804,7 @@ function CreateTestInner() {
   );
 }
 export default function CreateTest() {
-  return (
-    <TestCreationGate>
-      <CreateTestInner />
-    </TestCreationGate>
-  );
+  // No global password gate anymore — Manual crop, Auto-Crop and test-file import are
+  // free to use. Only the AI (Lovable) extraction mode asks for the password inline.
+  return <CreateTestInner />;
 }
