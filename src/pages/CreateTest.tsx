@@ -678,9 +678,7 @@ function CreateTestInner() {
   );
 }
 export default function CreateTest() {
-  return (
-    <TestCreationGate>
-      <CreateTestInner />
-    </TestCreationGate>
-  );
+  // No global password gate anymore — Manual crop, Auto-Crop and test-file import are
+  // free to use. Only the AI (Lovable) extraction mode asks for the password inline.
+  return <CreateTestInner />;
 }
