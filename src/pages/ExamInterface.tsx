@@ -35,7 +35,9 @@ import {
   X,
   AlertTriangle,
   Grid3X3,
+  FileText,
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
