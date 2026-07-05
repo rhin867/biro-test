@@ -67,6 +67,8 @@ export default function ExamInterface() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [showMobilePalette, setShowMobilePalette] = useState(false);
   const { isNTAMode } = useNTAMode();
+  const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null);
+  const [showPdfViewer, setShowPdfViewer] = useState(false);
   const attemptRef = useRef<TestAttempt | null>(null);
   useEffect(() => {
     attemptRef.current = attempt;
