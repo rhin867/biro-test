@@ -20,6 +20,7 @@ import {
   getAttempts,
   loadTestPdfPageImages,
   loadTestQuestionImages,
+  loadTestPdfFile,
 } from '@/lib/storage';
 import { calculateTestResult } from '@/lib/exam-utils';
 import { Test, TestAttempt, QuestionAttempt, QuestionStatus, Subject, MistakeType } from '@/types/exam';
