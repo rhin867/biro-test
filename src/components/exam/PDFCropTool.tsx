@@ -4,12 +4,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { PDFPageImage } from '@/lib/pdf-cropper';
-import { Crop, Download, RotateCcw, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { Crop, Download, RotateCcw, ChevronLeft, ChevronRight, Trash2, ZoomIn, ZoomOut, Plus, Image as ImageIcon, Pencil, Eye } from 'lucide-react';
 
 interface CropRegion { x: number; y: number; width: number; height: number; }
 
-export type CropSubject = 'Physics' | 'Chemistry' | 'Maths';
+/** Subject stays as a free-form string so users can type "Biology", "Section A", etc. */
+export type CropSubject = string;
 export type CropQType = 'MCQ' | 'MSQ' | 'Numerical' | 'Integer';
 
 export interface CroppedImage {
@@ -17,9 +21,13 @@ export interface CroppedImage {
   pageNumber: number;
   index: number;
   subject: CropSubject;
-  section: string; // e.g. "Section 1"
+  section: string;
   qType: CropQType;
   correctAnswer?: string;
+  /** Optional OCR/user-typed question text — used by the exam UI when present. */
+  questionText?: string;
+  /** Extra images added from the device gallery (diagrams, alternate crops). */
+  extraImages?: string[];
 }
 
 interface PDFCropToolProps {
@@ -27,25 +35,77 @@ interface PDFCropToolProps {
   onOpenChange: (open: boolean) => void;
   pages: PDFPageImage[];
   onCroppedQuestions: (images: CroppedImage[]) => void;
+  /** Pre-load existing crops when re-opening the tool for review. */
+  initialCrops?: CroppedImage[];
 }
 
-export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions }: PDFCropToolProps) {
+const CANONICAL_SUBJECTS = ['Physics', 'Chemistry', 'Maths', 'Biology', 'English', 'General'];
+const SECTION_PRESETS = ['Section 1', 'Section 2', 'Section 3', 'Section A', 'Section B'];
+
+async function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+/** Compact free-text combobox: type anything or pick a preset. */
+function ComboInput({
+  value, onChange, presets, placeholder,
+}: { value: string; onChange: (v: string) => void; presets: string[]; placeholder?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <div className="flex gap-1">
+        <Input value={value} onChange={(e) => onChange(e.target.value)}
+               placeholder={placeholder} className="h-8 text-xs flex-1" />
+        <PopoverTrigger asChild>
+          <Button size="sm" variant="outline" className="h-8 px-2" type="button">▾</Button>
+        </PopoverTrigger>
+      </div>
+      <PopoverContent className="w-40 p-1">
+        {presets.map(p => (
+          <button key={p} type="button"
+                  className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-accent"
+                  onClick={() => { onChange(p); setOpen(false); }}>
+            {p}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, initialCrops }: PDFCropToolProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const [isDrawing, setIsDrawing] = useState(false);
   const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
   const [cropRegion, setCropRegion] = useState<CropRegion | null>(null);
-  const [croppedImages, setCroppedImages] = useState<CroppedImage[]>([]);
-  // Default metadata applied to the next crop — user can change per crop after.
-  const [subject, setSubject] = useState<CropSubject>('Physics');
+  const [croppedImages, setCroppedImages] = useState<CroppedImage[]>(initialCrops || []);
+  const [subject, setSubject] = useState<string>('Maths');
   const [section, setSection] = useState<string>('Section 1');
   const [qType, setQType] = useState<CropQType>('MCQ');
+  const [zoom, setZoom] = useState(1);
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [previewIdx, setPreviewIdx] = useState<number | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  const galleryRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const addBlankRef = useRef<HTMLInputElement>(null);
 
   const page = pages[currentPage];
 
   useEffect(() => {
-    if (open) { setCurrentPage(0); setCropRegion(null); setCropStart(null); setIsDrawing(false); }
-  }, [open]);
+    if (open) {
+      setCurrentPage(0);
+      setCropRegion(null);
+      setCropStart(null);
+      setIsDrawing(false);
+      setZoom(1);
+      if (initialCrops && initialCrops.length) setCroppedImages(initialCrops);
+    }
+  }, [open, initialCrops]);
 
   const getRelativeCoords = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     const img = imgRef.current;
@@ -106,51 +166,48 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions }: P
   const updateCrop = (i: number, patch: Partial<CroppedImage>) =>
     setCroppedImages(prev => prev.map((c, j) => j === i ? { ...c, ...patch } : c));
 
+  const addExtraImage = async (i: number, file: File) => {
+    const url = await fileToDataUrl(file);
+    updateCrop(i, { extraImages: [...(croppedImages[i].extraImages || []), url] });
+  };
+
+  const addBlankQuestion = async (file: File) => {
+    const url = await fileToDataUrl(file);
+    setCroppedImages(prev => [...prev, {
+      dataUrl: url, pageNumber: page?.pageNumber || 0, index: prev.length,
+      subject, section, qType,
+    }]);
+  };
+
+  const removeExtra = (i: number, j: number) =>
+    updateCrop(i, { extraImages: (croppedImages[i].extraImages || []).filter((_, k) => k !== j) });
+
   const handleDone = () => { onCroppedQuestions(croppedImages); onOpenChange(false); };
 
   if (!page) return null;
 
-  const subjectColor: Record<CropSubject, string> = {
-    Physics: 'bg-physics/20 border-physics text-physics',
-    Chemistry: 'bg-chemistry/20 border-chemistry text-chemistry',
-    Maths: 'bg-maths/20 border-maths text-maths',
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] lg:max-w-6xl max-h-[95vh] p-3 md:p-4">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-sm md:text-base">
-            <Crop className="h-5 w-5 text-primary" /> Manual Crop — Page {currentPage + 1}/{pages.length}
+      <DialogContent className="max-w-[98vw] lg:max-w-7xl h-[95vh] p-2 md:p-3 flex flex-col">
+        <DialogHeader className="pb-1">
+          <DialogTitle className="flex items-center gap-2 text-sm">
+            <Crop className="h-4 w-4 text-primary" />
+            Manual Crop — Page {currentPage + 1}/{pages.length} · {croppedImages.length} crops
           </DialogTitle>
         </DialogHeader>
 
-        {/* Metadata bar — applied to the NEXT crop */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 p-2 rounded-lg bg-muted/40 border">
-          <div className="space-y-1">
-            <label className="text-[10px] font-medium text-muted-foreground uppercase">Subject</label>
-            <Select value={subject} onValueChange={(v) => setSubject(v as CropSubject)}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Physics">Physics</SelectItem>
-                <SelectItem value="Chemistry">Chemistry</SelectItem>
-                <SelectItem value="Maths">Maths</SelectItem>
-              </SelectContent>
-            </Select>
+        {/* Compact single-row control bar */}
+        <div className="grid grid-cols-3 gap-1.5 p-1.5 rounded-md bg-muted/40 border text-[10px]">
+          <div>
+            <label className="text-[9px] font-medium text-muted-foreground uppercase block mb-0.5">Subject</label>
+            <ComboInput value={subject} onChange={setSubject} presets={CANONICAL_SUBJECTS} placeholder="Subject" />
           </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-medium text-muted-foreground uppercase">Section</label>
-            <Select value={section} onValueChange={setSection}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Section 1">Section 1</SelectItem>
-                <SelectItem value="Section 2">Section 2</SelectItem>
-                <SelectItem value="Section 3">Section 3</SelectItem>
-              </SelectContent>
-            </Select>
+          <div>
+            <label className="text-[9px] font-medium text-muted-foreground uppercase block mb-0.5">Section</label>
+            <ComboInput value={section} onChange={setSection} presets={SECTION_PRESETS} placeholder="Section" />
           </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-medium text-muted-foreground uppercase">Type</label>
+          <div>
+            <label className="text-[9px] font-medium text-muted-foreground uppercase block mb-0.5">Type</label>
             <Select value={qType} onValueChange={(v) => setQType(v as CropQType)}>
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -163,31 +220,46 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions }: P
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-3 h-[70vh]">
-          <div className="flex-1 flex flex-col min-w-0">
-            <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-              <div className="flex gap-2 items-center">
-                <Button variant="outline" size="sm" disabled={currentPage === 0}
-                  onClick={() => { setCurrentPage(p => p - 1); setCropRegion(null); }}>
-                  <ChevronLeft className="h-4 w-4" />
+        <div className="flex flex-col lg:flex-row gap-2 flex-1 min-h-0 mt-1.5">
+          {/* PDF viewer — takes most of the space */}
+          <div className="flex-1 flex flex-col min-w-0 min-h-0">
+            <div className="flex items-center justify-between mb-1 gap-1 flex-wrap">
+              <div className="flex gap-1 items-center">
+                <Button variant="outline" size="sm" className="h-7 px-2" disabled={currentPage === 0}
+                        onClick={() => { setCurrentPage(p => p - 1); setCropRegion(null); }}>
+                  <ChevronLeft className="h-3.5 w-3.5" />
                 </Button>
-                <span className="text-xs md:text-sm px-2">Page {currentPage + 1}/{pages.length}</span>
-                <Button variant="outline" size="sm" disabled={currentPage === pages.length - 1}
-                  onClick={() => { setCurrentPage(p => p + 1); setCropRegion(null); }}>
-                  <ChevronRight className="h-4 w-4" />
+                <span className="text-[11px] px-1">{currentPage + 1}/{pages.length}</span>
+                <Button variant="outline" size="sm" className="h-7 px-2" disabled={currentPage === pages.length - 1}
+                        onClick={() => { setCurrentPage(p => p + 1); setCropRegion(null); }}>
+                  <ChevronRight className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setCropRegion(null)} disabled={!cropRegion}>
-                  <RotateCcw className="h-4 w-4 mr-1" /> Reset
+              <div className="flex gap-1 items-center">
+                <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))}>
+                  <ZoomOut className="h-3.5 w-3.5" />
                 </Button>
-                <Button size="sm" disabled={!cropRegion || cropRegion.width < 10 || cropRegion.height < 10} onClick={handleCrop}>
-                  <Crop className="h-4 w-4 mr-1" /> Crop as {subject}/{qType}
+                <span className="text-[11px] w-10 text-center">{Math.round(zoom * 100)}%</span>
+                <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))}>
+                  <ZoomIn className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setCropRegion(null)} disabled={!cropRegion}>
+                  <RotateCcw className="h-3.5 w-3.5" />
+                </Button>
+                <Button size="sm" className="h-7 px-2 text-[11px]"
+                        disabled={!cropRegion || cropRegion.width < 10 || cropRegion.height < 10} onClick={handleCrop}>
+                  <Crop className="h-3.5 w-3.5 mr-1" /> Add
+                </Button>
+                <input ref={addBlankRef} type="file" accept="image/*" className="hidden"
+                       onChange={e => { const f = e.target.files?.[0]; if (f) addBlankQuestion(f); e.target.value = ''; }} />
+                <Button variant="secondary" size="sm" className="h-7 px-2 text-[11px]"
+                        onClick={() => addBlankRef.current?.click()}>
+                  <Plus className="h-3.5 w-3.5 mr-0.5" /><ImageIcon className="h-3.5 w-3.5" />
                 </Button>
               </div>
             </div>
 
-            <div className="relative border rounded-lg overflow-auto flex-1 bg-muted/30">
+            <div className="relative border rounded-md overflow-auto flex-1 bg-muted/30 min-h-0">
               <div
                 className="relative inline-block cursor-crosshair select-none"
                 style={{ touchAction: 'none' }}
@@ -199,9 +271,9 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions }: P
                   ref={imgRef}
                   src={page.imageDataUrl}
                   alt={`Page ${currentPage + 1}`}
-                  className="max-w-full pointer-events-none"
+                  className="pointer-events-none"
                   draggable={false}
-                  style={{ display: 'block' }}
+                  style={{ display: 'block', width: `${zoom * 100}%`, maxWidth: 'none' }}
                 />
                 {cropRegion && cropRegion.width > 0 && cropRegion.height > 0 && (
                   <div
@@ -212,61 +284,91 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions }: P
                       borderStyle: 'dashed',
                     }}
                   >
-                    <div className="absolute -top-5 left-0 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded">
-                      {subject} · {qType} · {Math.round(cropRegion.width)}×{Math.round(cropRegion.height)}
+                    <div className="absolute -top-5 left-0 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap">
+                      {subject} · {qType}
                     </div>
                   </div>
                 )}
               </div>
             </div>
-            <p className="text-[10px] md:text-xs text-muted-foreground text-center mt-1">
-              Set subject/section/type above → drag on page → Crop. Change per-crop values in the list on the right.
+            <p className="text-[9px] md:text-[10px] text-muted-foreground text-center mt-0.5">
+              Pinch/zoom → drag on page → Add. Use "+ 🖼" to add from gallery without cropping.
             </p>
           </div>
 
-          <div className="w-full lg:w-64 flex flex-col min-h-0">
-            <p className="text-sm font-medium mb-2">Crops ({croppedImages.length})</p>
+          {/* Crop list */}
+          <div className="w-full lg:w-60 flex flex-col min-h-0">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs font-medium">Questions ({croppedImages.length})</p>
+              {croppedImages.length > 0 && (
+                <Button variant="ghost" size="sm" className="h-6 text-[10px]"
+                        onClick={() => setCroppedImages([])}>Clear</Button>
+              )}
+            </div>
             <ScrollArea className="flex-1">
-              <div className="flex lg:flex-col gap-2 pr-2 overflow-x-auto lg:overflow-x-visible">
+              <div className="flex lg:flex-col gap-1.5 pr-1 overflow-x-auto lg:overflow-x-visible">
                 {croppedImages.length === 0 && (
-                  <p className="text-xs text-muted-foreground p-2">Drag on the page to make a crop.</p>
+                  <p className="text-[10px] text-muted-foreground p-2">Drag on the page to crop a question.</p>
                 )}
                 {croppedImages.map((ci, i) => (
-                  <div key={i} className={`relative border-2 rounded-lg overflow-hidden group bg-card flex-shrink-0 w-40 lg:w-full ${subjectColor[ci.subject]}`}>
-                    <img src={ci.dataUrl} alt={`Crop ${i + 1}`} className="w-full max-h-24 object-contain bg-white" />
-                    <div className="p-1.5 space-y-1 bg-card">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold">Q{i + 1} · P{ci.pageNumber}</span>
-                        <button
-                          className="bg-destructive/80 text-destructive-foreground p-0.5 rounded"
-                          onClick={() => setCroppedImages(prev => prev.filter((_, j) => j !== i))}
-                        >
+                  <div key={i} className="relative border rounded-md overflow-hidden bg-card flex-shrink-0 w-36 lg:w-full">
+                    <div className="relative bg-white">
+                      <img src={ci.dataUrl} alt={`Crop ${i + 1}`} className="w-full max-h-20 object-contain" />
+                      <div className="absolute top-0.5 left-0.5 bg-primary/90 text-primary-foreground text-[9px] px-1 rounded">
+                        Q{i + 1}
+                      </div>
+                    </div>
+                    <div className="p-1 space-y-0.5">
+                      <div className="flex items-center gap-0.5">
+                        <Input value={ci.subject} onChange={(e) => updateCrop(i, { subject: e.target.value })}
+                               className="h-6 text-[10px] px-1" placeholder="Subject" />
+                        <Select value={ci.qType} onValueChange={(v) => updateCrop(i, { qType: v as CropQType })}>
+                          <SelectTrigger className="h-6 text-[10px] px-1 w-14"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="MCQ">MCQ</SelectItem>
+                            <SelectItem value="MSQ">MSQ</SelectItem>
+                            <SelectItem value="Numerical">Num</SelectItem>
+                            <SelectItem value="Integer">Int</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Input value={ci.section} onChange={(e) => updateCrop(i, { section: e.target.value })}
+                             className="h-6 text-[10px] px-1" placeholder="Section" />
+                      <Input value={ci.correctAnswer || ''} onChange={(e) => updateCrop(i, { correctAnswer: e.target.value })}
+                             className="h-6 text-[10px] px-1" placeholder="Correct ans (opt)" />
+                      {ci.extraImages && ci.extraImages.length > 0 && (
+                        <div className="flex flex-wrap gap-0.5 py-0.5">
+                          {ci.extraImages.map((ex, j) => (
+                            <div key={j} className="relative">
+                              <img src={ex} className="h-8 w-8 object-cover rounded border" />
+                              <button className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-3 h-3 text-[7px] leading-none"
+                                      onClick={() => removeExtra(i, j)}>×</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between gap-0.5 pt-0.5">
+                        <div className="flex gap-0.5">
+                          <button className="p-1 rounded hover:bg-accent" title="Edit text"
+                                  onClick={() => setEditingIdx(i)}>
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                          <input ref={el => (galleryRefs.current[i] = el)} type="file" accept="image/*" className="hidden"
+                                 onChange={e => { const f = e.target.files?.[0]; if (f) addExtraImage(i, f); e.target.value = ''; }} />
+                          <button className="p-1 rounded hover:bg-accent" title="Add diagram from gallery"
+                                  onClick={() => galleryRefs.current[i]?.click()}>
+                            <ImageIcon className="h-3 w-3" />
+                          </button>
+                          <button className="p-1 rounded hover:bg-accent" title="Preview"
+                                  onClick={() => setPreviewIdx(i)}>
+                            <Eye className="h-3 w-3" />
+                          </button>
+                        </div>
+                        <button className="p-1 rounded hover:bg-destructive/20 text-destructive" title="Delete"
+                                onClick={() => setCroppedImages(prev => prev.filter((_, j) => j !== i))}>
                           <Trash2 className="h-3 w-3" />
                         </button>
                       </div>
-                      <Select value={ci.subject} onValueChange={(v) => updateCrop(i, { subject: v as CropSubject })}>
-                        <SelectTrigger className="h-6 text-[10px] px-1"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Physics">Physics</SelectItem>
-                          <SelectItem value="Chemistry">Chemistry</SelectItem>
-                          <SelectItem value="Maths">Maths</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select value={ci.qType} onValueChange={(v) => updateCrop(i, { qType: v as CropQType })}>
-                        <SelectTrigger className="h-6 text-[10px] px-1"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="MCQ">MCQ</SelectItem>
-                          <SelectItem value="MSQ">MSQ</SelectItem>
-                          <SelectItem value="Numerical">Numerical</SelectItem>
-                          <SelectItem value="Integer">Integer</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        value={ci.correctAnswer || ''}
-                        onChange={(e) => updateCrop(i, { correctAnswer: e.target.value })}
-                        placeholder="Ans (opt)"
-                        className="h-6 text-[10px] px-1"
-                      />
                     </div>
                   </div>
                 ))}
@@ -274,11 +376,43 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions }: P
             </ScrollArea>
             {croppedImages.length > 0 && (
               <Button onClick={handleDone} className="w-full mt-2" size="sm">
-                <Download className="h-4 w-4 mr-1" /> Use {croppedImages.length} Crops
+                <Download className="h-4 w-4 mr-1" /> Use {croppedImages.length} Question{croppedImages.length !== 1 ? 's' : ''}
               </Button>
             )}
           </div>
         </div>
+
+        {/* Text editor dialog */}
+        {editingIdx !== null && croppedImages[editingIdx] && (
+          <Dialog open={editingIdx !== null} onOpenChange={(o) => !o && setEditingIdx(null)}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader><DialogTitle>Edit Question {editingIdx + 1} Text</DialogTitle></DialogHeader>
+              <div className="space-y-2">
+                <Textarea rows={5} value={croppedImages[editingIdx].questionText || ''}
+                          onChange={e => updateCrop(editingIdx, { questionText: e.target.value })}
+                          placeholder="Type question text (LaTeX supported, e.g. $x^2 + y^2 = r^2$)" />
+                <div className="text-xs text-muted-foreground">Preview:</div>
+                <div className="border rounded p-2 min-h-[60px] bg-muted/30 text-sm">
+                  <LatexRenderer content={croppedImages[editingIdx].questionText || '_(empty)_'} />
+                </div>
+                <Button onClick={() => setEditingIdx(null)} className="w-full" size="sm">Done</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Preview dialog */}
+        {previewIdx !== null && croppedImages[previewIdx] && (
+          <Dialog open={previewIdx !== null} onOpenChange={(o) => !o && setPreviewIdx(null)}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader><DialogTitle>Question {previewIdx + 1} preview</DialogTitle></DialogHeader>
+              <img src={croppedImages[previewIdx].dataUrl} className="w-full rounded border" />
+              {croppedImages[previewIdx].extraImages?.map((ex, j) => (
+                <img key={j} src={ex} className="w-full rounded border mt-2" />
+              ))}
+            </DialogContent>
+          </Dialog>
+        )}
       </DialogContent>
     </Dialog>
   );
