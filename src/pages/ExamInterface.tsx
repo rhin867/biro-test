@@ -20,6 +20,7 @@ import {
   getAttempts,
   loadTestPdfPageImages,
   loadTestQuestionImages,
+  loadTestPdfFile,
 } from '@/lib/storage';
 import { calculateTestResult } from '@/lib/exam-utils';
 import { Test, TestAttempt, QuestionAttempt, QuestionStatus, Subject, MistakeType } from '@/types/exam';
@@ -34,7 +35,9 @@ import {
   X,
   AlertTriangle,
   Grid3X3,
+  FileText,
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,6 +67,8 @@ export default function ExamInterface() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [showMobilePalette, setShowMobilePalette] = useState(false);
   const { isNTAMode } = useNTAMode();
+  const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null);
+  const [showPdfViewer, setShowPdfViewer] = useState(false);
   const attemptRef = useRef<TestAttempt | null>(null);
   useEffect(() => {
     attemptRef.current = attempt;
@@ -91,6 +96,12 @@ export default function ExamInterface() {
         } : current);
       }
     }).catch(() => {});
+    // Load the original PDF blob for the "View Original PDF" viewer.
+    loadTestPdfFile(testId).then((buf) => {
+      if (!buf) return;
+      const blob = new Blob([buf], { type: 'application/pdf' });
+      setPdfViewerUrl(URL.createObjectURL(blob));
+    }).catch(() => {});
     // Check for existing attempt
     const existingAttempt = getCurrentAttempt();
     if (existingAttempt && existingAttempt.testId === testId && !existingAttempt.isSubmitted) {
@@ -117,6 +128,8 @@ export default function ExamInterface() {
       setCurrentAttempt(newAttempt);
     }
   }, [testId, navigate]);
+  // Revoke PDF blob URL on unmount to free memory
+  useEffect(() => () => { if (pdfViewerUrl) URL.revokeObjectURL(pdfViewerUrl); }, [pdfViewerUrl]);
   // Auto-save attempt periodically
   useEffect(() => {
     const interval = setInterval(() => {
@@ -416,6 +429,26 @@ export default function ExamInterface() {
             showCorrectAnswer={false}
             pdfPageImages={test.pdfPageImages}
           />
+          {pdfViewerUrl && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPdfViewer(true)}
+              className="fixed bottom-20 right-4 z-40 shadow-lg gap-1.5"
+            >
+              <FileText className="h-4 w-4" />
+              View Original PDF
+            </Button>
+          )}
+          <Dialog open={showPdfViewer} onOpenChange={setShowPdfViewer}>
+            <DialogContent className="max-w-[95vw] w-[95vw] h-[92vh] p-2 flex flex-col">
+              <DialogHeader className="pb-1"><DialogTitle className="text-sm">Original PDF</DialogTitle></DialogHeader>
+              {pdfViewerUrl && (
+                <iframe src={`${pdfViewerUrl}#page=${currentQuestion?.pdfPageNumber || 1}`}
+                        className="flex-1 w-full rounded border" title="Original PDF" />
+              )}
+            </DialogContent>
+          </Dialog>
           {/* Feedback Section (Collapsible) */}
           {showFeedback && (
             <div className="mt-6 animate-fade-in">

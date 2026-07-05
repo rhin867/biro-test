@@ -311,3 +311,29 @@ export async function loadTestQuestionImages(testId: string): Promise<Record<str
   db.close();
   return images;
 }
+
+/** Save the original PDF binary so users can view the real PDF during the exam. */
+export async function saveTestPdfFile(testId: string, data: ArrayBuffer): Promise<void> {
+  if (typeof indexedDB === 'undefined') return;
+  const db = await openPdfImageDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(PDF_IMAGE_STORE, 'readwrite');
+    tx.objectStore(PDF_IMAGE_STORE).put(data, `${testId}:pdf_file`);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}
+
+export async function loadTestPdfFile(testId: string): Promise<ArrayBuffer | null> {
+  if (typeof indexedDB === 'undefined') return null;
+  const db = await openPdfImageDb();
+  const data = await new Promise<ArrayBuffer | null>((resolve, reject) => {
+    const request = db.transaction(PDF_IMAGE_STORE, 'readonly').objectStore(PDF_IMAGE_STORE).get(`${testId}:pdf_file`);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+  db.close();
+  return data;
+}
+

@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { saveTest, generateId, saveTestPdfPageImages, saveTestQuestionImages } from '@/lib/storage';
+import { saveTest, generateId, saveTestPdfPageImages, saveTestQuestionImages, saveTestPdfFile } from '@/lib/storage';
 import { Test, Question, Subject } from '@/types/exam';
 import { supabase } from '@/integrations/supabase/client';
 import { renderPDFPagesToImages, fileToBase64, PDFPageImage } from '@/lib/pdf-cropper';
@@ -353,6 +353,9 @@ function CreateTestInner() {
         saveTest(test);
         await saveTestQuestionImages(test.id, questionImages);
         await saveTestPdfPageImages(test.id, pdfPageImages);
+        if (pdfFile) {
+          try { await saveTestPdfFile(test.id, await pdfFile.arrayBuffer()); } catch (e) { console.warn('save pdf blob failed', e); }
+        }
       } catch (e) {
         console.error('saveTest failed', e);
         toast.error('Could not save test locally (storage full). Try clearing old tests.');
