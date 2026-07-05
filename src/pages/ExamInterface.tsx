@@ -96,6 +96,12 @@ export default function ExamInterface() {
         } : current);
       }
     }).catch(() => {});
+    // Load the original PDF blob for the "View Original PDF" viewer.
+    loadTestPdfFile(testId).then((buf) => {
+      if (!buf) return;
+      const blob = new Blob([buf], { type: 'application/pdf' });
+      setPdfViewerUrl(URL.createObjectURL(blob));
+    }).catch(() => {});
     // Check for existing attempt
     const existingAttempt = getCurrentAttempt();
     if (existingAttempt && existingAttempt.testId === testId && !existingAttempt.isSubmitted) {
