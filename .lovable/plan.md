@@ -1,148 +1,91 @@
-# Biro-Test — Coding-based PDF→CBT + 3-Mode Creation Plan
+This is a large multi-part request. I'll ship it in priority order across a few turns. Here's the plan so you can confirm before I start coding.
 
-## Current state (what I verified)
+## Priority 1 — Manual cropping (make it PDF2CBT-grade)
 
-- `src/lib/biro-backend.ts` hardcodes `https://biro-backend.onrender.com`. There is no `.env` entry and no `localStorage` override anymore. If the URL is wrong / service down, every PDF silently falls back to Lovable AI and burns credits.
-- No 90s timeout on backend fetch → cold-start hangs.
-- `parser.py` regex misses NTA `(A)` option format on many papers.
-- `ocr_pipeline.py` uses PaddleOCR → OOM on Render free tier.
-- `diagram_cropper.py` uses naive equal horizontal bands → cuts questions mid-text (the "bad crop" case in your diagram).
-- `ExamTimer` initialTime resets every tick → color warnings never fire.
-- `QuestionTimer` never mounted → `timeSpent` always 0 → analytics broken.
-- `storage.ts` swallows quota errors silently.
-- `CreateTest.tsx` "Create Test" button is not debounced → double-tap creates two tests and wastes daily quota.
-- `AnswerKeyInput.tsx` still calls Lovable AI edge fn even when backend URL is set.
-- Admin panel has no UI to manage the "AI-activation password" separately from other passwords.
-- No per-question "type" tag (MCQ / Integer / Numerical / Passage) surfaced in the manual crop tool.
-- Original PDF preview in question palette shows the cropped image, not the source page.
+**Problems seen in your screenshots:**
 
----
+- Metadata bar eats half the viewport → PDF area too small on mobile.
+- No way to type a custom subject/section (only fixed dropdowns).
+- No "Add question" button separate from the crop action.
+- After test creation, no way to re-open the crop tool to fix mistakes or add diagrams.
+- And also add zooming option when cropping so that que area can crop easially,because in one page if there 8-10 que then user can't crop que easily
 
-## Plan (build order)
+**Fixes in `src/components/exam/PDFCropTool.tsx`:**
 
-### 1. Backend URL — proper resolution + timeout
+1. Collapse metadata bar into a compact single row + "More" popover; PDF area gets ~80% of dialog height.
+2. Replace fixed Subject/Section selects with **combobox + free-text** (type "Section A", "Biology", etc.).
+3. Explicit **"+ Add as Question"** button (in addition to drag→crop) that opens a question shell where the user pastes text or uploads an image from gallery.
+4. **Per-crop editor**: click any crop → edit text (LaTeX), swap image, add extra diagram image from gallery, reorder, delete.
+5. Gallery upload button inside each crop card (accepts JPG/PNG, stored as data URL).
 
-- `src/lib/biro-backend.ts`
-  - `resolveBackendUrl()`: read `import.meta.env.VITE_BIRO_BACKEND_URL`, fall back to `localStorage.getItem('biro_backend_url')`, fall back to `undefined` (no hardcode).
-  - Wrap `callBackend` with `AbortController` + 90s timeout so cold-starts don't hang.
-  - Add `BIRO_BACKEND_STATUS` export used by UI to show "coding mode ready / unavailable".
-- `.env` — add `VITE_BIRO_BACKEND_URL=` line (empty placeholder, user fills after Render deploy).
-- `.env.example` — new file documenting all vars.
-- `.gitignore` — add `.env`, `.env.local`, `.env.production`.
+## Priority 2 — Post-creation review & edit
 
-### 2. Python backend fixes (biro-backend/)
+New page `src/pages/TestReview.tsx` (accessible from MyTests → "Edit"):
 
-- `requirements.txt` — drop PaddleOCR/paddlepaddle, add `pytesseract`.
-- `Dockerfile` — add `tesseract-ocr`, `tesseract-ocr-eng` apt packages.
-- `app/services/ocr_pipeline.py` — rewrite to pdf2image + pytesseract (fits in 512 MB).
-- `app/services/parser.py` — new option regex handling `(A)` / `A)` / `A.` / `(A).`, false-positive filter that requires options within 800 chars of a question start, per-question type inference (`MCQ` / `Numerical` / `Integer` / `AssertionReason`).
-- `app/services/diagram_cropper.py` — replace equal-band split with contour/whitespace detection: render page, find horizontal whitespace bands, snap each diagram-flagged question to the band spanning from just above its Q-number line to just before the next Q-number line. Fallback = top-heavy 65/35 split only when there are exactly 2 questions on a page.
-- `app/routers/extract.py` — accept `pdfBase64` in JSON body (already partially done), also expose `/api/extract-answer-key` and `/api/crop-region` — verify all three respond to CORS from the app origin.
+- List of all questions with thumbnail, text, options, answer, type, subject.
+- Inline edit for every field. Re-crop button opens `PDFCropTool` scoped to a single question.
+- "Add extra diagram" per question (gallery upload).
+- Save writes back to the same test record — no re-extraction needed.
+  &nbsp;
 
-### 3. Three-mode test creation UI (`src/pages/CreateTest.tsx`)
+## Priority 3 — Autocrop that actually crops (not just OCR text)
 
-Add a mode selector on the Upload step with three cards matching your diagram:
+Current backend returns plain text blocks, which is why questions render as broken lines like `E = log / p / 3 / √`. Fix in `biro-backend/app/services/`:
 
-```text
-┌──────────────┬───────────────────┬─────────────────────┐
-│ A. Manual    │ B. Auto-Crop      │ C. Lovable AI       │
-│ crop         │ (code + Gemini)   │ (OCR + LaTeX)       │
-│ No password  │ Admin AI-pw       │ Admin AI-pw         │
-│ 0 credits    │ 0 credits or      │ Lovable credits     │
-│              │ user's Gemini key │                     │
-└──────────────┴───────────────────┴─────────────────────┘
-```
+- New `question_block_detector.py`: for each page, find y-coordinates of tokens matching `^\s*(\d+)\.` (question starts) and `^\s*\(?[a-dA-D1-4]\)` (option starts). Slice the page image between consecutive question starts → one cropped image per question.
+- For Integer/Numerical (no options detected), crop from `N.` to next `N+1.`.
+- Return `questionImage: data:image/jpeg;base64,...` alongside OCR'd text so the frontend can show the **image** (source of truth) and keep text only as a searchable fallback.
+- Frontend `QuestionDisplay.tsx` prefers `questionImage` when present, falls back to LaTeX text.
 
-Behavior per mode:
+## Priority 4 — Multi-Gemini-key rotation for autocrop
 
-- **Manual** — go straight to `PDFCropTool`. User draws each crop AND picks a type dropdown per crop (MCQ / Numerical / Integer / Passage / Assertion-Reason) and subject/section tag. Creates blank `Question[]` with `diagramImage` = crop. 0 credits.
-- **Auto-Crop** — call Python backend first. If backend errors OR returns fewer questions than expected AND user has a Gemini key saved in Settings, retry using their key (routed through `extract-questions` edge fn with `userApiKey` param — Lovable AI is NOT called in this branch, the edge fn already supports BYO key). If no user key, surface a toast telling them to add one in Settings.
-- **Lovable AI** — current path: `extract-questions` edge fn with no user key (uses `LOVABLE_API_KEY`). Requires admin AI-activation password.
+- Settings page: users can save up to **4 Gemini keys** in localStorage (encrypted with a user-chosen passphrase using WebCrypto AES-GCM — never plaintext, never sent to server).
+- Autocrop flow tries key #1 → on quota/error → key #2 → … → coding backend fallback.
+- Rotate button re-orders keys; "Test key" button pings Gemini with 1 token.
+- Keys are read only inside the extraction call and cleared from memory after; no logging.
 
-Password check runs in a `<TestCreationGate>` dialog before mode B or C actually fires.
+## Priority 5 — Real PDF viewer in test panel
 
-### 4. Admin panel — password management (`src/pages/AdminPanel.tsx`)
+- `ExamInterface.tsx` currently shows cropped page images. Store the original PDF (base64) with the test record.
+- Add a floating "📄 View Original PDF" button that opens the full PDF in a `<iframe>` overlay (uses pdf.js viewer already bundled via `pdfjs-dist`).
+- Per-question "View in PDF" jumps to that page.
 
-Split into three named passwords in `app_settings`:
+## Priority 6 — Lovable-AI crop cutting text
 
-- `pw_ai_activation` — needed for modes B and C.
-- `pw_test_creation` — optional gate on creating any test.
-- `pw_public_publish` — needed to publish a test publicly.
+Root cause: `attach_diagram_crops` uses fixed 0.62/0.55 bands. Replace with content-aware bands:
 
-Add UI to view/change each independently. All checked server-side via existing `verify-password` edge fn (extend it to take `{ scope, password }`).
+- Detect whitespace rows in the rendered page (rows where >98% of pixels are near-white).
+- Snap crop top/bottom to nearest whitespace row → no more mid-line cuts.
+- Add 40px padding top, 60px bottom (options usually sit below).
 
-### 5. Race-safe Create button (`CreateTest.tsx`)
+## Priority 7 — "I LOVE YOU BIRO" confirmation phrase
 
-- `useRef<boolean>(false)` `creatingRef` flag.
-- Button `disabled={creating}` AND handler returns early if `creatingRef.current === true`.
-- Wrap the entire "log-test-creation → save test → navigate" chain in try/finally that only clears the flag after navigation is committed.
+- Owner/admin sets a confirmation phrase in Admin Panel (default: `I LOVE YOU BIRO`), stored in `app_settings`.
+- Required at three points, toggleable per-action from admin:
+  - Final "Publish test" step
+  - "Submit test" (end of exam)
+  - "Save & share" export
+- Wrong phrase → toast + block. Admin can change or disable each check.
 
-### 6. Question palette shows source PDF page, not crop (`ExamInterface.tsx` / `QuestionPalette.tsx`)
+## Priority 8 — Backend hardening
 
-- On question object, keep both `diagramImage` (crop) AND `pdfPageImage` (full rendered page at low DPI, produced by backend during extraction).
-- Palette "View original PDF" button opens a dialog with `pdfPageImage` for the current question.
-- For manual-crop tests, `pdfPageImage` = the full page the user cropped from (we already have the pdf.js page canvas — save it once when crop is drawn).
+- Dockerfile: switch pip to venv to silence the root-user warning.
+- Add `/warmup` cron-friendly endpoint; frontend pings on app load AND on route change to `/create-test`.
 
-### 7. Timer + timeSpent fixes
+## Technical section (for reference)
 
-- `ExamTimer.tsx` — accept `initialTime` (fixed total) and `currentRemaining` (live), only sync from parent on first mount, use `initialTime` as denominator in `getTimerClass`.
-- `ExamInterface.tsx` — mount `<QuestionTimer key={q.id} …>` above `<QuestionDisplay>` and pipe `seconds` into `updateAttemptData({ timeSpent: seconds })`.
+- Storage of PDF base64 grows `localStorage` fast → move to IndexedDB (`idb-keyval`) keyed by testId; keep only metadata in localStorage.
+- Manual-crop free-text subject: extend `CropSubject` type to `string`, but keep color mapping for the three canonical ones.
+- Multi-key encryption: `crypto.subtle.deriveKey(PBKDF2, 250k iters)` → AES-GCM; salt+iv stored alongside ciphertext.
+- Question-block detector: PyMuPDF `page.get_text("dict")` gives per-span bboxes; group by y, cluster into question blocks by regex on leading text.
+- Real PDF in exam: `URL.createObjectURL(new Blob([bytes], {type:'application/pdf'}))` → `<iframe>`; revoke on unmount.
 
-### 8. Storage full warning (`src/lib/storage.ts` + `App.tsx`)
+## Execution order
 
-- `setItem` catches `QuotaExceededError`, dispatches `biro:storage-full` CustomEvent.
-- `App.tsx` listens once and shows a `sonner` toast pointing to Settings → Export.
+I'll ship in 3 turns to keep each change reviewable:
 
-### 9. Answer key extraction routed through backend (`AnswerKeyInput.tsx`)
+1. **Turn A** (this next reply): P1 manual-crop overhaul + P2 review page skeleton + P7 confirmation-phrase infra.
+2. **Turn B**: P3 question-block detector (backend) + P5 real PDF viewer + P6 content-aware bands.
+3. **Turn C**: P4 multi-key rotation + P8 Dockerfile venv + polish.
 
-- If backend URL resolves → `POST /api/extract-answer-key` (0 credits).
-- Else → existing Lovable AI edge fn with `extractAnswerKeyOnly: true` and optional `userApiKey`.
-
----
-
-## Technical notes / files touched
-
-**Frontend**
-
-- `.env`, `.env.example`, `.gitignore`
-- `src/lib/biro-backend.ts`
-- `src/lib/storage.ts`
-- `src/App.tsx` (storage-full listener)
-- `src/pages/CreateTest.tsx` (3-mode UI + race-safe button + type/section tagging)
-- `src/pages/AdminPanel.tsx` (3 password fields)
-- `src/pages/ExamInterface.tsx` (QuestionTimer wiring + palette source-PDF dialog)
-- `src/components/exam/ExamTimer.tsx` (initialTime fix)
-- `src/components/exam/PDFCropTool.tsx` (per-crop type + subject/section dropdown)
-- `src/components/exam/AnswerKeyInput.tsx` (backend route)
-- `src/components/exam/QuestionPalette.tsx` (source-PDF button)
-
-**Backend**
-
-- `biro-backend/requirements.txt`
-- `biro-backend/Dockerfile`
-- `biro-backend/app/services/ocr_pipeline.py`
-- `biro-backend/app/services/parser.py`
-- `biro-backend/app/services/diagram_cropper.py`
-- `biro-backend/app/routers/extract.py` (CORS + response shape)
-
-**Cloud (edge fns + migration)**
-
-- `supabase/functions/verify-password/index.ts` — accept `scope`.
-- `supabase/migrations/*.sql` — add `pw_ai_activation`, `pw_test_creation`, `pw_public_publish` columns to `app_settings` (or JSON blob), plus GRANTs.
-
----
-
-## What I need from you before I build
-
-1. **Render backend URL** — the exact `https://biro-backend-xxxx.onrender.com` URL so I can bake it into `.env`. If you don't have it yet, I'll leave `VITE_BIRO_BACKEND_URL` blank and you can set it via DevTools `localStorage.setItem('biro_backend_url', '<url>')` after deploy.
-2. Confirm the **three password scopes** above are the split you want (AI-activation / test-creation / public-publish), or list the exact scopes you want instead.
-3. Confirm **question type dropdown** options for the manual crop tool: MCQ, Numerical, Integer, Passage, Assertion-Reason — add/remove any?
-
-Reply with the Render URL (or "leave blank") and answers to 2/3, and I'll implement all 9 sections in one build pass.
-
-[https://biro-backend.onrender.com](https://biro-backend.onrender.com)
-
-If it is biro backend url then pls set it(because i cant)
-
-2. Yes i want three password...
-3. Keep all these question types:MCQ, Numerical, Integer, Passage, Assertion-Reason,and also subject selection nd section selection(like maths/phy/chem subject have 2-3 etc sections)
+Confirm and I'll start Turn A. If you want a different order (e.g. autocrop first), tell me now.

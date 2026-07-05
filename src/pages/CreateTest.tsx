@@ -759,8 +759,12 @@ function CreateTestInner() {
         onOpenChange={setShowCropTool}
         pages={pdfPageImages}
         onCroppedQuestions={(crops) => {
+          const toSubject = (s: string): Subject => {
+            const canon = ['Physics', 'Chemistry', 'Maths'] as const;
+            const found = canon.find(c => c.toLowerCase() === (s || '').toLowerCase().trim());
+            return (found || 'Physics') as Subject;
+          };
           if (extractedQuestions.length === 0) {
-            // Pure manual mode — build questions from crop metadata (subject/type/section/answer).
             const subjectCounts: Record<string, number> = {};
             const manualQuestions: Question[] = crops.map((crop, i) => {
               subjectCounts[crop.subject] = (subjectCounts[crop.subject] || 0) + 1;
@@ -768,12 +772,10 @@ function CreateTestInner() {
               return {
                 id: generateId(),
                 questionNumber: i + 1,
-                subject: crop.subject,
-                chapter: crop.section || 'General',
-                question: `Question ${i + 1} (see image)`,
-                options: isNumericalType
-                  ? { A: '', B: '', C: '', D: '' }
-                  : { A: '', B: '', C: '', D: '' },
+                subject: toSubject(crop.subject),
+                chapter: crop.section || crop.subject || 'General',
+                question: crop.questionText || `Question ${i + 1} (see image)`,
+                options: { A: '', B: '', C: '', D: '' },
                 correctAnswer: crop.correctAnswer?.trim() || null,
                 type: crop.qType === 'MSQ' ? 'MSQ' : isNumericalType ? 'Numerical' : 'MCQ',
                 level: 'JEE',
@@ -795,7 +797,7 @@ function CreateTestInner() {
           setExtractedQuestions(prev => prev.map((q) => {
             const targetIndex = targets.findIndex(t => t.q.id === q.id);
             const crop = targetIndex >= 0 ? crops[targetIndex] : undefined;
-            return crop ? { ...q, croppedImageUrl: crop.dataUrl, hasDiagram: true, pdfPageNumber: crop.pageNumber, subject: crop.subject } : q;
+            return crop ? { ...q, croppedImageUrl: crop.dataUrl, hasDiagram: true, pdfPageNumber: crop.pageNumber, subject: toSubject(crop.subject) } : q;
           }));
           toast.success(`${crops.length} regions cropped and attached to questions.`);
         }}
