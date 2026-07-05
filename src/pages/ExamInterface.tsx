@@ -128,6 +128,8 @@ export default function ExamInterface() {
       setCurrentAttempt(newAttempt);
     }
   }, [testId, navigate]);
+  // Revoke PDF blob URL on unmount to free memory
+  useEffect(() => () => { if (pdfViewerUrl) URL.revokeObjectURL(pdfViewerUrl); }, [pdfViewerUrl]);
   // Auto-save attempt periodically
   useEffect(() => {
     const interval = setInterval(() => {
