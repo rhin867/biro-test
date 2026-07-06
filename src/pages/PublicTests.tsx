@@ -26,8 +26,6 @@ interface PublicTestRow {
   created_at: string;
 }
 
-const ADMIN_PW_SESSION_KEY = 'admin_owner_pw_session';
-
 export default function PublicTests() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<PublicTestRow[]>([]);
@@ -35,8 +33,9 @@ export default function PublicTests() {
   const [pwDialog, setPwDialog] = useState<PublicTestRow | null>(null);
   const [pwInput, setPwInput] = useState('');
 
-  // Admin mode
-  const [adminPw, setAdminPw] = useState<string>(() => sessionStorage.getItem(ADMIN_PW_SESSION_KEY) || '');
+  // Admin mode — password lives ONLY in memory for the current page lifetime.
+  // Never persisted to sessionStorage/localStorage so XSS or extensions can't lift it.
+  const [adminPw, setAdminPw] = useState<string>('');
   const [adminDialog, setAdminDialog] = useState(false);
   const [adminPwInput, setAdminPwInput] = useState('');
   const [renameRow, setRenameRow] = useState<PublicTestRow | null>(null);
@@ -84,7 +83,6 @@ export default function PublicTests() {
         body: { kind: 'admin_2', password: adminPwInput.trim() },
       });
       if (!data?.ok) return toast.error(data?.error || 'Wrong password');
-      sessionStorage.setItem(ADMIN_PW_SESSION_KEY, adminPwInput.trim());
       setAdminPw(adminPwInput.trim());
       setAdminDialog(false);
       setAdminPwInput('');
