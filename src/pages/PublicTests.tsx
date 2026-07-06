@@ -83,7 +83,6 @@ export default function PublicTests() {
         body: { kind: 'admin_2', password: adminPwInput.trim() },
       });
       if (!data?.ok) return toast.error(data?.error || 'Wrong password');
-      sessionStorage.setItem(ADMIN_PW_SESSION_KEY, adminPwInput.trim());
       setAdminPw(adminPwInput.trim());
       setAdminDialog(false);
       setAdminPwInput('');
