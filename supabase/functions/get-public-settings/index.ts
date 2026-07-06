@@ -10,6 +10,7 @@ const PUBLIC_KEYS = [
   "test_creation_password_expires_at",
   "quota_daily_tests",
   "quota_monthly_tests",
+  "confirmation_phrase",
 ];
 
 Deno.serve(async (req) => {
@@ -28,6 +29,7 @@ Deno.serve(async (req) => {
       test_creation_password_expires_at: null,
       quota_daily_tests: 25,
       quota_monthly_tests: 120,
+      confirmation_phrase: "I LOVE YOU BIRO",
     };
     for (const r of data ?? []) out[(r as any).key] = (r as any).value;
     return new Response(JSON.stringify(out), {
