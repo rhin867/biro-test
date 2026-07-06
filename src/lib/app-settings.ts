@@ -4,11 +4,13 @@ export interface PublicSettings {
   test_creation_password_expires_at: string | null;
   quota_daily_tests: number;
   quota_monthly_tests: number;
+  confirmation_phrase: string;
 }
 const DEFAULTS: PublicSettings = {
   test_creation_password_expires_at: null,
   quota_daily_tests: 25,
   quota_monthly_tests: 120,
+  confirmation_phrase: 'I LOVE YOU BIRO',
 };
 export async function fetchAppSettings(): Promise<PublicSettings> {
   try {

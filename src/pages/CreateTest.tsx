@@ -240,10 +240,22 @@ function CreateTestInner() {
         return { ...q, croppedImageUrl: await cropQuestionBandFromPage(page.imageDataUrl, indexOnPage, samePage.length) };
       }));
 
-      setExtractedQuestions(questionsWithImages);
+      // Sanity-cap AI subject counts: dedupe by (subject, questionNumber) so the model can't
+      // hallucinate 50 Physics questions when only 25 exist in the PDF.
+      const seen = new Set<string>();
+      const dedupedQuestions = questionsWithImages.filter((q) => {
+        const key = `${q.subject}#${q.questionNumber}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      const realSubjectCounts: Record<string, number> = {};
+      for (const q of dedupedQuestions) realSubjectCounts[q.subject] = (realSubjectCounts[q.subject] || 0) + 1;
+
+      setExtractedQuestions(dedupedQuestions);
       setExtractionStats({
-        totalExtracted: data.totalExtracted || questionsWithImages.length,
-        subjectCounts: data.subjectCounts || {},
+        totalExtracted: dedupedQuestions.length,
+        subjectCounts: realSubjectCounts,
         examTitle: data.examTitle,
       });
       // Only auto-fill the name if the user hasn't typed one — never overwrite user input.
@@ -312,6 +324,15 @@ function CreateTestInner() {
     if (extractedQuestions.length === 0) {
       toast.error('No questions to create test');
       return;
+    }
+    // Confirmation phrase gate (admin-configurable via app_settings.confirmation_phrase)
+    const phrase = (getCachedAppSettings().confirmation_phrase || '').trim();
+    if (phrase) {
+      const entered = window.prompt(`Type the confirmation phrase to finalize this test:\n\n"${phrase}"`);
+      if (!entered || entered.trim().toUpperCase() !== phrase.toUpperCase()) {
+        toast.error('Confirmation phrase did not match. Test not saved.');
+        return;
+      }
     }
     creatingRef.current = true;
     setIsCreating(true);
