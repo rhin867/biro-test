@@ -19,10 +19,10 @@ Deno.serve(async (req) => {
     const { kind, password } = await req.json();
     const key = KIND_TO_KEY[kind];
     if (!key) {
-      return json({ ok: false, error: "Invalid kind" }, 400);
+      return json({ ok: false, error: "Invalid kind" });
     }
     if (typeof password !== "string" || password.length > 256) {
-      return json({ ok: false, error: "Invalid password" }, 400);
+      return json({ ok: false, error: "Invalid password" });
     }
 
     const supabase = createClient(
@@ -38,22 +38,23 @@ Deno.serve(async (req) => {
     if (error) throw error;
 
     const map = new Map(data?.map((r: any) => [r.key, r.value]) ?? []);
-    const stored = map.get(key) as string | undefined;
-    // Only treat expiry as valid if it parses as a real date (guards against corrupted values).
-    const rawExp = map.get("test_creation_password_expires_at") as string | null | undefined;
+    // jsonb values may arrive as parsed JS strings (unwrapped) — normalise.
+    const rawStored = map.get(key);
+    const stored = typeof rawStored === "string" ? rawStored : (rawStored != null ? String(rawStored) : undefined);
+    const rawExpVal = map.get("test_creation_password_expires_at");
+    const rawExp = typeof rawExpVal === "string" ? rawExpVal : null;
     const expiresAt = rawExp && !isNaN(new Date(rawExp).getTime()) ? rawExp : null;
 
     if (!stored) {
-      return json({ ok: false, error: "Password is not configured. Ask the owner to set it." }, 503);
+      return json({ ok: false, error: "Password is not configured. Ask the owner to set it." });
     }
 
-    // expiry only applies to test_creation
     if (kind === "test_creation" && expiresAt && new Date(expiresAt) < new Date()) {
-      return json({ ok: false, error: "Password expired. Ask owner for the new one." }, 401);
+      return json({ ok: false, error: "Password expired. Ask owner for the new one." });
     }
 
     if (!(await verifySecret(password, stored))) {
-      return json({ ok: false, error: "Incorrect password" }, 401);
+      return json({ ok: false, error: "Incorrect password" });
     }
 
     return json({
@@ -61,7 +62,9 @@ Deno.serve(async (req) => {
       expiresAt: kind === "test_creation" ? expiresAt ?? null : null,
     });
   } catch (e: any) {
-    return json({ ok: false, error: e.message || "Server error" }, 500);
+    // Always return 200 with an error body so the supabase-js client surfaces the
+    // real message instead of the generic "Edge Function returned a non-2xx status code".
+    return json({ ok: false, error: e?.message || "Server error" });
   }
 });
 
