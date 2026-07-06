@@ -507,7 +507,7 @@ function CreateTestInner() {
                 {([
                   { id: 'manual', title: 'Manual', desc: 'Crop yourself. 0 AI calls.', icon: Crop, disabled: false },
                   { id: 'auto', title: 'Auto-Crop', desc: BIRO_BACKEND_CONFIGURED ? 'Python backend · 0 credits' : 'Backend not configured', icon: Sparkles, disabled: !BIRO_BACKEND_CONFIGURED },
-                  { id: 'ai', title: 'AI (Lovable)', desc: 'Best accuracy · uses credits', icon: Sparkles, disabled: false },
+                  { id: 'ai', title: "Owner's AI", desc: 'Best accuracy · uses credits', icon: Sparkles, disabled: false },
                 ] as const).map(m => (
                   <button
                     key={m.id}
