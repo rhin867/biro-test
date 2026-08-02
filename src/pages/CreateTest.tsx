@@ -70,6 +70,10 @@ function CreateTestInner() {
   const [aiUnlocked, setAiUnlocked] = useState(() => isTestCreationUnlocked(getCachedAppSettings()));
   const [aiPassword, setAiPassword] = useState('');
   const [aiVerifying, setAiVerifying] = useState(false);
+  // User's own Gemini API key — powers Auto-Crop AI (never the owner's credits).
+  const [ownKey, setOwnKey] = useState(() => getUserApiKey() || '');
+  const [ownKeySaved, setOwnKeySaved] = useState(() => !!getUserApiKey());
+  const [showOwnKey, setShowOwnKey] = useState(false);
   React.useEffect(() => { fetchQuotaInfo().then(setQuota); }, []);
   // Warm the Render dyno as soon as the user opens the page — kills the "unavailable" first-call error.
   React.useEffect(() => {
