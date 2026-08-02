@@ -294,6 +294,7 @@ function CreateTestInner() {
           mimeType: 'application/pdf',
           userApiKey,
           forceAI: extractionMode === 'ai',
+          userKeyOnly: extractionMode === 'auto',
           onStage: (msg) => toast.info(msg),
         });
         await finishExtraction(data, startTime);
