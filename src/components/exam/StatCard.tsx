@@ -82,4 +82,5 @@ export const StatCard = React.forwardRef<HTMLDivElement, StatCardProps>(function
       </div>
     </div>
   );
-}
+});
+
