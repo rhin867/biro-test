@@ -84,9 +84,15 @@ async function callLovableAI(
   pdfBase64: string,
   mimeType: string,
   userApiKey?: string,
+  userKeyOnly?: boolean,
 ): Promise<ExtractResult> {
   const { data, error } = await supabase.functions.invoke("extract-questions", {
-    body: { pdfBase64, mimeType, ...(userApiKey ? { userApiKey } : {}) },
+    body: {
+      pdfBase64,
+      mimeType,
+      ...(userApiKey ? { userApiKey } : {}),
+      ...(userKeyOnly ? { userKeyOnly: true } : {}),
+    },
   });
   if (error) throw error;
   if (data?.error) throw new Error(data.error);
@@ -98,8 +104,13 @@ export async function extractQuestionsFromPdf(args: {
   mimeType?: string;
   userApiKey?: string;
   onStage?: (msg: string) => void;
-  /** If true, skip backend and go straight to AI (for "Lovable AI mode"). */
+  /** If true, skip backend and go straight to the owner's AI. */
   forceAI?: boolean;
+  /**
+   * Auto-Crop mode: never use the owner's AI. Backend first, then the user's
+   * own Gemini API key. Fails clearly when no user key is present.
+   */
+  userKeyOnly?: boolean;
 }): Promise<ExtractResult> {
   const mimeType = args.mimeType ?? "application/pdf";
   if (BACKEND_URL && !args.forceAI) {
@@ -107,15 +118,31 @@ export async function extractQuestionsFromPdf(args: {
       args.onStage?.("Extracting via Biro backend (0 AI credits, cold start may take ~30s)…");
       return await callBackend(args.pdfBase64, mimeType);
     } catch (e) {
-      console.warn("Biro backend failed, falling back to AI:", e);
-      args.onStage?.("Backend unavailable — falling back to AI extraction…");
+      console.warn("Biro backend failed:", e);
+      if (args.userKeyOnly && !args.userApiKey) {
+        throw new Error(
+          "Extraction backend is unavailable. Add your own Gemini API key to run Auto-Crop AI, or switch mode.",
+        );
+      }
+      args.onStage?.(
+        args.userKeyOnly
+          ? "Backend unavailable — retrying with your own API key…"
+          : "Backend unavailable — falling back to AI extraction…",
+      );
     }
   } else if (!BACKEND_URL) {
-    args.onStage?.("Using AI extraction (no self-hosted backend configured).");
+    if (args.userKeyOnly && !args.userApiKey) {
+      throw new Error("Add your own Gemini API key to use Auto-Crop, or switch mode.");
+    }
+    args.onStage?.(
+      args.userKeyOnly
+        ? "Using your own API key for extraction…"
+        : "Using AI extraction (no self-hosted backend configured).",
+    );
   } else {
     args.onStage?.("Using AI extraction as requested…");
   }
-  return callLovableAI(args.pdfBase64, mimeType, args.userApiKey);
+  return callLovableAI(args.pdfBase64, mimeType, args.userApiKey, args.userKeyOnly);
 }
 
 export async function extractAnswerKeyFromPdf(args: {

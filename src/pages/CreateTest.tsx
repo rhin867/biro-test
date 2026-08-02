@@ -15,10 +15,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { renderPDFPagesToImages, fileToBase64, PDFPageImage } from '@/lib/pdf-cropper';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { PDFCropTool } from '@/components/exam/PDFCropTool';
-import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Crop, RefreshCw, Download, FileUp, Lock } from 'lucide-react';
+import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Crop, RefreshCw, Download, FileUp, Lock, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fetchQuotaInfo, logTestCreation, QuotaInfo, verifyPassword, isTestCreationUnlocked, markTestCreationUnlocked, getCachedAppSettings } from '@/lib/app-settings';
-import { getUserApiKey } from '@/pages/Settings';
+import { getUserApiKey, setUserApiKey } from '@/pages/Settings';
 import { extractQuestionsFromPdf, BIRO_BACKEND_CONFIGURED, warmupBackend } from '@/lib/biro-backend';
 
 async function cropQuestionBandFromPage(imageDataUrl: string, indexOnPage: number, totalOnPage: number): Promise<string> {
@@ -70,6 +70,10 @@ function CreateTestInner() {
   const [aiUnlocked, setAiUnlocked] = useState(() => isTestCreationUnlocked(getCachedAppSettings()));
   const [aiPassword, setAiPassword] = useState('');
   const [aiVerifying, setAiVerifying] = useState(false);
+  // User's own Gemini API key — powers Auto-Crop AI (never the owner's credits).
+  const [ownKey, setOwnKey] = useState(() => getUserApiKey() || '');
+  const [ownKeySaved, setOwnKeySaved] = useState(() => !!getUserApiKey());
+  const [showOwnKey, setShowOwnKey] = useState(false);
   React.useEffect(() => { fetchQuotaInfo().then(setQuota); }, []);
   // Warm the Render dyno as soon as the user opens the page — kills the "unavailable" first-call error.
   React.useEffect(() => {
@@ -294,6 +298,7 @@ function CreateTestInner() {
           mimeType: 'application/pdf',
           userApiKey,
           forceAI: extractionMode === 'ai',
+          userKeyOnly: extractionMode === 'auto',
           onStage: (msg) => toast.info(msg),
         });
         await finishExtraction(data, startTime);
@@ -312,7 +317,7 @@ function CreateTestInner() {
     } finally {
       setIsProcessing(false);
     }
-  }, [pdfText, pdfFile, pdfPageImages]);
+  }, [pdfText, pdfFile, pdfPageImages, extractionMode, backendWarm]);
   const creatingRef = useRef(false);
   const [isCreating, setIsCreating] = useState(false);
   const handleCreateTest = async () => {
@@ -527,7 +532,7 @@ function CreateTestInner() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {([
                   { id: 'manual', title: 'Manual', desc: 'Crop yourself. 0 AI calls.', icon: Crop, disabled: false },
-                  { id: 'auto', title: 'Auto-Crop', desc: BIRO_BACKEND_CONFIGURED ? 'Python backend · 0 credits' : 'Backend not configured', icon: Sparkles, disabled: !BIRO_BACKEND_CONFIGURED },
+                  { id: 'auto', title: 'Auto-Crop', desc: 'Backend + your own Gemini key · 0 owner credits', icon: Sparkles, disabled: false },
                   { id: 'ai', title: "Owner's AI", desc: 'Best accuracy · uses credits', icon: Sparkles, disabled: false },
                 ] as const).map(m => (
                   <button
@@ -559,10 +564,49 @@ function CreateTestInner() {
               <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
               <p className="text-sm">
                 {extractionMode === 'manual' && 'You will crop each question manually — tag subject / section / type per crop. No password, 0 AI credits.'}
-                {extractionMode === 'auto' && 'Auto-Crop uses regex + OCR on our Python backend — no password, 0 AI credits.'}
+                {extractionMode === 'auto' && 'Auto-Crop runs on our Python backend (regex + OCR). If the backend is down, it uses YOUR own Gemini API key — never the owner\'s credits.'}
                 {extractionMode === 'ai' && 'AI extracts questions with LaTeX math, subjects and diagrams (uses credits — password required).'}
               </p>
             </div>
+            {/* Auto-Crop: user's own Gemini API key */}
+            {extractionMode === 'auto' && (
+              <div className="space-y-2 p-3 rounded-lg border border-border bg-muted/30">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Lock className="h-4 w-4 text-primary" /> Your Gemini API key (used only by you)
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Stored only in this browser and sent straight to the extraction call — never saved on our servers.{' '}
+                  <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                    Get a free key
+                  </a>
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    type={showOwnKey ? 'text' : 'password'}
+                    placeholder="AIzaSy…"
+                    value={ownKey}
+                    onChange={(e) => { setOwnKey(e.target.value); setOwnKeySaved(false); }}
+                  />
+                  <Button variant="ghost" size="icon" type="button" onClick={() => setShowOwnKey(v => !v)}>
+                    {showOwnKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      if (!ownKey.trim()) { toast.error('Enter your Gemini API key'); return; }
+                      setUserApiKey(ownKey.trim());
+                      setOwnKeySaved(true);
+                      toast.success('API key saved in this browser');
+                    }}
+                  >
+                    Save
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  {ownKeySaved ? '🟢 Key active — Auto-Crop can fall back to your own AI.' : '⚪ No key saved — Auto-Crop will use the backend only.'}
+                </p>
+              </div>
+            )}
             {/* AI mode password unlock — only shown for AI mode */}
             {extractionMode === 'ai' && !aiUnlocked && (
               <div className="space-y-2 p-3 rounded-lg border border-review/30 bg-review/10">
