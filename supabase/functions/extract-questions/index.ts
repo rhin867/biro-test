@@ -25,7 +25,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
   try {
-    const { pdfText, pdfBase64, mimeType, extractAnswerKeyOnly, totalQuestions, userApiKey } = await req.json();
+    const { pdfText, pdfBase64, mimeType, extractAnswerKeyOnly, totalQuestions, userApiKey, userKeyOnly } = await req.json();
     
     if (!pdfText && !pdfBase64) {
       return new Response(
@@ -33,9 +33,16 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    // userKeyOnly (Auto-Crop mode): never touch the owner's AI credits.
+    if (userKeyOnly && !userApiKey) {
+      return new Response(
+        JSON.stringify({ error: "Add your own Gemini API key to use this mode." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     // Use Lovable AI gateway first, then server/user Gemini fallback.
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const fallbackGeminiKey = userApiKey || Deno.env.get("Biro_test_api_key");
+    const LOVABLE_API_KEY = userKeyOnly ? null : Deno.env.get("LOVABLE_API_KEY");
+    const fallbackGeminiKey = userKeyOnly ? userApiKey : (userApiKey || Deno.env.get("Biro_test_api_key"));
     const useGateway = !!LOVABLE_API_KEY;
     if (!useGateway && !fallbackGeminiKey) {
       return new Response(
