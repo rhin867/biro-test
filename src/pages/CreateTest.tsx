@@ -18,7 +18,7 @@ import { PDFCropTool } from '@/components/exam/PDFCropTool';
 import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Crop, RefreshCw, Download, FileUp, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fetchQuotaInfo, logTestCreation, QuotaInfo, verifyPassword, isTestCreationUnlocked, markTestCreationUnlocked, getCachedAppSettings } from '@/lib/app-settings';
-import { getUserApiKey } from '@/pages/Settings';
+import { getUserApiKey, setUserApiKey } from '@/pages/Settings';
 import { extractQuestionsFromPdf, BIRO_BACKEND_CONFIGURED, warmupBackend } from '@/lib/biro-backend';
 
 async function cropQuestionBandFromPage(imageDataUrl: string, indexOnPage: number, totalOnPage: number): Promise<string> {
