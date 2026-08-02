@@ -313,7 +313,7 @@ function CreateTestInner() {
     } finally {
       setIsProcessing(false);
     }
-  }, [pdfText, pdfFile, pdfPageImages]);
+  }, [pdfText, pdfFile, pdfPageImages, extractionMode, backendWarm]);
   const creatingRef = useRef(false);
   const [isCreating, setIsCreating] = useState(false);
   const handleCreateTest = async () => {
