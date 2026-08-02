@@ -103,7 +103,8 @@ serve(async (req) => {
     console.error("Extract questions error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
     const status = errorMessage.includes("Rate limit") ? 429 : 
-                   errorMessage.includes("Payment") ? 402 : 500;
+                   errorMessage.includes("Payment") ? 402 :
+                   errorMessage.includes("API key") ? 400 : 500;
     return new Response(
       JSON.stringify({ error: errorMessage, retryable: status === 429 }),
       { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
