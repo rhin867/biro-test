@@ -564,10 +564,49 @@ function CreateTestInner() {
               <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
               <p className="text-sm">
                 {extractionMode === 'manual' && 'You will crop each question manually — tag subject / section / type per crop. No password, 0 AI credits.'}
-                {extractionMode === 'auto' && 'Auto-Crop uses regex + OCR on our Python backend — no password, 0 AI credits.'}
+                {extractionMode === 'auto' && 'Auto-Crop runs on our Python backend (regex + OCR). If the backend is down, it uses YOUR own Gemini API key — never the owner\'s credits.'}
                 {extractionMode === 'ai' && 'AI extracts questions with LaTeX math, subjects and diagrams (uses credits — password required).'}
               </p>
             </div>
+            {/* Auto-Crop: user's own Gemini API key */}
+            {extractionMode === 'auto' && (
+              <div className="space-y-2 p-3 rounded-lg border border-border bg-muted/30">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Lock className="h-4 w-4 text-primary" /> Your Gemini API key (used only by you)
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Stored only in this browser and sent straight to the extraction call — never saved on our servers.{' '}
+                  <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                    Get a free key
+                  </a>
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    type={showOwnKey ? 'text' : 'password'}
+                    placeholder="AIzaSy…"
+                    value={ownKey}
+                    onChange={(e) => { setOwnKey(e.target.value); setOwnKeySaved(false); }}
+                  />
+                  <Button variant="ghost" size="icon" type="button" onClick={() => setShowOwnKey(v => !v)}>
+                    {showOwnKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      if (!ownKey.trim()) { toast.error('Enter your Gemini API key'); return; }
+                      setUserApiKey(ownKey.trim());
+                      setOwnKeySaved(true);
+                      toast.success('API key saved in this browser');
+                    }}
+                  >
+                    Save
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  {ownKeySaved ? '🟢 Key active — Auto-Crop can fall back to your own AI.' : '⚪ No key saved — Auto-Crop will use the backend only.'}
+                </p>
+              </div>
+            )}
             {/* AI mode password unlock — only shown for AI mode */}
             {extractionMode === 'ai' && !aiUnlocked && (
               <div className="space-y-2 p-3 rounded-lg border border-review/30 bg-review/10">
