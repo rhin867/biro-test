@@ -31,7 +31,7 @@ const variantValueStyles = {
   primary: 'text-primary',
 };
 
-export function StatCard({
+export const StatCard = React.forwardRef<HTMLDivElement, StatCardProps>(function StatCard({
   title,
   value,
   subtitle,
@@ -39,15 +39,19 @@ export function StatCard({
   trend,
   variant = 'default',
   className,
-}: StatCardProps) {
+  ...rest
+}, ref) {
   return (
     <div
+      ref={ref}
+      {...rest}
       className={cn(
         'relative overflow-hidden rounded-xl border p-4 transition-all duration-300 hover:shadow-lg',
         variantStyles[variant],
         className
       )}
     >
+
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
