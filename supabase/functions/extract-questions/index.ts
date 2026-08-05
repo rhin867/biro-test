@@ -33,20 +33,22 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    // userKeyOnly (Auto-Crop mode): never touch the owner's AI credits.
+    // Auto-Crop mode: MUST use user API key, never touch owner's credits.
     if (userKeyOnly && !userApiKey) {
       return new Response(
         JSON.stringify({ error: "Add your own Gemini API key to use this mode." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    // Use Lovable AI gateway first, then server/user Gemini fallback.
+    // Owners AI (Lovable API Key) is ONLY for AI extraction mode.
     const LOVABLE_API_KEY = userKeyOnly ? null : Deno.env.get("LOVABLE_API_KEY");
-    const fallbackGeminiKey = userKeyOnly ? userApiKey : (userApiKey || Deno.env.get("Biro_test_api_key"));
+    // Fallback logic: if user provided a key, use it. Otherwise use the server's key if NOT in userKeyOnly mode.
+    const fallbackGeminiKey = userApiKey || (userKeyOnly ? null : Deno.env.get("Biro_test_api_key"));
     const useGateway = !!LOVABLE_API_KEY;
+    
     if (!useGateway && !fallbackGeminiKey) {
       return new Response(
-        JSON.stringify({ error: "AI service not available. Please try again." }),
+        JSON.stringify({ error: userKeyOnly ? "Invalid or missing user API key." : "AI service not available. Please try again." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
