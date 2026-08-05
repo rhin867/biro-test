@@ -678,6 +678,10 @@ function CreateTestInner() {
                 onClick={() => {
                   if (extractionMode === 'manual') return setShowCropTool(true);
                   if (extractionMode === 'ai' && !aiUnlocked) return toast.error('Enter the AI password above, or switch to Manual / Auto-Crop (no password).');
+                  if (extractionMode === 'auto' && !ownKeySaved && !ownKey.trim()) {
+                    toast.error('Add your own Gemini API key for Auto-Crop mode, or use Manual.');
+                    return;
+                  }
                   extractQuestions();
                 }}
                 disabled={isProcessing}
