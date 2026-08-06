@@ -63,6 +63,9 @@ export default function AdminPanel() {
   const [newConfirmationPhrase, setNewConfirmationPhrase] = useState('');
   const [savingPw, setSavingPw] = useState(false);
   const [newHotQuestion, setNewHotQuestion] = useState('');
+  const [hotQuestionType, setHotQuestionType] = useState<'mcq' | 'msq' | 'integer' | 'poll'>('mcq');
+  const [hotQuestionOptions, setHotQuestionOptions] = useState<string[]>(['', '', '', '']);
+  const [hotQuestionCorrect, setHotQuestionCorrect] = useState('');
   const [savingHot, setSavingHot] = useState(false);
   const [savingPhrase, setSavingPhrase] = useState(false);
 
@@ -156,25 +159,32 @@ export default function AdminPanel() {
 
   const handleSaveHotQuestion = async () => {
     if (!ownerPassword) return toast.error('Session expired, re-login');
+    if (!newHotQuestion.trim()) return toast.error('Enter question content');
+
     setSavingHot(true);
     
-    // 1. Update legacy app_settings for simple display
+    // 1. Update legacy app_settings for simple display (optional, keep for compatibility)
     const r1 = await updateAppSetting('daily_hot_question', newHotQuestion.trim() || null, ownerPassword);
     
     // 2. Insert into hot_questions history table
-    if (newHotQuestion.trim()) {
-      const { error: histErr } = await supabase.from('hot_questions').insert({
-        content: newHotQuestion.trim()
-      });
-      if (histErr) console.error('Failed to log to history', histErr);
-    }
+    const { error: histErr } = await supabase.from('hot_questions').insert({
+      content: newHotQuestion.trim(),
+      options: hotQuestionType === 'mcq' || hotQuestionType === 'msq' || hotQuestionType === 'poll' 
+        ? hotQuestionOptions.filter(o => o.trim() !== '') 
+        : null,
+      correct_option: hotQuestionCorrect.trim() || null,
+      question_type: hotQuestionType
+    });
 
     setSavingHot(false);
-    if (r1.ok) {
+    if (!histErr && r1.ok) {
       toast.success('Daily Hot Question updated & logged to history');
       setSettings(await fetchAppSettings());
+      setNewHotQuestion('');
+      setHotQuestionOptions(['', '', '', '']);
+      setHotQuestionCorrect('');
     } else {
-      toast.error(r1.error || 'Failed to update');
+      toast.error(histErr?.message || r1.error || 'Failed to update');
     }
   };
 
@@ -397,21 +407,77 @@ export default function AdminPanel() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Star className="h-5 w-5 text-yellow-400" />
-                Daily Hot Question
+                Daily Hot Question Management
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               <p className="text-xs text-muted-foreground">
-                Set a "Hot Question" of the day to show on the Community/Dashboard page. Supports LaTeX.
+                Post a new challenge. It will appear on the Dashboard for 24 hours and stay in history forever.
               </p>
-              <Textarea 
-                value={newHotQuestion} 
-                onChange={e => setNewHotQuestion(e.target.value)} 
-                placeholder="Type question content here..."
-                rows={4}
-              />
-              <Button onClick={handleSaveHotQuestion} disabled={savingHot} className="w-full">
-                {savingHot ? 'Saving...' : 'Update Hot Question'}
+              
+              <div className="space-y-2">
+                <Label>Question Type</Label>
+                <div className="flex gap-2 flex-wrap">
+                  {['mcq', 'msq', 'integer', 'poll'].map((t) => (
+                    <Button 
+                      key={t}
+                      size="sm"
+                      variant={hotQuestionType === t ? 'default' : 'outline'}
+                      onClick={() => setHotQuestionType(t as any)}
+                      className="uppercase text-[10px]"
+                    >
+                      {t}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Question Content (LaTeX supported)</Label>
+                <Textarea 
+                  value={newHotQuestion} 
+                  onChange={e => setNewHotQuestion(e.target.value)} 
+                  placeholder="e.g. Find the value of $\int_0^\pi \sin(x) dx$"
+                  rows={4}
+                />
+              </div>
+
+              {(hotQuestionType === 'mcq' || hotQuestionType === 'msq' || hotQuestionType === 'poll') && (
+                <div className="space-y-2">
+                  <Label>Options</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {hotQuestionOptions.map((opt, i) => (
+                      <div key={i} className="flex gap-2">
+                        <Badge variant="outline" className="h-10 w-8 flex justify-center">{String.fromCharCode(65 + i)}</Badge>
+                        <Input 
+                          value={opt} 
+                          onChange={e => {
+                            const newOpts = [...hotQuestionOptions];
+                            newOpts[i] = e.target.value;
+                            setHotQuestionOptions(newOpts);
+                          }}
+                          placeholder={`Option ${String.fromCharCode(65 + i)}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {hotQuestionType !== 'poll' && (
+                <div className="space-y-2">
+                  <Label>Correct Answer</Label>
+                  <Input 
+                    value={hotQuestionCorrect} 
+                    onChange={e => setHotQuestionCorrect(e.target.value)} 
+                    placeholder={hotQuestionType === 'integer' ? "e.g. 2" : "e.g. A"}
+                  />
+                </div>
+              )}
+
+              <Button onClick={handleSaveHotQuestion} disabled={savingHot} className="w-full gap-2">
+                {savingHot ? <Loader2 className="h-4 w-4 animate-spin" /> : <Star className="h-4 w-4" />}
+                Post Daily Hot Question
               </Button>
             </CardContent>
           </Card>
