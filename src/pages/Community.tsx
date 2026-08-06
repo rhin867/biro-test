@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { MainLayout, PageHeader } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -177,19 +178,35 @@ export default function Community() {
       </div>
 
       {hotQuestion && (
-        <Card className="mb-6 border-primary/50 bg-primary/5">
+        <Card className="mb-6 border-primary/50 bg-primary/5 shadow-neon">
           <CardHeader className="py-3 flex flex-row items-center justify-between">
             <CardTitle className="text-sm flex items-center gap-2">
               <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
               Daily Hot Question
             </CardTitle>
-            <Badge variant="secondary" className="text-[10px]">Challenge of the Day</Badge>
+            <div className="flex gap-2">
+              <Link to="/hot-question">
+                <Button variant="ghost" size="sm" className="text-[10px] h-6">Full Panel & History</Button>
+              </Link>
+              <Badge variant="secondary" className="text-[10px]">Challenge of the Day</Badge>
+            </div>
           </CardHeader>
           <CardContent className="pb-4">
-            <div className="text-sm bg-card p-3 rounded-md border border-border/50">
+            <div className="text-sm bg-card p-4 rounded-lg border border-border/50">
               <LatexRenderer content={hotQuestion} />
             </div>
-            <p className="text-[10px] text-muted-foreground mt-2 italic text-right">Answer in the chat below!</p>
+            <div className="flex gap-2 mt-4">
+              <Input 
+                placeholder="Choose option (A/B/C/D)..." 
+                className="text-xs h-8"
+                id="hot-q-option"
+              />
+              <Button size="sm" className="h-8 text-xs px-4" onClick={() => {
+                const opt = (document.getElementById('hot-q-option') as HTMLInputElement)?.value;
+                if (!opt) return toast.error('Choose an option');
+                toast.success('Vote submitted! Visit Hot Question panel for comments.');
+              }}>Vote</Button>
+            </div>
           </CardContent>
         </Card>
       )}

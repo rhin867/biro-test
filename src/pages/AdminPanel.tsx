@@ -8,7 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Shield, Lock, Trash2, Activity, Ban, KeyRound, Loader2 } from 'lucide-react';
+import { Shield, Lock, Trash2, Activity, Ban, KeyRound, Loader2, FolderOpen, Share2, Mail, CheckCircle, XCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { FolderAccessManager } from '@/components/exam/FolderAccessManager';
 import {
   fetchAppSettings,
   updateAppSetting,
@@ -155,13 +157,24 @@ export default function AdminPanel() {
   const handleSaveHotQuestion = async () => {
     if (!ownerPassword) return toast.error('Session expired, re-login');
     setSavingHot(true);
-    const r = await updateAppSetting('daily_hot_question', newHotQuestion.trim() || null, ownerPassword);
+    
+    // 1. Update legacy app_settings for simple display
+    const r1 = await updateAppSetting('daily_hot_question', newHotQuestion.trim() || null, ownerPassword);
+    
+    // 2. Insert into hot_questions history table
+    if (newHotQuestion.trim()) {
+      const { error: histErr } = await supabase.from('hot_questions').insert({
+        content: newHotQuestion.trim()
+      });
+      if (histErr) console.error('Failed to log to history', histErr);
+    }
+
     setSavingHot(false);
-    if (r.ok) {
-      toast.success('Daily Hot Question updated');
+    if (r1.ok) {
+      toast.success('Daily Hot Question updated & logged to history');
       setSettings(await fetchAppSettings());
     } else {
-      toast.error(r.error || 'Failed to update');
+      toast.error(r1.error || 'Failed to update');
     }
   };
 
@@ -271,6 +284,7 @@ export default function AdminPanel() {
           <TabsTrigger value="posts">Posts</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="shares">Shares</TabsTrigger>
         </TabsList>
 
         <TabsContent value="passwords" className="space-y-4">
@@ -396,6 +410,17 @@ export default function AdminPanel() {
               <Button onClick={handleSaveHotQuestion} disabled={savingHot} className="w-full">
                 {savingHot ? 'Saving...' : 'Update Hot Question'}
               </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="shares" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><FolderOpen className="h-5 w-5 text-primary" />Access Requests</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FolderAccessManager />
             </CardContent>
           </Card>
         </TabsContent>

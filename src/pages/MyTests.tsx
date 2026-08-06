@@ -11,7 +11,7 @@ import { formatTimeMinutes } from '@/lib/exam-utils';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentDisplayName, getCurrentUserKey } from '@/lib/app-settings';
 import {
-  Plus, Play, BarChart3, Trash2, Clock, FileText, Target, MoreVertical, Share2, Key, CheckCircle2, Pencil, Globe,
+  Plus, Play, BarChart3, Trash2, Clock, FileText, Target, MoreVertical, Share2, Key, CheckCircle2, Pencil, Globe, FolderLock, MailPlus
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -37,6 +37,11 @@ export default function MyTests() {
   const [selectedFolder, setSelectedFolder] = useState<string>('All');
   const [newFolderName, setNewFolderName] = useState('');
   const [showFolderDialog, setShowFolderDialog] = useState(false);
+  const [showShareFolderDialog, setShowShareFolderDialog] = useState(false);
+  const [shareFolderName, setShareFolderName] = useState<string>('General');
+  const [shareEmail, setShareEmail] = useState('');
+  const [sharePassword, setSharePassword] = useState('');
+  const [isSharing, setIsSharing] = useState(false);
 
   const handleDeleteTest = (testId: string) => {
     deleteTest(testId);
@@ -112,6 +117,57 @@ export default function MyTests() {
     }
   };
 
+  const handleRequestAccess = async (shareToken: string, email: string) => {
+    try {
+      // Find share record first
+      const { data: shares, error: shareErr } = await supabase
+        .from('test_folder_shares' as any)
+        .select('id')
+        .eq('share_token', shareToken);
+      
+      if (shareErr || !shares || shares.length === 0) throw new Error('Invalid share link');
+      const share = shares[0] as any;
+
+      const { error } = await supabase
+        .from('folder_access_requests' as any)
+        .insert({
+          folder_share_id: share.id,
+          requester_user_key: localStorage.getItem('user_key'),
+          requester_email: email,
+        } as any);
+
+      if (error) throw error;
+      toast.success('Access request sent to owner!');
+    } catch (e: any) {
+      toast.error('Failed to request access: ' + e.message);
+    }
+  };
+
+  const handleShareFolder = async () => {
+    if (!shareFolderName) return;
+    setIsSharing(true);
+    try {
+      const { data, error } = await supabase
+        .from('test_folder_shares' as any)
+        .insert({
+          folder_name: shareFolderName,
+          owner_user_key: localStorage.getItem('user_key'),
+          shared_with_email: shareEmail.trim() || null,
+          password_hash: sharePassword.trim() || null, // Hash this in production
+        } as any)
+        .select()
+        .single();
+
+      if (error) throw error;
+      toast.success('Folder share link generated! Users can now request access.');
+      setShowShareFolderDialog(false);
+    } catch (e: any) {
+      toast.error('Failed to share: ' + e.message);
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   return (
     <MainLayout>
       <PageHeader title="My Tests" description={`${tests.length} tests available`}>
@@ -122,6 +178,16 @@ export default function MyTests() {
           <Link to="/create">
             <Button className="gap-2"><Plus className="h-4 w-4" /> Create New Test</Button>
           </Link>
+          <Button variant="outline" className="gap-2" onClick={() => setShowShareFolderDialog(true)}>
+            <FolderLock className="h-4 w-4" /> Share Folder
+          </Button>
+          <Button variant="ghost" className="gap-2" onClick={() => {
+            const token = prompt('Enter share token/link:');
+            const email = prompt('Enter your email for access request:');
+            if (token && email) handleRequestAccess(token, email);
+          }}>
+            <MailPlus className="h-4 w-4" /> Join Shared Folder
+          </Button>
         </div>
       </PageHeader>
 
@@ -334,6 +400,48 @@ export default function MyTests() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowFolderDialog(false)}>Cancel</Button>
             <Button onClick={handleAddFolder}>Create</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Share Folder Dialog */}
+      <Dialog open={showShareFolderDialog} onOpenChange={setShowShareFolderDialog}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Share Test Folder</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Folder to share</label>
+              <select 
+                className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm"
+                value={shareFolderName}
+                onChange={e => setShareFolderName(e.target.value)}
+              >
+                {folders.map(f => <option key={f} value={f}>{f}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Specific user email (optional)</label>
+              <Input 
+                type="email" 
+                value={shareEmail} 
+                onChange={e => setShareEmail(e.target.value)} 
+                placeholder="User email"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Password (optional)</label>
+              <Input 
+                type="password" 
+                value={sharePassword} 
+                onChange={e => setSharePassword(e.target.value)} 
+                placeholder="Folder password"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowShareFolderDialog(false)}>Cancel</Button>
+            <Button onClick={handleShareFolder} disabled={isSharing}>
+              {isSharing ? 'Sharing...' : 'Generate Share Link'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
