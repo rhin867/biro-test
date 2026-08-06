@@ -65,6 +65,103 @@ export type Database = {
         }
         Relationships: []
       }
+      folder_access_requests: {
+        Row: {
+          created_at: string | null
+          folder_share_id: string
+          id: string
+          requester_email: string
+          requester_user_key: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          folder_share_id: string
+          id?: string
+          requester_email: string
+          requester_user_key: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          folder_share_id?: string
+          id?: string
+          requester_email?: string
+          requester_user_key?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folder_access_requests_folder_share_id_fkey"
+            columns: ["folder_share_id"]
+            isOneToOne: false
+            referencedRelation: "test_folder_shares"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hot_question_responses: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          id: string
+          question_id: string
+          selected_option: string | null
+          user_display_name: string
+          user_key: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          question_id: string
+          selected_option?: string | null
+          user_display_name: string
+          user_key: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          question_id?: string
+          selected_option?: string | null
+          user_display_name?: string
+          user_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hot_question_responses_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "hot_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hot_questions: {
+        Row: {
+          content: string
+          correct_option: string | null
+          created_at: string | null
+          id: string
+          options: Json | null
+        }
+        Insert: {
+          content: string
+          correct_option?: string | null
+          created_at?: string | null
+          id?: string
+          options?: Json | null
+        }
+        Update: {
+          content?: string
+          correct_option?: string | null
+          created_at?: string | null
+          id?: string
+          options?: Json | null
+        }
+        Relationships: []
+      }
       mistake_book: {
         Row: {
           added_at: string
@@ -318,6 +415,39 @@ export type Database = {
           test_id?: string | null
           test_name?: string | null
           user_key?: string
+        }
+        Relationships: []
+      }
+      test_folder_shares: {
+        Row: {
+          access_level: string | null
+          created_at: string | null
+          folder_name: string
+          id: string
+          owner_user_key: string
+          password_hash: string | null
+          share_token: string | null
+          shared_with_email: string | null
+        }
+        Insert: {
+          access_level?: string | null
+          created_at?: string | null
+          folder_name: string
+          id?: string
+          owner_user_key: string
+          password_hash?: string | null
+          share_token?: string | null
+          shared_with_email?: string | null
+        }
+        Update: {
+          access_level?: string | null
+          created_at?: string | null
+          folder_name?: string
+          id?: string
+          owner_user_key?: string
+          password_hash?: string | null
+          share_token?: string | null
+          shared_with_email?: string | null
         }
         Relationships: []
       }
