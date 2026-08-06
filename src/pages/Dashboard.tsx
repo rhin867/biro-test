@@ -5,8 +5,9 @@ import { StatCard } from '@/components/exam/StatCard';
 import { MultiProgressBar } from '@/components/exam/ProgressBar';
 import { supabase } from '@/integrations/supabase/client';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
-import { Star, MessageSquare } from 'lucide-react';
+import { Star, MessageSquare, Clock, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getTests, getResults } from '@/lib/storage';
 import {
@@ -33,12 +34,62 @@ import {
 
 function DailyHotQuestionPreview() {
   const [question, setQuestion] = useState<any>(null);
+  const [isAlarmSet, setIsAlarmSet] = useState(false);
+  const [alarmTime, setAlarmTime] = useState("");
 
   useEffect(() => {
     supabase.from('hot_questions').select('*').order('created_at', { ascending: false }).limit(1).then(({ data }) => {
-      if (data && data.length > 0) setQuestion(data[0]);
+      if (data && data.length > 0) {
+        // Only show if question is less than 24 hours old
+        const createdDate = new Date(data[0].created_at);
+        const now = new Date();
+        const diffHours = (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60);
+        
+        if (diffHours < 24) {
+          setQuestion(data[0]);
+          // Notify user if not already seen (optional basic logic)
+          if (!localStorage.getItem(`notified_q_${data[0].id}`)) {
+            if ("Notification" in window && Notification.permission === "granted") {
+              new Notification("New Challenge Available!", {
+                body: "A new Daily Hot Question has been posted. Solve it now!",
+              });
+              localStorage.setItem(`notified_q_${data[0].id}`, "true");
+            }
+          }
+        }
+      }
     });
+
+    const savedAlarm = localStorage.getItem('user_alarm_time');
+    if (savedAlarm) setAlarmTime(savedAlarm);
   }, []);
+
+  const handleSetAlarm = () => {
+    if (!alarmTime) return;
+    localStorage.setItem('user_alarm_time', alarmTime);
+    setIsAlarmSet(true);
+    toast.success(`Reminder set for ${alarmTime} daily`);
+    
+    if ("Notification" in window && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+  };
+
+  useEffect(() => {
+    if (!alarmTime) return;
+    const interval = setInterval(() => {
+      const now = new Date();
+      const current = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      if (current === alarmTime) {
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification("Daily Challenge Reminder", {
+            body: "It's time for your scheduled Daily Hot Question practice!",
+          });
+        }
+      }
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [alarmTime]);
 
   if (!question) return null;
 
@@ -46,20 +97,40 @@ function DailyHotQuestionPreview() {
     <Card className="border-primary/50 bg-primary/5 shadow-neon overflow-hidden group">
       <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-transparent opacity-50 pointer-events-none" />
       <CardHeader className="py-3 flex flex-row items-center justify-between relative z-10">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <Star className="h-4 w-4 text-yellow-400 fill-yellow-400 animate-pulse" />
-          <span className="font-bold tracking-tight">DAILY CHALLENGE PALETTE</span>
-        </CardTitle>
-        <Link to="/hot-question">
-          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 group-hover:bg-primary/20">
-            Solve & Discuss <MessageSquare className="h-3.5 w-3.5" />
-          </Button>
-        </Link>
+        <div className="flex flex-col">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Star className="h-4 w-4 text-yellow-400 fill-yellow-400 animate-pulse" />
+            <span className="font-bold tracking-tight">QUESTION OF THE DAY</span>
+          </CardTitle>
+          <p className="text-[10px] text-muted-foreground ml-6">Visible for 24hrs • {new Date(question.created_at).toLocaleDateString()}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-card/50 p-1 rounded border border-border/50">
+            <Clock className="h-3 w-3 text-primary" />
+            <input 
+              type="time" 
+              className="bg-transparent text-[10px] border-none focus:ring-0 w-16" 
+              value={alarmTime}
+              onChange={(e) => setAlarmTime(e.target.value)}
+            />
+            <Button size="icon" variant="ghost" className="h-4 w-4" onClick={handleSetAlarm} title="Set daily alarm">
+              <Plus className="h-2 w-2" />
+            </Button>
+          </div>
+          <Link to="/hot-question">
+            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 group-hover:bg-primary/20">
+              Solve <MessageSquare className="h-3.5 w-3.5" />
+            </Button>
+          </Link>
+        </div>
       </CardHeader>
       <CardContent className="pb-4 relative z-10">
         <div className="bg-card/50 backdrop-blur-sm p-4 rounded-lg border border-border/50 group-hover:border-primary/30 transition-colors">
-          <div className="text-sm line-clamp-3 overflow-hidden">
+          <div className="text-sm line-clamp-2 overflow-hidden mb-2">
             <LatexRenderer content={question.content} />
+          </div>
+          <div className="flex justify-end">
+            <Link to="/hot-question" className="text-[10px] text-primary hover:underline font-bold">VIEW HISTORY & COMMENTS →</Link>
           </div>
         </div>
       </CardContent>
