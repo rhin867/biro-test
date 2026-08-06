@@ -10,6 +10,7 @@ interface NTAQuestionPaletteProps {
   onQuestionClick: (questionNumber: number) => void;
   currentSubject: Subject;
   className?: string;
+  testQuestions?: import('@/types/exam').Question[];
 }
 
 const statusStyles: Record<QuestionStatus, string> = {
@@ -28,10 +29,38 @@ export function NTAQuestionPalette({
   onQuestionClick,
   currentSubject,
   className,
+  testQuestions,
 }: NTAQuestionPaletteProps) {
-  // Filter questions by current subject
-  const subjectQuestions = Array.from({ length: totalQuestions }, (_, i) => i + 1)
-    .filter((num) => questionSubjects[num] === currentSubject);
+  const [filter, setFilter] = React.useState<{
+    subject: Subject | 'All';
+    type: import('@/types/exam').QuestionType | 'All';
+    status: QuestionStatus | 'All';
+  }>({
+    subject: currentSubject,
+    type: 'All',
+    status: 'All',
+  });
+
+  // Update subject filter when currentSubject changes from parent (e.g. via tabs)
+  React.useEffect(() => {
+    setFilter(prev => ({ ...prev, subject: currentSubject }));
+  }, [currentSubject]);
+
+  const allQuestionNums = Array.from({ length: totalQuestions }, (_, i) => i + 1);
+  
+  const filteredQuestions = allQuestionNums.filter((num) => {
+    const q = testQuestions ? testQuestions[num - 1] : null;
+    const status = questionStatuses[num] || 'unattempted';
+    const subject = questionSubjects[num];
+
+    if (filter.subject !== 'All' && subject !== filter.subject) return false;
+    if (filter.status !== 'All' && status !== filter.status) return false;
+    if (filter.type !== 'All' && q && q.type !== filter.type) return false;
+    
+    return true;
+  });
+
+  const subjectQuestions = allQuestionNums.filter((num) => questionSubjects[num] === currentSubject);
 
   const allQuestions = Array.from({ length: totalQuestions }, (_, i) => i + 1);
 
@@ -53,13 +82,49 @@ export function NTAQuestionPalette({
     <div className={cn('h-full flex flex-col', className)}>
       {/* Header */}
       <div className="p-3 border-b border-border bg-muted/50">
-        <h3 className="text-sm font-semibold text-center">{currentSubject} - Question Palette</h3>
+        <h3 className="text-sm font-semibold text-center mb-2">Question Palette</h3>
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-1">
+            <select 
+              value={filter.subject} 
+              onChange={(e) => setFilter(prev => ({ ...prev, subject: e.target.value as any }))}
+              className="text-[10px] p-1 border rounded bg-background h-7"
+            >
+              <option value="All">All Subjects</option>
+              <option value="Physics">Physics</option>
+              <option value="Chemistry">Chemistry</option>
+              <option value="Maths">Maths</option>
+            </select>
+            <select 
+              value={filter.type} 
+              onChange={(e) => setFilter(prev => ({ ...prev, type: e.target.value as any }))}
+              className="text-[10px] p-1 border rounded bg-background h-7"
+            >
+              <option value="All">All Types</option>
+              <option value="MCQ">MCQ</option>
+              <option value="MSQ">MSQ</option>
+              <option value="Numerical">Numerical</option>
+            </select>
+          </div>
+          <select 
+            value={filter.status} 
+            onChange={(e) => setFilter(prev => ({ ...prev, status: e.target.value as any }))}
+            className="text-[10px] p-1 border rounded bg-background w-full h-7"
+          >
+            <option value="All">All Status</option>
+            <option value="unattempted">Not Visited</option>
+            <option value="answered">Answered</option>
+            <option value="marked-review">Marked for Review</option>
+            <option value="answered-marked">Answered & Marked</option>
+            <option value="skipped">Skipped</option>
+          </select>
+        </div>
       </div>
 
       {/* Question Grid - Always visible */}
       <div className="flex-1 overflow-y-auto p-3">
         <div className="grid grid-cols-5 gap-2">
-          {subjectQuestions.map((questionNum) => {
+          {filteredQuestions.map((questionNum) => {
             const status = questionStatuses[questionNum] || 'unattempted';
             const isCurrent = questionNum === currentQuestion;
 

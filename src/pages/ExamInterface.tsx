@@ -538,6 +538,7 @@ export default function ExamInterface() {
             questionSubjects={questionSubjects}
             onQuestionClick={goToQuestion}
             currentSubject={currentSubject}
+            testQuestions={test.questions}
           />
         </aside>
       </div>
@@ -556,6 +557,7 @@ export default function ExamInterface() {
             questionSubjects={questionSubjects}
             onQuestionClick={goToQuestion}
             currentSubject={currentSubject}
+            testQuestions={test.questions}
           />
         </SheetContent>
       </Sheet>
