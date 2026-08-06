@@ -144,21 +144,27 @@ export type Database = {
           correct_option: string | null
           created_at: string | null
           id: string
+          image_url: string | null
           options: Json | null
+          question_type: string | null
         }
         Insert: {
           content: string
           correct_option?: string | null
           created_at?: string | null
           id?: string
+          image_url?: string | null
           options?: Json | null
+          question_type?: string | null
         }
         Update: {
           content?: string
           correct_option?: string | null
           created_at?: string | null
           id?: string
+          image_url?: string | null
           options?: Json | null
+          question_type?: string | null
         }
         Relationships: []
       }
