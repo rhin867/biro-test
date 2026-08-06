@@ -35,6 +35,7 @@ export function NTAQuestionPalette({
     subject: Subject | 'All';
     type: import('@/types/exam').QuestionType | 'All';
     status: QuestionStatus | 'All';
+    section: string | 'All';
   }>({
     subject: currentSubject,
     type: 'All',
@@ -106,18 +107,28 @@ export function NTAQuestionPalette({
               <option value="Numerical">Numerical</option>
             </select>
           </div>
-          <select 
-            value={filter.status} 
-            onChange={(e) => setFilter(prev => ({ ...prev, status: e.target.value as any }))}
-            className="text-[10px] p-1 border rounded bg-background w-full h-7"
-          >
-            <option value="All">All Status</option>
-            <option value="unattempted">Not Visited</option>
-            <option value="answered">Answered</option>
-            <option value="marked-review">Marked for Review</option>
-            <option value="answered-marked">Answered & Marked</option>
-            <option value="skipped">Skipped</option>
-          </select>
+          <div className="grid grid-cols-2 gap-1">
+            <select 
+              value={filter.section} 
+              onChange={(e) => setFilter(prev => ({ ...prev, section: e.target.value }))}
+              className="text-[10px] p-1 border rounded bg-background h-7"
+            >
+              <option value="All">All Sections</option>
+              {sections.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select 
+              value={filter.status} 
+              onChange={(e) => setFilter(prev => ({ ...prev, status: e.target.value as any }))}
+              className="text-[10px] p-1 border rounded bg-background h-7"
+            >
+              <option value="All">All Status</option>
+              <option value="unattempted">Not Visited</option>
+              <option value="answered">Answered</option>
+              <option value="marked-review">Marked for Review</option>
+              <option value="answered-marked">Answered & Marked</option>
+              <option value="skipped">Skipped</option>
+            </select>
+          </div>
         </div>
       </div>
 
