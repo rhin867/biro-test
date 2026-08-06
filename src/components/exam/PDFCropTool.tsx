@@ -188,7 +188,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[98vw] lg:max-w-7xl h-[95vh] p-2 md:p-3 flex flex-col">
+      <DialogContent className="max-w-[100vw] lg:max-w-7xl h-full lg:h-[95vh] p-2 md:p-3 flex flex-col overflow-hidden">
         <DialogHeader className="pb-1">
           <DialogTitle className="flex items-center gap-2 text-sm">
             <Crop className="h-4 w-4 text-primary" />
@@ -259,7 +259,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
               </div>
             </div>
 
-            <div className="relative border rounded-md overflow-auto flex-1 bg-muted/30 min-h-0">
+            <div className="relative border rounded-md overflow-auto flex-1 bg-muted/30 min-h-0 overscroll-none">
               <div
                 className="relative inline-block cursor-crosshair select-none"
                 style={{ touchAction: 'none' }}

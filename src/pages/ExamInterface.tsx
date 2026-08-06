@@ -434,7 +434,7 @@ export default function ExamInterface() {
               variant="outline"
               size="sm"
               onClick={() => setShowPdfViewer(true)}
-              className="fixed bottom-20 right-4 z-40 shadow-lg gap-1.5"
+              className="fixed bottom-24 right-4 z-40 shadow-lg gap-1.5 opacity-80 hover:opacity-100 transition-opacity"
             >
               <FileText className="h-4 w-4" />
               View Original PDF

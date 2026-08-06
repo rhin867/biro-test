@@ -161,7 +161,7 @@ export default function Community() {
             <ExternalLink className="h-3 w-3" /> Telegram
           </Button>
         </a>
-        <a href="https://biro-log.netlify.app" target="_blank" rel="noopener noreferrer">
+        <a href="https://biro-log.vercel.app" target="_blank" rel="noopener noreferrer">
           <Button variant="outline" size="sm" className="gap-1">
             <ExternalLink className="h-3 w-3" /> Biro-Log
           </Button>
@@ -270,7 +270,7 @@ export default function Community() {
               <CardHeader><CardTitle className="text-base">📊 Biro-Log Study Tracker</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-sm text-muted-foreground">Track your daily study hours, get mentorship tips, and stay accountable with our companion app.</p>
-                <a href="https://biro-log.netlify.app" target="_blank" rel="noopener noreferrer">
+                <a href="https://biro-log.vercel.app" target="_blank" rel="noopener noreferrer">
                   <Button className="w-full gap-2"><ExternalLink className="h-4 w-4" /> Open Biro-Log</Button>
                 </a>
               </CardContent>
