@@ -189,14 +189,23 @@ export default function Dashboard() {
 
       <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
         <DailyHotQuestionPreview />
-        {/* Placeholder for future top palette widgets if needed, or just let hot question take space */}
-        <Card className="border-dashed border-primary/20 bg-primary/5 flex items-center justify-center p-6 min-h-[160px]">
-          <div className="text-center space-y-2">
-            <p className="text-sm font-medium text-primary">Analysis Palette</p>
-            <p className="text-xs text-muted-foreground">Detailed behavioral metrics & heatmaps appear here after your next test.</p>
-            <Link to="/history">
-              <Button variant="outline" size="sm" className="mt-2 h-7 text-xs">View History</Button>
-            </Link>
+        <Card className="border-primary/20 bg-primary/5 flex items-center justify-center p-6 min-h-[160px] relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-50" />
+          <div className="text-center space-y-2 relative z-10">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <BarChart className="h-4 w-4 text-primary animate-pulse" />
+              <p className="text-sm font-bold text-primary tracking-widest uppercase">Performance Analysis</p>
+            </div>
+            <p className="text-xs text-muted-foreground max-w-[200px] mx-auto leading-relaxed">
+              Your behavioral metrics, heatmaps, and difficulty trends will unlock here.
+            </p>
+            <div className="pt-2">
+              <Link to="/history">
+                <Button variant="outline" size="sm" className="h-8 text-[10px] gap-2 hover:bg-primary/10 border-primary/30">
+                  <Clock className="h-3 w-3" /> PREVIOUS REPORTS
+                </Button>
+              </Link>
+            </div>
           </div>
         </Card>
       </div>
