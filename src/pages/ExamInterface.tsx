@@ -70,6 +70,15 @@ export default function ExamInterface() {
   const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null);
   const [showPdfViewer, setShowPdfViewer] = useState(false);
   const attemptRef = useRef<TestAttempt | null>(null);
+  const [paletteFilter, setPaletteFilter] = useState<{
+    subject: Subject | 'All';
+    type: QuestionType | 'All';
+    status: QuestionStatus | 'All';
+  }>({
+    subject: 'All',
+    type: 'All',
+    status: 'All',
+  });
   useEffect(() => {
     attemptRef.current = attempt;
   }, [attempt]);

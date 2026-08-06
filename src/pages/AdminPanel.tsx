@@ -58,12 +58,15 @@ export default function AdminPanel() {
   const [dailyQuota, setDailyQuota] = useState(5);
   const [monthlyQuota, setMonthlyQuota] = useState(50);
   const [savingPw, setSavingPw] = useState(false);
+  const [newHotQuestion, setNewHotQuestion] = useState('');
+  const [savingHot, setSavingHot] = useState(false);
 
   useEffect(() => {
     fetchAppSettings().then((s) => {
       setSettings(s);
       setDailyQuota(s.quota_daily_tests);
       setMonthlyQuota(s.quota_monthly_tests);
+      setNewHotQuestion(s.daily_hot_question || '');
     });
   }, []);
 
@@ -142,6 +145,19 @@ export default function AdminPanel() {
       setSettings(await fetchAppSettings());
     } else {
       toast.error(r1.error || r2.error || 'Failed to update');
+    }
+  };
+
+  const handleSaveHotQuestion = async () => {
+    if (!ownerPassword) return toast.error('Session expired, re-login');
+    setSavingHot(true);
+    const r = await updateAppSetting('daily_hot_question', newHotQuestion.trim() || null, ownerPassword);
+    setSavingHot(false);
+    if (r.ok) {
+      toast.success('Daily Hot Question updated');
+      setSettings(await fetchAppSettings());
+    } else {
+      toast.error(r.error || 'Failed to update');
     }
   };
 
@@ -325,6 +341,25 @@ export default function AdminPanel() {
               </div>
               <Button onClick={handleSaveQuotas} disabled={savingPw} className="w-full">
                 {savingPw ? 'Saving...' : 'Save Quotas'}
+              </Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Daily Hot Question</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Set a "Hot Question" of the day to show on the Community/Dashboard page. Supports LaTeX.
+              </p>
+              <Textarea 
+                value={newHotQuestion} 
+                onChange={e => setNewHotQuestion(e.target.value)} 
+                placeholder="Type question content here..."
+                rows={4}
+              />
+              <Button onClick={handleSaveHotQuestion} disabled={savingHot} className="w-full">
+                {savingHot ? 'Saving...' : 'Update Hot Question'}
               </Button>
             </CardContent>
           </Card>

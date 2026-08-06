@@ -52,6 +52,13 @@ export default function Community() {
   const [feedback, setFeedback] = useState('');
   const [activeTab, setActiveTab] = useState('chat');
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [hotQuestion, setHotQuestion] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.functions.invoke('get-public-settings').then(({ data }) => {
+      if (data?.daily_hot_question) setHotQuestion(data.daily_hot_question);
+    });
+  }, []);
 
   // Load messages from DB
   useEffect(() => {
@@ -167,6 +174,24 @@ export default function Community() {
           </Button>
         </a>
       </div>
+
+      {hotQuestion && (
+        <Card className="mb-6 border-primary/50 bg-primary/5">
+          <CardHeader className="py-3 flex flex-row items-center justify-between">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+              Daily Hot Question
+            </CardTitle>
+            <Badge variant="secondary" className="text-[10px]">Challenge of the Day</Badge>
+          </CardHeader>
+          <CardContent className="pb-4">
+            <div className="text-sm bg-card p-3 rounded-md border border-border/50">
+              <LatexRenderer tex={hotQuestion} />
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-2 italic text-right">Answer in the chat below!</p>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-4">
