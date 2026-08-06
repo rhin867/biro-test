@@ -93,6 +93,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
   const imgRef = useRef<HTMLImageElement>(null);
   const galleryRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const addBlankRef = useRef<HTMLInputElement>(null);
+  const [lastTouchDist, setLastTouchDist] = useState<number | null>(null);
 
   const page = pages[currentPage];
 
@@ -120,19 +121,34 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
   }, []);
 
   const handleStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
+    if ('touches' in e && e.touches.length === 2) {
+      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      setLastTouchDist(dist);
+      return;
+    }
     const c = getRelativeCoords(e); setCropStart(c); setCropRegion(null); setIsDrawing(true);
   }, [getRelativeCoords]);
+
   const handleMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if ('touches' in e && e.touches.length === 2 && lastTouchDist !== null) {
+      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      const delta = dist / lastTouchDist;
+      setZoom(z => Math.min(4, Math.max(0.5, z * delta)));
+      setLastTouchDist(dist);
+      return;
+    }
     if (!isDrawing || !cropStart) return;
-    e.preventDefault();
     const c = getRelativeCoords(e);
     setCropRegion({
       x: Math.min(cropStart.x, c.x), y: Math.min(cropStart.y, c.y),
       width: Math.abs(c.x - cropStart.x), height: Math.abs(c.y - cropStart.y),
     });
-  }, [isDrawing, cropStart, getRelativeCoords]);
-  const handleEnd = useCallback(() => setIsDrawing(false), []);
+  }, [isDrawing, cropStart, getRelativeCoords, lastTouchDist]);
+
+  const handleEnd = useCallback(() => {
+    setIsDrawing(false);
+    setLastTouchDist(null);
+  }, []);
 
   const handleCrop = useCallback(() => {
     if (!cropRegion || !page || !imgRef.current) return;
@@ -188,7 +204,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[100vw] lg:max-w-7xl h-full lg:h-[95vh] p-2 md:p-3 flex flex-col overflow-hidden">
+      <DialogContent className="max-w-[100vw] lg:max-w-7xl h-full lg:h-[98vh] p-2 md:p-3 flex flex-col overflow-hidden">
         <DialogHeader className="pb-1">
           <DialogTitle className="flex items-center gap-2 text-sm">
             <Crop className="h-4 w-4 text-primary" />
@@ -220,7 +236,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-2 flex-1 min-h-0 mt-1.5">
+        <div className="flex flex-col lg:flex-row gap-2 flex-1 min-h-0 mt-1.5 overflow-hidden">
           {/* PDF viewer — takes most of the space */}
           <div className="flex-1 flex flex-col min-w-0 min-h-0">
             <div className="flex items-center justify-between mb-1 gap-1 flex-wrap">
