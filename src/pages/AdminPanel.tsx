@@ -465,7 +465,6 @@ export default function AdminPanel() {
                         const fileExt = file.name.split('.').pop();
                         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
                         
-                        // Using the private bucket name but with public RLS policies
                         const { data, error } = await supabase.storage
                           .from('biro-images-private')
                           .upload(fileName, file, {
@@ -480,9 +479,6 @@ export default function AdminPanel() {
                           const { data: { publicUrl } } = supabase.storage
                             .from('biro-images-private')
                             .getPublicUrl(fileName);
-                          setHotQuestionImageUrl(publicUrl);
-                          toast.success('Image uploaded!');
-                        }
                           setHotQuestionImageUrl(publicUrl);
                           toast.success('Image uploaded!');
                         }
