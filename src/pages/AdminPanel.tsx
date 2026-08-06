@@ -466,7 +466,7 @@ export default function AdminPanel() {
                         
                         // Using the newly created bucket with a unique name
                         const { data, error } = await supabase.storage
-                          .from('test-images-2026')
+                          .from('test-images-2026-final')
                           .upload(fileName, file, {
                             cacheControl: '3600',
                             upsert: false
@@ -477,7 +477,7 @@ export default function AdminPanel() {
                           toast.error('Upload failed: ' + error.message);
                         } else {
                           const { data: { publicUrl } } = supabase.storage
-                            .from('test-images-2026')
+                            .from('test-images-2026-final')
                             .getPublicUrl(fileName);
                           setHotQuestionImageUrl(publicUrl);
                           toast.success('Image uploaded!');
