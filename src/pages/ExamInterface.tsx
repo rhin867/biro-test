@@ -453,7 +453,7 @@ export default function ExamInterface() {
             <DialogContent className="max-w-[95vw] w-[95vw] h-[92vh] p-2 flex flex-col">
               <DialogHeader className="pb-1"><DialogTitle className="text-sm">Original PDF</DialogTitle></DialogHeader>
               {pdfViewerUrl && (
-                <iframe src={`${pdfViewerUrl}#page=${currentQuestion?.pdfPageNumber || 1}`}
+                <iframe src={`${pdfViewerUrl}#page=${currentQuestion?.pdfPageNumber || 1}&view=FitH`}
                         className="flex-1 w-full rounded border" title="Original PDF" />
               )}
             </DialogContent>
