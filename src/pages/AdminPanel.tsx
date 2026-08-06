@@ -187,6 +187,7 @@ export default function AdminPanel() {
       setHotQuestionOptions(['', '', '', '']);
       setHotQuestionCorrect('');
     } else {
+      console.error('Save hot question error:', histErr);
       toast.error(histErr?.message || r1.error || 'Failed to update');
     }
   };
@@ -479,6 +480,9 @@ export default function AdminPanel() {
                           const { data: { publicUrl } } = supabase.storage
                             .from('biro-images-private')
                             .getPublicUrl(fileName);
+                          setHotQuestionImageUrl(publicUrl);
+                          toast.success('Image uploaded!');
+                        }
                           setHotQuestionImageUrl(publicUrl);
                           toast.success('Image uploaded!');
                         }
