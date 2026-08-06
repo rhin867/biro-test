@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MainLayout, PageHeader } from '@/components/layout/MainLayout';
 import { StatCard } from '@/components/exam/StatCard';
 import { MultiProgressBar } from '@/components/exam/ProgressBar';
+import { supabase } from '@/integrations/supabase/client';
+import { LatexRenderer } from '@/components/ui/latex-renderer';
+import { Star, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getTests, getResults } from '@/lib/storage';
@@ -27,6 +30,42 @@ import {
   Pie,
   Cell,
 } from 'recharts';
+
+function DailyHotQuestionPreview() {
+  const [question, setQuestion] = useState<any>(null);
+
+  useEffect(() => {
+    supabase.from('hot_questions').select('*').order('created_at', { ascending: false }).limit(1).then(({ data }) => {
+      if (data && data.length > 0) setQuestion(data[0]);
+    });
+  }, []);
+
+  if (!question) return null;
+
+  return (
+    <Card className="border-primary/50 bg-primary/5 shadow-neon overflow-hidden group">
+      <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-transparent opacity-50 pointer-events-none" />
+      <CardHeader className="py-3 flex flex-row items-center justify-between relative z-10">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Star className="h-4 w-4 text-yellow-400 fill-yellow-400 animate-pulse" />
+          <span className="font-bold tracking-tight">DAILY HOT CHALLENGE</span>
+        </CardTitle>
+        <Link to="/hot-question">
+          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 group-hover:bg-primary/20">
+            Solve & Discuss <MessageSquare className="h-3.5 w-3.5" />
+          </Button>
+        </Link>
+      </CardHeader>
+      <CardContent className="pb-4 relative z-10">
+        <div className="bg-card/50 backdrop-blur-sm p-4 rounded-lg border border-border/50 group-hover:border-primary/30 transition-colors">
+          <div className="text-sm line-clamp-3 overflow-hidden">
+            <LatexRenderer content={question.content} />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function Dashboard() {
   const tests = getTests();
@@ -86,6 +125,10 @@ export default function Dashboard() {
           </Button>
         </Link>
       </PageHeader>
+
+      <div className="mb-8">
+        <DailyHotQuestionPreview />
+      </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
