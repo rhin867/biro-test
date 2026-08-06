@@ -117,6 +117,32 @@ export default function MyTests() {
     }
   };
 
+  const handleRequestAccess = async (shareToken: string, email: string) => {
+    try {
+      // Find share record first
+      const { data: share, error: shareErr } = await supabase
+        .from('test_folder_shares' as any)
+        .select('id')
+        .eq('share_token', shareToken)
+        .single();
+      
+      if (shareErr || !share) throw new Error('Invalid share link');
+
+      const { error } = await supabase
+        .from('folder_access_requests' as any)
+        .insert({
+          folder_share_id: share.id,
+          requester_user_key: localStorage.getItem('user_key'),
+          requester_email: email,
+        } as any);
+
+      if (error) throw error;
+      toast.success('Access request sent to owner!');
+    } catch (e: any) {
+      toast.error('Failed to request access: ' + e.message);
+    }
+  };
+
   const handleShareFolder = async () => {
     if (!shareFolderName) return;
     setIsSharing(true);
@@ -154,6 +180,13 @@ export default function MyTests() {
           </Link>
           <Button variant="outline" className="gap-2" onClick={() => setShowShareFolderDialog(true)}>
             <FolderLock className="h-4 w-4" /> Share Folder
+          </Button>
+          <Button variant="ghost" className="gap-2" onClick={() => {
+            const token = prompt('Enter share token/link:');
+            const email = prompt('Enter your email for access request:');
+            if (token && email) handleRequestAccess(token, email);
+          }}>
+            <MailPlus className="h-4 w-4" /> Join Shared Folder
           </Button>
         </div>
       </PageHeader>
