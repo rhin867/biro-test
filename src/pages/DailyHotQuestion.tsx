@@ -114,8 +114,15 @@ export default function DailyHotQuestion() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pb-6">
-                <div className="text-base font-medium bg-card p-6 rounded-xl border border-border/50 shadow-inner">
-                  <LatexRenderer content={question.content} />
+                <div className="space-y-4">
+                  {question.image_url && (
+                    <div className="rounded-xl overflow-hidden border border-border/50 shadow-md bg-white p-2">
+                      <img src={question.image_url} alt="Question Diagram" className="w-full h-auto object-contain max-h-[400px]" />
+                    </div>
+                  )}
+                  <div className="text-base font-medium bg-card p-6 rounded-xl border border-border/50 shadow-inner">
+                    <LatexRenderer content={question.content} />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -157,14 +164,35 @@ export default function DailyHotQuestion() {
                 <CardTitle className="text-sm font-bold">Your Response</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-muted-foreground">Chosen Option</label>
-                  <Input 
-                    value={myResponse} 
-                    onChange={e => setMyResponse(e.target.value)} 
-                    placeholder="e.g. A, B, 42, etc." 
-                  />
-                </div>
+                {question.question_type === 'mcq' || question.question_type === 'msq' || question.question_type === 'poll' ? (
+                  <div className="space-y-3">
+                    <label className="text-[10px] uppercase font-bold text-muted-foreground">Select Option</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {question.options && question.options.map((opt: string, i: number) => (
+                        <Button
+                          key={i}
+                          variant={myResponse === String.fromCharCode(65 + i) ? "default" : "outline"}
+                          className="justify-start h-auto py-2 px-3 text-sm"
+                          onClick={() => setMyResponse(String.fromCharCode(65 + i))}
+                        >
+                          <span className="w-6 h-6 rounded-full border border-border flex items-center justify-center mr-2 text-[10px] font-bold">
+                            {String.fromCharCode(65 + i)}
+                          </span>
+                          <span className="truncate">{opt}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-muted-foreground">Your Answer</label>
+                    <Input 
+                      value={myResponse} 
+                      onChange={e => setMyResponse(e.target.value)} 
+                      placeholder={question.question_type === 'integer' ? "e.g. 42" : "Type your answer..."} 
+                    />
+                  </div>
+                )}
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-muted-foreground">Explanation / Thought</label>
                   <Textarea 

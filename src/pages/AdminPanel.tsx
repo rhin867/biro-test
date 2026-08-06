@@ -66,6 +66,7 @@ export default function AdminPanel() {
   const [hotQuestionType, setHotQuestionType] = useState<'mcq' | 'msq' | 'integer' | 'poll'>('mcq');
   const [hotQuestionOptions, setHotQuestionOptions] = useState<string[]>(['', '', '', '']);
   const [hotQuestionCorrect, setHotQuestionCorrect] = useState('');
+  const [hotQuestionImageUrl, setHotQuestionImageUrl] = useState<string | null>(null);
   const [savingHot, setSavingHot] = useState(false);
   const [savingPhrase, setSavingPhrase] = useState(false);
 
@@ -159,7 +160,7 @@ export default function AdminPanel() {
 
   const handleSaveHotQuestion = async () => {
     if (!ownerPassword) return toast.error('Session expired, re-login');
-    if (!newHotQuestion.trim()) return toast.error('Enter question content');
+    if (!newHotQuestion.trim() && !hotQuestionImageUrl) return toast.error('Enter question content or upload image');
 
     setSavingHot(true);
     
@@ -169,6 +170,7 @@ export default function AdminPanel() {
     // 2. Insert into hot_questions history table
     const { error: histErr } = await supabase.from('hot_questions').insert({
       content: newHotQuestion.trim(),
+      image_url: hotQuestionImageUrl,
       options: hotQuestionType === 'mcq' || hotQuestionType === 'msq' || hotQuestionType === 'poll' 
         ? hotQuestionOptions.filter(o => o.trim() !== '') 
         : null,
@@ -181,6 +183,7 @@ export default function AdminPanel() {
       toast.success('Daily Hot Question updated & logged to history');
       setSettings(await fetchAppSettings());
       setNewHotQuestion('');
+      setHotQuestionImageUrl(null);
       setHotQuestionOptions(['', '', '', '']);
       setHotQuestionCorrect('');
     } else {
@@ -440,6 +443,57 @@ export default function AdminPanel() {
                   placeholder="e.g. Find the value of $\int_0^\pi \sin(x) dx$"
                   rows={4}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Question Image URL (Optional)</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    value={hotQuestionImageUrl || ''} 
+                    onChange={e => setHotQuestionImageUrl(e.target.value || null)} 
+                    placeholder="https://example.com/question.png"
+                  />
+                  <Button variant="outline" type="button" onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/*';
+                    input.onchange = async (e) => {
+                      const file = (e.target as HTMLInputElement).files?.[0];
+                      if (file) {
+                        toast.info('Uploading image...');
+                        const fileExt = file.name.split('.').pop();
+                        const fileName = `${Math.random()}.${fileExt}`;
+                        const { data, error } = await supabase.storage
+                          .from('test-images')
+                          .upload(fileName, file);
+                        
+                        if (error) {
+                          toast.error('Upload failed: ' + error.message);
+                        } else {
+                          const { data: { publicUrl } } = supabase.storage
+                            .from('test-images')
+                            .getPublicUrl(fileName);
+                          setHotQuestionImageUrl(publicUrl);
+                          toast.success('Image uploaded!');
+                        }
+                      }
+                    };
+                    input.click();
+                  }}>Upload</Button>
+                </div>
+                {hotQuestionImageUrl && (
+                  <div className="mt-2 relative group">
+                    <img src={hotQuestionImageUrl} alt="Preview" className="max-h-32 rounded border" />
+                    <Button 
+                      variant="destructive" 
+                      size="icon" 
+                      className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => setHotQuestionImageUrl(null)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {(hotQuestionType === 'mcq' || hotQuestionType === 'msq' || hotQuestionType === 'poll') && (
