@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Shield, Lock, Trash2, Activity, Ban, KeyRound, Loader2 } from 'lucide-react';
+import { Shield, Lock, Trash2, Activity, Ban, KeyRound, Loader2, FolderOpen, Share2, Mail, CheckCircle, XCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import {
   fetchAppSettings,
   updateAppSetting,
@@ -282,6 +283,7 @@ export default function AdminPanel() {
           <TabsTrigger value="posts">Posts</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="shares">Shares</TabsTrigger>
         </TabsList>
 
         <TabsContent value="passwords" className="space-y-4">
@@ -407,6 +409,17 @@ export default function AdminPanel() {
               <Button onClick={handleSaveHotQuestion} disabled={savingHot} className="w-full">
                 {savingHot ? 'Saving...' : 'Update Hot Question'}
               </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="shares" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><FolderOpen className="h-5 w-5 text-primary" />Access Requests</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FolderAccessManager />
             </CardContent>
           </Card>
         </TabsContent>

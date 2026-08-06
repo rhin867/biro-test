@@ -11,7 +11,7 @@ import { formatTimeMinutes } from '@/lib/exam-utils';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentDisplayName, getCurrentUserKey } from '@/lib/app-settings';
 import {
-  Plus, Play, BarChart3, Trash2, Clock, FileText, Target, MoreVertical, Share2, Key, CheckCircle2, Pencil, Globe,
+  Plus, Play, BarChart3, Trash2, Clock, FileText, Target, MoreVertical, Share2, Key, CheckCircle2, Pencil, Globe, FolderLock, MailPlus
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -122,6 +122,9 @@ export default function MyTests() {
           <Link to="/create">
             <Button className="gap-2"><Plus className="h-4 w-4" /> Create New Test</Button>
           </Link>
+          <Button variant="outline" className="gap-2" onClick={() => setShowShareFolderDialog(true)}>
+            <FolderLock className="h-4 w-4" /> Share Folder
+          </Button>
         </div>
       </PageHeader>
 
