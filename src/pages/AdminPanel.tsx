@@ -462,21 +462,22 @@ export default function AdminPanel() {
                       if (file) {
                         toast.info('Uploading image...');
                         const fileExt = file.name.split('.').pop();
-                        const fileName = `${Math.random()}.${fileExt}`;
+                        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+                        
+                        // Using the newly created bucket with a unique name
                         const { data, error } = await supabase.storage
-                          .from('test-images')
+                          .from('test-images-2026')
                           .upload(fileName, file, {
                             cacheControl: '3600',
                             upsert: false
                           });
                         
                         if (error) {
-                          console.error('Upload error:', error);
-                          // If bucket not found, try to create it on the fly if user is admin or at least show helpful error
-                          toast.error('Upload failed: ' + (error.message === 'Bucket not found' ? 'Storage bucket "test-images" is not initialized. Please contact support.' : error.message));
+                          console.error('Upload error details:', error);
+                          toast.error('Upload failed: ' + error.message);
                         } else {
                           const { data: { publicUrl } } = supabase.storage
-                            .from('test-images')
+                            .from('test-images-2026')
                             .getPublicUrl(fileName);
                           setHotQuestionImageUrl(publicUrl);
                           toast.success('Image uploaded!');
