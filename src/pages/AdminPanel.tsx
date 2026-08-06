@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Shield, Lock, Trash2, Activity, Ban, KeyRound, Loader2, FolderOpen, Share2, Mail, CheckCircle, XCircle } from 'lucide-react';
+import { Shield, Lock, Trash2, Activity, Ban, KeyRound, Loader2, FolderOpen, Share2, Mail, CheckCircle, XCircle, Star } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { FolderAccessManager } from '@/components/exam/FolderAccessManager';
 import {
@@ -393,9 +393,12 @@ export default function AdminPanel() {
               </Button>
             </CardContent>
           </Card>
-          <Card>
+          <Card id="daily-hot-question">
             <CardHeader>
-              <CardTitle>Daily Hot Question</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Star className="h-5 w-5 text-yellow-400" />
+                Daily Hot Question
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-xs text-muted-foreground">
