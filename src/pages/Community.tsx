@@ -187,7 +187,7 @@ export default function Community() {
           </CardHeader>
           <CardContent className="pb-4">
             <div className="text-sm bg-card p-3 rounded-md border border-border/50">
-              <LatexRenderer tex={hotQuestion} />
+              <LatexRenderer content={hotQuestion} />
             </div>
             <p className="text-[10px] text-muted-foreground mt-2 italic text-right">Answer in the chat below!</p>
           </CardContent>
