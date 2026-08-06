@@ -115,6 +115,28 @@ export default function Guide() {
   return (
     <MainLayout>
       <PageHeader title="App Guide" description="Learn how to use every feature of Biro Test CBT Analyzer" />
+      
+      {/* Table of Contents */}
+      <Card className="mb-6 bg-secondary/30">
+        <CardContent className="pt-6">
+          <p className="text-sm font-bold mb-3 flex items-center gap-2">
+            <BookOpen className="h-4 w-4" /> Quick Links
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+            {sections.map((section, i) => (
+              <a 
+                key={i} 
+                href={`#${section.title.toLowerCase().replace(/\s+/g, '-')}`}
+                className="text-xs text-primary hover:underline flex items-center gap-1.5 p-2 rounded hover:bg-primary/10 transition-colors"
+              >
+                <section.icon className="h-3.5 w-3.5" />
+                {section.title}
+              </a>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="space-y-4">
         {/* Credits & Limits */}
         <Card className="border-primary/40">
@@ -167,7 +189,7 @@ export default function Guide() {
         </Card>
 
         {sections.map((section, i) => (
-          <Card key={i}>
+          <Card key={i} id={section.title.toLowerCase().replace(/\s+/g, '-')} className="scroll-mt-20">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <section.icon className="h-5 w-5 text-primary" /> {section.title}

@@ -48,7 +48,7 @@ function DailyHotQuestionPreview() {
       <CardHeader className="py-3 flex flex-row items-center justify-between relative z-10">
         <CardTitle className="text-sm flex items-center gap-2">
           <Star className="h-4 w-4 text-yellow-400 fill-yellow-400 animate-pulse" />
-          <span className="font-bold tracking-tight">DAILY HOT CHALLENGE</span>
+          <span className="font-bold tracking-tight">DAILY CHALLENGE PALETTE</span>
         </CardTitle>
         <Link to="/hot-question">
           <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 group-hover:bg-primary/20">
@@ -126,8 +126,18 @@ export default function Dashboard() {
         </Link>
       </PageHeader>
 
-      <div className="mb-8">
+      <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
         <DailyHotQuestionPreview />
+        {/* Placeholder for future top palette widgets if needed, or just let hot question take space */}
+        <Card className="border-dashed border-primary/20 bg-primary/5 flex items-center justify-center p-6 min-h-[160px]">
+          <div className="text-center space-y-2">
+            <p className="text-sm font-medium text-primary">Analysis Palette</p>
+            <p className="text-xs text-muted-foreground">Detailed behavioral metrics & heatmaps appear here after your next test.</p>
+            <Link to="/history">
+              <Button variant="outline" size="sm" className="mt-2 h-7 text-xs">View History</Button>
+            </Link>
+          </div>
+        </Card>
       </div>
 
       {/* Stats Grid */}

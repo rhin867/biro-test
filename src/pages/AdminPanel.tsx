@@ -393,9 +393,12 @@ export default function AdminPanel() {
               </Button>
             </CardContent>
           </Card>
-          <Card>
+          <Card id="daily-hot-question">
             <CardHeader>
-              <CardTitle>Daily Hot Question</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Star className="h-5 w-5 text-yellow-400" />
+                Daily Hot Question
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-xs text-muted-foreground">
