@@ -5,21 +5,11 @@ import { StatCard } from '@/components/exam/StatCard';
 import { MultiProgressBar } from '@/components/exam/ProgressBar';
 import { supabase } from '@/integrations/supabase/client';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
-import { Star, MessageSquare, Clock, Plus } from 'lucide-react';
+import { Star, MessageSquare, Clock, Plus, Target, TrendingUp, ChevronRight, FileText, BarChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getTests, getResults } from '@/lib/storage';
-import {
-  Target,
-  TrendingUp,
-  Clock,
-  BookOpen,
-  Plus,
-  ChevronRight,
-  FileText,
-  BarChart,
-} from 'lucide-react';
 import {
   BarChart as RechartsBarChart,
   Bar,
@@ -282,7 +272,7 @@ export default function Dashboard() {
               <Button variant="outline" className="w-full justify-between h-auto py-4">
                 <div className="flex items-center gap-3">
                   <div className="rounded-lg bg-review/10 p-2">
-                    <BookOpen className="h-5 w-5 text-review" />
+                    <TrendingUp className="h-5 w-5 text-review" />
                   </div>
                   <div className="text-left">
                     <p className="font-medium">Mistake Book</p>
