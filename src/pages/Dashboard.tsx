@@ -5,10 +5,11 @@ import { StatCard } from '@/components/exam/StatCard';
 import { MultiProgressBar } from '@/components/exam/ProgressBar';
 import { supabase } from '@/integrations/supabase/client';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
-import { Star, MessageSquare, Clock, Plus, Target, TrendingUp, ChevronRight, FileText, BarChart } from 'lucide-react';
+import { Star, MessageSquare, Clock, Plus, Target, TrendingUp, ChevronRight, FileText, BarChart, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { getTests, getResults } from '@/lib/storage';
 import {
   BarChart as RechartsBarChart,
@@ -81,7 +82,27 @@ function DailyHotQuestionPreview() {
     return () => clearInterval(interval);
   }, [alarmTime]);
 
-  if (!question) return null;
+  if (!question) {
+    return (
+      <Card className="border-dashed border-primary/20 bg-background flex items-center justify-center p-6 min-h-[160px]">
+        <div className="text-center space-y-2">
+          <div className="flex items-center justify-center gap-2 text-muted-foreground mb-1">
+            <Star className="h-4 w-4 opacity-50" />
+            <p className="text-sm font-bold uppercase tracking-tighter">Question of the Day</p>
+          </div>
+          <p className="text-xs text-muted-foreground font-medium">Today hasn't had any question yet. Chill guys!</p>
+          <p className="text-[10px] text-muted-foreground/60 italic">Check back later or solve previous challenges below.</p>
+          <div className="pt-2">
+            <Link to="/hot-question">
+              <Button variant="ghost" size="sm" className="h-7 text-[10px] hover:text-primary underline-offset-4 hover:underline">
+                View History →
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className="border-primary/50 bg-primary/5 shadow-neon overflow-hidden group">
@@ -90,16 +111,21 @@ function DailyHotQuestionPreview() {
         <div className="flex flex-col">
           <CardTitle className="text-sm flex items-center gap-2">
             <Star className="h-4 w-4 text-yellow-400 fill-yellow-400 animate-pulse" />
-            <span className="font-bold tracking-tight">QUESTION OF THE DAY</span>
+            <span className="font-bold tracking-tight uppercase">Question of the Day</span>
           </CardTitle>
-          <p className="text-[10px] text-muted-foreground ml-6">Visible for 24hrs • {new Date(question.created_at).toLocaleDateString()}</p>
+          <div className="flex items-center gap-2 ml-6">
+            <Badge variant="outline" className="text-[9px] h-4 px-1 py-0 border-primary/30 text-primary uppercase font-bold">
+              {question.question_type || 'MCQ'}
+            </Badge>
+            <p className="text-[10px] text-muted-foreground font-medium">{new Date(question.created_at).toLocaleDateString()}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-card/50 p-1 rounded border border-border/50">
+          <div className="hidden sm:flex items-center gap-1 bg-card/50 p-1 rounded border border-border/50">
             <Clock className="h-3 w-3 text-primary" />
             <input 
               type="time" 
-              className="bg-transparent text-[10px] border-none focus:ring-0 w-16" 
+              className="bg-transparent text-[10px] border-none focus:ring-0 w-16 p-0 h-4" 
               value={alarmTime}
               onChange={(e) => setAlarmTime(e.target.value)}
             />
@@ -116,11 +142,18 @@ function DailyHotQuestionPreview() {
       </CardHeader>
       <CardContent className="pb-4 relative z-10">
         <div className="bg-card/50 backdrop-blur-sm p-4 rounded-lg border border-border/50 group-hover:border-primary/30 transition-colors">
-          <div className="text-sm line-clamp-2 overflow-hidden mb-2">
+          <div className="text-sm line-clamp-2 overflow-hidden mb-3 font-medium">
             <LatexRenderer content={question.content} />
           </div>
-          <div className="flex justify-end">
-            <Link to="/hot-question" className="text-[10px] text-primary hover:underline font-bold">VIEW HISTORY & COMMENTS →</Link>
+          <div className="flex items-center justify-between">
+            <div className="flex gap-1">
+              {question.options && question.options.slice(0, 4).map((_, i) => (
+                <div key={i} className="w-5 h-5 rounded-full border border-border/50 flex items-center justify-center text-[9px] font-bold text-muted-foreground bg-background/50">
+                  {String.fromCharCode(65 + i)}
+                </div>
+              ))}
+            </div>
+            <Link to="/hot-question" className="text-[10px] text-primary hover:underline font-bold tracking-tight">SOLVE & DISCUSS →</Link>
           </div>
         </div>
       </CardContent>
@@ -189,14 +222,23 @@ export default function Dashboard() {
 
       <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
         <DailyHotQuestionPreview />
-        {/* Placeholder for future top palette widgets if needed, or just let hot question take space */}
-        <Card className="border-dashed border-primary/20 bg-primary/5 flex items-center justify-center p-6 min-h-[160px]">
-          <div className="text-center space-y-2">
-            <p className="text-sm font-medium text-primary">Analysis Palette</p>
-            <p className="text-xs text-muted-foreground">Detailed behavioral metrics & heatmaps appear here after your next test.</p>
-            <Link to="/history">
-              <Button variant="outline" size="sm" className="mt-2 h-7 text-xs">View History</Button>
-            </Link>
+        <Card className="border-primary/20 bg-primary/5 flex items-center justify-center p-6 min-h-[160px] relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-50" />
+          <div className="text-center space-y-2 relative z-10">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <BarChart className="h-4 w-4 text-primary animate-pulse" />
+              <p className="text-sm font-bold text-primary tracking-widest uppercase">Performance Analysis</p>
+            </div>
+            <p className="text-xs text-muted-foreground max-w-[200px] mx-auto leading-relaxed">
+              Your behavioral metrics, heatmaps, and difficulty trends will unlock here.
+            </p>
+            <div className="pt-2">
+              <Link to="/history">
+                <Button variant="outline" size="sm" className="h-8 text-[10px] gap-2 hover:bg-primary/10 border-primary/30">
+                  <Clock className="h-3 w-3" /> PREVIOUS REPORTS
+                </Button>
+              </Link>
+            </div>
           </div>
         </Card>
       </div>
