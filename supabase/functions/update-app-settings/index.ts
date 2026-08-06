@@ -11,7 +11,8 @@ const ALLOWED_KEYS = new Set([
   "admin_password_1",
   "admin_password_2",
   "quota_daily_tests",
-  "quota_monthly_tests",
+   "quota_monthly_tests",
+  "daily_hot_question",
 ]);
 
 Deno.serve(async (req) => {

@@ -3,6 +3,7 @@ import { MainLayout, PageHeader } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -57,13 +58,19 @@ export default function AdminPanel() {
   const [newAdminPw2, setNewAdminPw2] = useState('');
   const [dailyQuota, setDailyQuota] = useState(5);
   const [monthlyQuota, setMonthlyQuota] = useState(50);
+  const [newConfirmationPhrase, setNewConfirmationPhrase] = useState('');
   const [savingPw, setSavingPw] = useState(false);
+  const [newHotQuestion, setNewHotQuestion] = useState('');
+  const [savingHot, setSavingHot] = useState(false);
+  const [savingPhrase, setSavingPhrase] = useState(false);
 
   useEffect(() => {
     fetchAppSettings().then((s) => {
       setSettings(s);
       setDailyQuota(s.quota_daily_tests);
       setMonthlyQuota(s.quota_monthly_tests);
+      setNewHotQuestion(s.daily_hot_question || '');
+      setNewConfirmationPhrase(s.confirmation_phrase || 'I LOVE YOU BIRO');
     });
   }, []);
 
@@ -142,6 +149,32 @@ export default function AdminPanel() {
       setSettings(await fetchAppSettings());
     } else {
       toast.error(r1.error || r2.error || 'Failed to update');
+    }
+  };
+
+  const handleSaveHotQuestion = async () => {
+    if (!ownerPassword) return toast.error('Session expired, re-login');
+    setSavingHot(true);
+    const r = await updateAppSetting('daily_hot_question', newHotQuestion.trim() || null, ownerPassword);
+    setSavingHot(false);
+    if (r.ok) {
+      toast.success('Daily Hot Question updated');
+      setSettings(await fetchAppSettings());
+    } else {
+      toast.error(r.error || 'Failed to update');
+    }
+  };
+
+  const handleSaveConfirmationPhrase = async () => {
+    if (!ownerPassword) return toast.error('Session expired, re-login');
+    setSavingPhrase(true);
+    const r = await updateAppSetting('confirmation_phrase', newConfirmationPhrase.trim(), ownerPassword);
+    setSavingPhrase(false);
+    if (r.ok) {
+      toast.success('Confirmation phrase updated');
+      setSettings(await fetchAppSettings());
+    } else {
+      toast.error(r.error || 'Failed to update');
     }
   };
 
@@ -302,6 +335,24 @@ export default function AdminPanel() {
               </Button>
             </CardContent>
           </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Test Save Confirmation Phrase</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                The text users must type correctly before saving a newly created test.
+              </p>
+              <Input 
+                value={newConfirmationPhrase} 
+                onChange={e => setNewConfirmationPhrase(e.target.value)} 
+                placeholder="Confirmation phrase"
+              />
+              <Button onClick={handleSaveConfirmationPhrase} disabled={savingPhrase} className="w-full">
+                {savingPhrase ? 'Saving...' : 'Update Confirmation Phrase'}
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="quotas" className="space-y-4">
@@ -325,6 +376,25 @@ export default function AdminPanel() {
               </div>
               <Button onClick={handleSaveQuotas} disabled={savingPw} className="w-full">
                 {savingPw ? 'Saving...' : 'Save Quotas'}
+              </Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Daily Hot Question</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Set a "Hot Question" of the day to show on the Community/Dashboard page. Supports LaTeX.
+              </p>
+              <Textarea 
+                value={newHotQuestion} 
+                onChange={e => setNewHotQuestion(e.target.value)} 
+                placeholder="Type question content here..."
+                rows={4}
+              />
+              <Button onClick={handleSaveHotQuestion} disabled={savingHot} className="w-full">
+                {savingHot ? 'Saving...' : 'Update Hot Question'}
               </Button>
             </CardContent>
           </Card>

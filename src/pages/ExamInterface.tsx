@@ -23,7 +23,7 @@ import {
   loadTestPdfFile,
 } from '@/lib/storage';
 import { calculateTestResult } from '@/lib/exam-utils';
-import { Test, TestAttempt, QuestionAttempt, QuestionStatus, Subject, MistakeType } from '@/types/exam';
+import { Test, TestAttempt, QuestionAttempt, QuestionStatus, Subject, MistakeType, QuestionType } from '@/types/exam';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentDisplayName, getCurrentUserKey } from '@/lib/app-settings';
 import { toast } from 'sonner';
@@ -70,6 +70,15 @@ export default function ExamInterface() {
   const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null);
   const [showPdfViewer, setShowPdfViewer] = useState(false);
   const attemptRef = useRef<TestAttempt | null>(null);
+  const [paletteFilter, setPaletteFilter] = useState<{
+    subject: Subject | 'All';
+    type: QuestionType | 'All';
+    status: QuestionStatus | 'All';
+  }>({
+    subject: 'All',
+    type: 'All',
+    status: 'All',
+  });
   useEffect(() => {
     attemptRef.current = attempt;
   }, [attempt]);
@@ -434,7 +443,7 @@ export default function ExamInterface() {
               variant="outline"
               size="sm"
               onClick={() => setShowPdfViewer(true)}
-              className="fixed bottom-20 right-4 z-40 shadow-lg gap-1.5"
+              className="fixed bottom-24 right-4 z-40 shadow-lg gap-1.5 opacity-80 hover:opacity-100 transition-opacity"
             >
               <FileText className="h-4 w-4" />
               View Original PDF
@@ -444,7 +453,7 @@ export default function ExamInterface() {
             <DialogContent className="max-w-[95vw] w-[95vw] h-[92vh] p-2 flex flex-col">
               <DialogHeader className="pb-1"><DialogTitle className="text-sm">Original PDF</DialogTitle></DialogHeader>
               {pdfViewerUrl && (
-                <iframe src={`${pdfViewerUrl}#page=${currentQuestion?.pdfPageNumber || 1}`}
+                <iframe src={`${pdfViewerUrl}#page=${currentQuestion?.pdfPageNumber || 1}&view=FitH`}
                         className="flex-1 w-full rounded border" title="Original PDF" />
               )}
             </DialogContent>
@@ -529,6 +538,7 @@ export default function ExamInterface() {
             questionSubjects={questionSubjects}
             onQuestionClick={goToQuestion}
             currentSubject={currentSubject}
+            testQuestions={test.questions}
           />
         </aside>
       </div>
@@ -547,6 +557,7 @@ export default function ExamInterface() {
             questionSubjects={questionSubjects}
             onQuestionClick={goToQuestion}
             currentSubject={currentSubject}
+            testQuestions={test.questions}
           />
         </SheetContent>
       </Sheet>

@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { generateId } from '@/lib/storage';
 import { supabase } from '@/integrations/supabase/client';
+import { LatexRenderer } from '@/components/ui/latex-renderer';
 import telegramQR from '@/assets/telegram-qr.png';
 import {
   MessageSquare, ThumbsUp, ThumbsDown, Lightbulb, AlertTriangle, Send,
@@ -52,6 +53,13 @@ export default function Community() {
   const [feedback, setFeedback] = useState('');
   const [activeTab, setActiveTab] = useState('chat');
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [hotQuestion, setHotQuestion] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.functions.invoke('get-public-settings').then(({ data }) => {
+      if (data?.daily_hot_question) setHotQuestion(data.daily_hot_question);
+    });
+  }, []);
 
   // Load messages from DB
   useEffect(() => {
@@ -161,12 +169,30 @@ export default function Community() {
             <ExternalLink className="h-3 w-3" /> Telegram
           </Button>
         </a>
-        <a href="https://biro-log.netlify.app" target="_blank" rel="noopener noreferrer">
+        <a href="https://biro-log.vercel.app" target="_blank" rel="noopener noreferrer">
           <Button variant="outline" size="sm" className="gap-1">
             <ExternalLink className="h-3 w-3" /> Biro-Log
           </Button>
         </a>
       </div>
+
+      {hotQuestion && (
+        <Card className="mb-6 border-primary/50 bg-primary/5">
+          <CardHeader className="py-3 flex flex-row items-center justify-between">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+              Daily Hot Question
+            </CardTitle>
+            <Badge variant="secondary" className="text-[10px]">Challenge of the Day</Badge>
+          </CardHeader>
+          <CardContent className="pb-4">
+            <div className="text-sm bg-card p-3 rounded-md border border-border/50">
+              <LatexRenderer content={hotQuestion} />
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-2 italic text-right">Answer in the chat below!</p>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-4">
@@ -270,7 +296,7 @@ export default function Community() {
               <CardHeader><CardTitle className="text-base">📊 Biro-Log Study Tracker</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-sm text-muted-foreground">Track your daily study hours, get mentorship tips, and stay accountable with our companion app.</p>
-                <a href="https://biro-log.netlify.app" target="_blank" rel="noopener noreferrer">
+                <a href="https://biro-log.vercel.app" target="_blank" rel="noopener noreferrer">
                   <Button className="w-full gap-2"><ExternalLink className="h-4 w-4" /> Open Biro-Log</Button>
                 </a>
               </CardContent>

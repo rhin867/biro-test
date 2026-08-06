@@ -33,6 +33,10 @@ export default function MyTests() {
   const [publishPw, setPublishPw] = useState('');
   const [publishName, setPublishName] = useState('');
   const [publishing, setPublishing] = useState(false);
+  const [folders, setFolders] = useState<string[]>(JSON.parse(localStorage.getItem('test_folders') || '["General"]'));
+  const [selectedFolder, setSelectedFolder] = useState<string>('All');
+  const [newFolderName, setNewFolderName] = useState('');
+  const [showFolderDialog, setShowFolderDialog] = useState(false);
 
   const handleDeleteTest = (testId: string) => {
     deleteTest(testId);
@@ -84,15 +88,64 @@ export default function MyTests() {
     }
   };
 
+  const filteredTests = selectedFolder === 'All' 
+    ? tests 
+    : tests.filter(t => (t as any).folder === selectedFolder);
+
+  const handleAddFolder = () => {
+    if (!newFolderName.trim()) return;
+    const updated = [...folders, newFolderName.trim()];
+    setFolders(updated);
+    localStorage.setItem('test_folders', JSON.stringify(updated));
+    setNewFolderName('');
+    setShowFolderDialog(false);
+    toast.success('Folder created');
+  };
+
+  const handleMoveToFolder = (testId: string, folderName: string) => {
+    const test = tests.find(t => t.id === testId);
+    if (test) {
+      (test as any).folder = folderName;
+      saveTest(test);
+      setTests(getTests());
+      toast.success(`Moved to ${folderName}`);
+    }
+  };
+
   return (
     <MainLayout>
       <PageHeader title="My Tests" description={`${tests.length} tests available`}>
-        <Link to="/create">
-          <Button className="gap-2"><Plus className="h-4 w-4" /> Create New Test</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => setShowFolderDialog(true)}>
+            <Plus className="h-4 w-4" /> New Folder
+          </Button>
+          <Link to="/create">
+            <Button className="gap-2"><Plus className="h-4 w-4" /> Create New Test</Button>
+          </Link>
+        </div>
       </PageHeader>
 
-      {tests.length === 0 ? (
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
+        <Button 
+          variant={selectedFolder === 'All' ? 'default' : 'outline'} 
+          size="sm"
+          onClick={() => setSelectedFolder('All')}
+        >
+          All
+        </Button>
+        {folders.map(folder => (
+          <Button 
+            key={folder}
+            variant={selectedFolder === folder ? 'default' : 'outline'} 
+            size="sm"
+            onClick={() => setSelectedFolder(folder)}
+          >
+            {folder}
+          </Button>
+        ))}
+      </div>
+
+      {filteredTests.length === 0 ? (
         <Card className="text-center py-12">
           <CardContent>
             <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -103,7 +156,7 @@ export default function MyTests() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {tests.map((test) => {
+          {filteredTests.map((test) => {
             const results = getResultsByTestId(test.id);
             const bestResult = results.length > 0
               ? results.reduce((best, r) => r.score > best.score ? r : best, results[0])
@@ -138,6 +191,18 @@ export default function MyTests() {
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger className="flex w-full items-center px-2 py-1.5 text-sm outline-none hover:bg-accent cursor-pointer">
+                            Move to Folder...
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            {folders.map(f => (
+                              <DropdownMenuItem key={f} onClick={() => handleMoveToFolder(test.id, f)}>
+                                {f}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <DropdownMenuItem onSelect={e => e.preventDefault()} className="text-destructive focus:text-destructive">
@@ -252,6 +317,23 @@ export default function MyTests() {
             <Button onClick={handleMakePublic} disabled={publishing || !publishName.trim()}>
               {publishing ? 'Publishing...' : 'Publish'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Folder Dialog */}
+      <Dialog open={showFolderDialog} onOpenChange={setShowFolderDialog}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>New Folder</DialogTitle></DialogHeader>
+          <Input 
+            value={newFolderName} 
+            onChange={e => setNewFolderName(e.target.value)} 
+            placeholder="Folder name"
+            onKeyDown={e => e.key === 'Enter' && handleAddFolder()}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowFolderDialog(false)}>Cancel</Button>
+            <Button onClick={handleAddFolder}>Create</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
