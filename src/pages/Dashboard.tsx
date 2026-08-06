@@ -118,6 +118,11 @@ function DailyHotQuestionPreview() {
               {question.question_type || 'MCQ'}
             </Badge>
             <p className="text-[10px] text-muted-foreground font-medium">{new Date(question.created_at).toLocaleDateString()}</p>
+            {question.correct_option && (
+              <Badge variant="secondary" className="text-[9px] h-4 px-1 py-0 bg-correct/10 text-correct border-correct/20">
+                Answered
+              </Badge>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">

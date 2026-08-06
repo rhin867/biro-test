@@ -187,6 +187,7 @@ export default function AdminPanel() {
       setHotQuestionOptions(['', '', '', '']);
       setHotQuestionCorrect('');
     } else {
+      console.error('Save hot question error:', histErr);
       toast.error(histErr?.message || r1.error || 'Failed to update');
     }
   };
@@ -464,9 +465,8 @@ export default function AdminPanel() {
                         const fileExt = file.name.split('.').pop();
                         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
                         
-                        // Using the newly created bucket with a unique name
                         const { data, error } = await supabase.storage
-                          .from('test-images-2026-final')
+                          .from('biro-images-private')
                           .upload(fileName, file, {
                             cacheControl: '3600',
                             upsert: false
@@ -477,7 +477,7 @@ export default function AdminPanel() {
                           toast.error('Upload failed: ' + error.message);
                         } else {
                           const { data: { publicUrl } } = supabase.storage
-                            .from('test-images-2026-final')
+                            .from('biro-images-private')
                             .getPublicUrl(fileName);
                           setHotQuestionImageUrl(publicUrl);
                           toast.success('Image uploaded!');

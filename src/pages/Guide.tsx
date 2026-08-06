@@ -223,8 +223,8 @@ export default function Guide() {
                   <Button variant="outline" className="gap-2"><ExternalLink className="h-4 w-4" /> Join Telegram: t.me/biroskills</Button>
                 </a>
                 <br />
-                <a href="https://biro-log.netlify.app" target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" className="gap-2"><ExternalLink className="h-4 w-4" /> Study Tracker: biro-log.netlify.app</Button>
+                <a href="https://biro-log.vercel.app" target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" className="gap-2"><ExternalLink className="h-4 w-4" /> Study Tracker: biro-log.vercel.app</Button>
                 </a>
               </div>
             </div>
