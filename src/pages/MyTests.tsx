@@ -120,13 +120,13 @@ export default function MyTests() {
   const handleRequestAccess = async (shareToken: string, email: string) => {
     try {
       // Find share record first
-      const { data: share, error: shareErr } = await supabase
+      const { data: shares, error: shareErr } = await supabase
         .from('test_folder_shares' as any)
         .select('id')
-        .eq('share_token', shareToken)
-        .single();
+        .eq('share_token', shareToken);
       
-      if (shareErr || !share) throw new Error('Invalid share link');
+      if (shareErr || !shares || shares.length === 0) throw new Error('Invalid share link');
+      const share = shares[0] as any;
 
       const { error } = await supabase
         .from('folder_access_requests' as any)
