@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { generateId } from '@/lib/storage';
 import { supabase } from '@/integrations/supabase/client';
+import { LatexRenderer } from '@/components/ui/latex-renderer';
 import telegramQR from '@/assets/telegram-qr.png';
 import {
   MessageSquare, ThumbsUp, ThumbsDown, Lightbulb, AlertTriangle, Send,
