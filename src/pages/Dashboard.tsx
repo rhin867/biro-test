@@ -142,10 +142,17 @@ function DailyHotQuestionPreview() {
       </CardHeader>
       <CardContent className="pb-4 relative z-10">
         <div className="bg-card/50 backdrop-blur-sm p-4 rounded-lg border border-border/50 group-hover:border-primary/30 transition-colors">
-          <div className="text-sm line-clamp-2 overflow-hidden mb-3 font-medium">
-            <LatexRenderer content={question.content} />
+          <div className="space-y-3">
+            {question.image_url && (
+              <div className="h-24 w-full bg-white rounded border border-border/50 flex items-center justify-center overflow-hidden">
+                <img src={question.image_url} alt="Question preview" className="h-full object-contain" />
+              </div>
+            )}
+            <div className="text-sm line-clamp-2 overflow-hidden font-medium">
+              <LatexRenderer content={question.content} />
+            </div>
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mt-3">
             <div className="flex gap-1">
               {question.options && question.options.slice(0, 4).map((_, i) => (
                 <div key={i} className="w-5 h-5 rounded-full border border-border/50 flex items-center justify-center text-[9px] font-bold text-muted-foreground bg-background/50">
