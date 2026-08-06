@@ -155,13 +155,24 @@ export default function AdminPanel() {
   const handleSaveHotQuestion = async () => {
     if (!ownerPassword) return toast.error('Session expired, re-login');
     setSavingHot(true);
-    const r = await updateAppSetting('daily_hot_question', newHotQuestion.trim() || null, ownerPassword);
+    
+    // 1. Update legacy app_settings for simple display
+    const r1 = await updateAppSetting('daily_hot_question', newHotQuestion.trim() || null, ownerPassword);
+    
+    // 2. Insert into hot_questions history table
+    if (newHotQuestion.trim()) {
+      const { error: histErr } = await supabase.from('hot_questions').insert({
+        content: newHotQuestion.trim()
+      });
+      if (histErr) console.error('Failed to log to history', histErr);
+    }
+
     setSavingHot(false);
-    if (r.ok) {
-      toast.success('Daily Hot Question updated');
+    if (r1.ok) {
+      toast.success('Daily Hot Question updated & logged to history');
       setSettings(await fetchAppSettings());
     } else {
-      toast.error(r.error || 'Failed to update');
+      toast.error(r1.error || 'Failed to update');
     }
   };
 
