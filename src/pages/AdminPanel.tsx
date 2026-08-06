@@ -465,10 +465,15 @@ export default function AdminPanel() {
                         const fileName = `${Math.random()}.${fileExt}`;
                         const { data, error } = await supabase.storage
                           .from('test-images')
-                          .upload(fileName, file);
+                          .upload(fileName, file, {
+                            cacheControl: '3600',
+                            upsert: false
+                          });
                         
                         if (error) {
-                          toast.error('Upload failed: ' + error.message);
+                          console.error('Upload error:', error);
+                          // If bucket not found, try to create it on the fly if user is admin or at least show helpful error
+                          toast.error('Upload failed: ' + (error.message === 'Bucket not found' ? 'Storage bucket "test-images" is not initialized. Please contact support.' : error.message));
                         } else {
                           const { data: { publicUrl } } = supabase.storage
                             .from('test-images')
