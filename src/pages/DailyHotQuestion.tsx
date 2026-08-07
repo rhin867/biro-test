@@ -156,23 +156,28 @@ export default function DailyHotQuestion() {
               <CardContent className="pb-6">
                 <div className="space-y-4">
                   {question.image_url && (
-                    <div className="rounded-xl overflow-hidden border border-border/50 shadow-md bg-white p-2 mb-4 flex justify-center items-center min-h-[100px]">
+                    <div className="rounded-xl overflow-hidden border border-border/50 shadow-neon bg-white p-4 mb-4 flex flex-col justify-center items-center min-h-[150px]">
                       <img 
                         src={question.image_url} 
                         alt="Question Diagram" 
-                        className="max-w-full h-auto object-contain max-h-[600px] block" 
-
+                        className="max-w-full h-auto object-contain max-h-[600px] block rounded-lg" 
                         onLoad={(e) => {
-                          console.log("Image loaded successfully:", question.image_url);
                           e.currentTarget.style.display = 'block';
                         }}
                         onError={(e) => {
                           console.error("Image load error for URL:", question.image_url);
-                          // Don't hide completely if it might be a temporary network issue, 
-                          // but show a fallback if needed. For now, keep it visible so 
-                          // the user sees a broken icon instead of nothing.
                         }}
                       />
+                      <div className="mt-2 w-full flex justify-end">
+                        <Button 
+                          variant="ghost" 
+                          size="xs" 
+                          className="text-[10px] text-muted-foreground hover:text-primary"
+                          onClick={() => window.open(question.image_url, '_blank')}
+                        >
+                          Open Original Image
+                        </Button>
+                      </div>
                     </div>
                   )}
                   <div className="text-base font-medium bg-card p-6 rounded-xl border border-border/50 shadow-inner relative space-y-6">

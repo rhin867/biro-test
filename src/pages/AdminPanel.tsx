@@ -544,16 +544,25 @@ export default function AdminPanel() {
                   }}>Upload</Button>
                 </div>
                 {hotQuestionImageUrl && (
-                  <div className="mt-2 relative group">
-                    <img src={hotQuestionImageUrl} alt="Preview" className="max-h-32 rounded border" />
-                    <Button 
-                      variant="destructive" 
-                      size="icon" 
-                      className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => setHotQuestionImageUrl(null)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                  <div className="mt-2 relative group w-fit">
+                    <div className="relative rounded-xl overflow-hidden border border-border/50 shadow-md bg-white p-2 flex justify-center items-center min-h-[100px] max-w-full">
+                      <img 
+                        src={hotQuestionImageUrl} 
+                        alt="Preview" 
+                        className="max-h-[300px] w-auto object-contain block" 
+                      />
+                      <Button 
+                        variant="destructive" 
+                        size="icon" 
+                        className="absolute top-2 right-2 h-8 w-8 shadow-lg z-10"
+                        onClick={() => setHotQuestionImageUrl(null)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1 truncate max-w-[200px]">
+                      URL: {hotQuestionImageUrl}
+                    </p>
                   </div>
                 )}
               </div>
