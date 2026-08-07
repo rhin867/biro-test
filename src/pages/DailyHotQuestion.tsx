@@ -164,7 +164,7 @@ export default function DailyHotQuestion() {
                 <CardTitle className="text-sm font-bold">Your Response</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {question.question_type === 'mcq' || question.question_type === 'msq' || question.question_type === 'poll' ? (
+                {question.type === 'mcq' || question.type === 'msq' || question.type === 'poll' ? (
                   <div className="space-y-3">
                     <label className="text-[10px] uppercase font-bold text-muted-foreground">Select Option</label>
                     <div className="grid grid-cols-2 gap-2">
@@ -189,7 +189,7 @@ export default function DailyHotQuestion() {
                     <Input 
                       value={myResponse} 
                       onChange={e => setMyResponse(e.target.value)} 
-                      placeholder={question.question_type === 'integer' ? "e.g. 42" : "Type your answer..."} 
+                      placeholder={question.type === 'integer' ? "e.g. 42" : "Type your answer..."} 
                     />
                   </div>
                 )}
