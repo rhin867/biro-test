@@ -120,11 +120,12 @@ export default function DailyHotQuestion() {
     const likedBy = resp.liked_by || [];
     if (likedBy.includes(userKey)) return toast.info('Already liked');
 
-    const { error } = await supabase.from('hot_question_responses')
+    const { error } = await (supabase as any).from('hot_question_responses')
       .update({ 
         likes: (resp.likes || 0) + 1,
         liked_by: [...likedBy, userKey]
       })
+
       .eq('id', respId);
 
     if (!error) {
