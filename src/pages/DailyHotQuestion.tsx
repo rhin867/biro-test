@@ -268,31 +268,26 @@ export default function DailyHotQuestion() {
               <CardContent className="pb-6">
                 <div className="space-y-4">
                   {question.image_url && (
-                    <div className="rounded-xl overflow-hidden border-2 border-primary/20 shadow-neon bg-white p-2 mb-6 flex flex-col items-center group relative min-h-[100px] justify-center">
+                    <div className="rounded-xl overflow-hidden border-2 border-primary/20 shadow-neon bg-white p-3 mb-6 flex flex-col items-center group relative min-h-[200px] justify-center transition-all hover:border-primary/40">
                       <img 
                         src={question.image_url} 
                         alt="Question Diagram" 
-                        className="max-w-full h-auto object-contain max-h-[1000px] block rounded-lg shadow-sm" 
+                        className="max-w-full h-auto object-contain max-h-[1200px] block rounded-lg shadow-sm" 
                         loading="eager"
                         crossOrigin="anonymous"
                         onLoad={(e) => {
-                          console.log('DailyHotQuestion Image loaded successfully:', question.image_url);
                           e.currentTarget.style.display = 'block';
                         }}
-                        onError={(e) => {
-                          console.error('DailyHotQuestion Image failed to load:', question.image_url);
-                          // Fallback or retry logic if needed
-                        }}
                       />
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button 
                           variant="secondary" 
                           size="sm" 
-                          className="h-7 text-[10px] gap-1"
+                          className="h-8 text-[11px] gap-1.5 shadow-lg border border-primary/20 bg-white/90 backdrop-blur-sm text-primary hover:bg-primary hover:text-white"
                           onClick={() => window.open(question.image_url, '_blank')}
                         >
-                          <ZoomIn className="h-3 w-3" />
-                          Full View
+                          <ZoomIn className="h-4 w-4" />
+                          Full Resolution
                         </Button>
                       </div>
                     </div>
