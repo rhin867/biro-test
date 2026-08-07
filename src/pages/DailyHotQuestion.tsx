@@ -161,6 +161,7 @@ export default function DailyHotQuestion() {
                         src={question.image_url} 
                         alt="Question Diagram" 
                         className="max-w-full h-auto object-contain max-h-[600px] block" 
+
                         onLoad={(e) => {
                           console.log("Image loaded successfully:", question.image_url);
                           e.currentTarget.style.display = 'block';
