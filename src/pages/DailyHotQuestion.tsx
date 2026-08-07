@@ -171,7 +171,7 @@ export default function DailyHotQuestion() {
                       <div className="mt-2 w-full flex justify-end">
                         <Button 
                           variant="ghost" 
-                          size="xs" 
+                          size="sm" 
                           className="text-[10px] text-muted-foreground hover:text-primary"
                           onClick={() => window.open(question.image_url, '_blank')}
                         >
