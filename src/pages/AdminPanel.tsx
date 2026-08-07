@@ -533,6 +533,8 @@ export default function AdminPanel() {
                           const { data: { publicUrl } } = supabase.storage
                             .from('biro-images-private')
                             .getPublicUrl(fileName);
+                          
+                          // Ensure we use the correct public URL format
                           setHotQuestionImageUrl(publicUrl);
                           toast.success('Image uploaded!');
                         }

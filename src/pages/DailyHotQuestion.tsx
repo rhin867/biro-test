@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { toast } from 'sonner';
-import { MessageSquare, Send, User, Clock, Star, History as HistoryIcon, ArrowLeft } from 'lucide-react';
+import { MessageSquare, Send, User, Clock, Star, History as HistoryIcon, ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function DailyHotQuestion() {
@@ -20,6 +20,8 @@ export default function DailyHotQuestion() {
   const [myComment, setMyComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [hasAnswered, setHasAnswered] = useState(false);
+  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
 
   const fetchQuestion = async () => {
     const { data } = await supabase
@@ -30,6 +32,26 @@ export default function DailyHotQuestion() {
     if (data && data.length > 0) {
       setQuestion(data[0]);
       fetchResponses(data[0].id);
+      checkIfAlreadyAnswered(data[0].id);
+    }
+  };
+
+  const checkIfAlreadyAnswered = async (qId: string) => {
+    const userKey = localStorage.getItem('user_key');
+    if (!userKey) return;
+
+    const { data } = await supabase
+      .from('hot_question_responses')
+      .select('*')
+      .eq('question_id', qId)
+      .eq('user_key', userKey)
+      .limit(1);
+
+    if (data && data.length > 0) {
+      setHasAnswered(true);
+      if (question?.correct_option) {
+        setIsCorrect(data[0].selected_option === question.correct_option);
+      }
     }
   };
 
@@ -72,6 +94,10 @@ export default function DailyHotQuestion() {
       toast.success('Response submitted!');
       setMyResponse('');
       setMyComment('');
+      setHasAnswered(true);
+      if (question?.correct_option) {
+        setIsCorrect(myResponse.trim() === question.correct_option);
+      }
       fetchResponses(question.id);
     }
   };
@@ -120,8 +146,19 @@ export default function DailyHotQuestion() {
                       <img src={question.image_url} alt="Question Diagram" className="w-full h-auto object-contain max-h-[400px]" />
                     </div>
                   )}
-                  <div className="text-base font-medium bg-card p-6 rounded-xl border border-border/50 shadow-inner">
+                  <div className="text-base font-medium bg-card p-6 rounded-xl border border-border/50 shadow-inner relative">
                     <LatexRenderer content={question.content} />
+                    {hasAnswered && question.correct_option && (
+                      <div className={`mt-4 p-3 rounded-lg border ${isCorrect ? 'bg-correct/10 border-correct text-correct' : 'bg-incorrect/10 border-incorrect text-incorrect'}`}>
+                        <div className="flex items-center gap-2 font-bold mb-1">
+                          {isCorrect ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                          {isCorrect ? 'Correct Answer!' : 'Incorrect Answer'}
+                        </div>
+                        <p className="text-sm">
+                          The correct option is: <span className="font-bold underline">{question.correct_option}</span>
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
