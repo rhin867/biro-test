@@ -5,8 +5,8 @@ const corsHeaders = {
 };
 const systemPrompt = `You are an expert question paper parser for JEE/NEET/CUET exams. Extract ALL questions from the document into JSON.
 RULES:
-1. Extract EVERY question - even without numbering. Detect questions by Subject headers (Physics, Chemistry, Maths), Section headers, or A/B/C/D option patterns.
-2. For SCANNED PDFs/Images: Use high-quality OCR internally. Preserve mathematical symbols and equations accurately.
+1. Extract EVERY question - even without numbering. Detect questions by Subject headers (Physics, Chemistry, Maths), Section headers, or A/B/C/D option patterns. Use high-accuracy vision models for scanned PDF question area detection.
+2. For SCANNED PDFs/Images: Use high-quality OCR internally. Map detected areas to specific questions. Preserve mathematical symbols and equations accurately.
 3. Use LaTeX for ALL math: √x→$\\sqrt{x}$, x²→$x^2$, ∫→$\\int$, Σ→$\\sum$, fractions→$\\frac{a}{b}$
 4. Detect Subject (Physics/Chemistry/Maths) and Chapter. If unclear, infer from question context.
 5. Detect question type: MCQ (4 options), MSQ (multiple correct), Numerical (integer/decimal answer), Integer (exact integer).
