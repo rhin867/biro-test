@@ -76,8 +76,24 @@ export default function DailyHotQuestion() {
       .from('hot_question_responses')
       .select('*')
       .eq('question_id', qId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: true });
     if (data) setResponses(data);
+  };
+
+  const fetchNotifications = async () => {
+    const userKey = localStorage.getItem('user_key') || 'anonymous';
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_key', userKey)
+      .eq('is_read', false)
+      .order('created_at', { ascending: false });
+    if (data) setNotifications(data);
+  };
+
+  const markNotificationRead = async (id: string) => {
+    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+    fetchNotifications();
   };
 
   const fetchHistory = async () => {
@@ -92,29 +108,81 @@ export default function DailyHotQuestion() {
   useEffect(() => {
     fetchQuestion();
     fetchHistory();
+    fetchNotifications();
   }, []);
+
+  const handleLike = async (respId: string, authorKey: string) => {
+    const userKey = localStorage.getItem('user_key') || 'anonymous';
+    const resp = responses.find(r => r.id === respId);
+    if (!resp) return;
+    
+    const likedBy = resp.liked_by || [];
+    if (likedBy.includes(userKey)) return toast.info('Already liked');
+
+    const { error } = await supabase.from('hot_question_responses')
+      .update({ 
+        likes: (resp.likes || 0) + 1,
+        liked_by: [...likedBy, userKey]
+      })
+      .eq('id', respId);
+
+    if (!error) {
+      fetchResponses(question.id);
+      if (userKey !== authorKey) {
+        await supabase.from('notifications').insert({
+          user_key: authorKey,
+          title: 'New Like!',
+          message: `${localStorage.getItem('community_author') || 'Someone'} liked your comment.`,
+          link: '/daily-hot-question'
+        });
+      }
+    }
+  };
 
   const handleSubmit = async () => {
     if (!question || !myResponse.trim()) return toast.error('Enter an answer/option');
     setIsSubmitting(true);
-    const { error } = await supabase.from('hot_question_responses').insert({
+    const userKey = localStorage.getItem('user_key') || 'anonymous';
+    const author = localStorage.getItem('community_author') || 'Anonymous';
+    
+    const { data, error } = await supabase.from('hot_question_responses').insert({
       question_id: question.id,
-      user_key: localStorage.getItem('user_key') || 'anonymous',
-      user_display_name: localStorage.getItem('community_author') || 'Anonymous',
+      user_key: userKey,
+      user_display_name: author,
       selected_option: myResponse.trim(),
-      comment: myComment.trim()
-    });
+      comment: myComment.trim(),
+      parent_id: replyTo?.id || null
+    }).select();
+
     setIsSubmitting(false);
     if (error) toast.error('Failed to submit');
     else {
-      toast.success('Response submitted!');
-      localStorage.setItem(`solved_q_${question.id}`, 'true');
-      localStorage.setItem(`ans_q_${question.id}`, myResponse.trim());
+      toast.success(replyTo ? 'Reply posted!' : 'Response submitted!');
+      if (!replyTo) {
+        localStorage.setItem(`solved_q_${question.id}`, 'true');
+        localStorage.setItem(`ans_q_${question.id}`, myResponse.trim());
+        setHasAnswered(true);
+      }
+      
+      if (replyTo && replyTo.user_key !== userKey) {
+        await supabase.from('notifications').insert({
+          user_key: replyTo.user_key,
+          title: 'New Reply!',
+          message: `${author} replied to your comment.`,
+          link: '/daily-hot-question'
+        });
+      }
+
       setMyResponse('');
       setMyComment('');
-      setHasAnswered(true);
-      if (question?.correct_option) {
+      setReplyTo(null);
+      if (question?.correct_option && !replyTo) {
         setIsCorrect(myResponse.trim().toLowerCase() === question.correct_option.trim().toLowerCase());
+      }
+      fetchResponses(question.id);
+    }
+  };
+
       }
       fetchResponses(question.id);
     }
