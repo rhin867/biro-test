@@ -275,10 +275,10 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
               </div>
             </div>
 
-            <div className="relative border rounded-md overflow-auto flex-1 bg-muted/30 overscroll-none">
+            <div className="relative border rounded-md overflow-auto flex-1 bg-muted/30 overscroll-none min-h-[300px]">
               <div
                 className="relative inline-block cursor-crosshair select-none"
-                style={{ touchAction: 'none' }}
+                style={{ touchAction: 'none', transformOrigin: '0 0' }}
                 onMouseDown={handleStart} onMouseMove={handleMove}
                 onMouseUp={handleEnd} onMouseLeave={handleEnd}
                 onTouchStart={handleStart} onTouchMove={handleMove} onTouchEnd={handleEnd}
