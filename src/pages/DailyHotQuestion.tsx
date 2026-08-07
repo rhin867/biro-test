@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { toast } from 'sonner';
-import { MessageSquare, Send, User, Clock, Star, History as HistoryIcon, ArrowLeft, CheckCircle, XCircle, Target, Plus, ThumbsUp, Bell, BellOff, Reply } from 'lucide-react';
+import { MessageSquare, Send, User, Clock, Star, History as HistoryIcon, ArrowLeft, CheckCircle, XCircle, Target, Plus, ThumbsUp, Bell, BellOff, Reply, ZoomIn } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function DailyHotQuestion() {
@@ -27,6 +27,7 @@ export default function DailyHotQuestion() {
   const [showHistory, setShowHistory] = useState(false);
   const [hasAnswered, setHasAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [imageError, setImageError] = useState(false);
 
 
   const fetchQuestion = async () => {
@@ -37,6 +38,7 @@ export default function DailyHotQuestion() {
       .limit(1);
     if (data && data.length > 0) {
       setQuestion(data[0]);
+      setImageError(false); // Reset error state on new question
       fetchResponses(data[0].id);
       checkIfAlreadyAnswered(data[0].id, data[0]);
     }
@@ -268,15 +270,50 @@ export default function DailyHotQuestion() {
               <CardContent className="pb-6">
                 <div className="space-y-4">
                   {question.image_url && (
-                    <div className="rounded-xl overflow-hidden border-2 border-primary/20 shadow-neon bg-white p-2 mb-6 flex flex-col items-center">
-                      <img 
-                        src={question.image_url} 
-                        alt="Question Diagram" 
-                        className="max-w-full h-auto object-contain max-h-[800px] block rounded-lg" 
-                        onLoad={(e) => {
-                          e.currentTarget.style.display = 'block';
-                        }}
-                      />
+                    <div className="rounded-xl overflow-hidden border-2 border-primary/20 shadow-neon bg-white p-3 mb-6 flex flex-col items-center group relative min-h-[200px] justify-center transition-all hover:border-primary/40">
+                      {imageError ? (
+                        <div className="flex flex-col items-center justify-center p-8 text-muted-foreground gap-3">
+                          <XCircle className="h-10 w-10 text-destructive/50" />
+                          <p className="text-xs">Diagram failed to load. The link might be expired or restricted.</p>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 text-[10px]"
+                            onClick={() => {
+                              setImageError(false);
+                              const currentUrl = question.image_url;
+                              // Try to force a reload by changing URL slightly
+                              setQuestion({...question, image_url: currentUrl + (currentUrl.includes('?') ? '&' : '?') + 'retry=' + Date.now()});
+                            }}
+                          >
+                            Retry Loading
+                          </Button>
+                        </div>
+                      ) : (
+                        <img 
+                          src={question.image_url} 
+                          alt="Question Diagram" 
+                          className="max-w-full h-auto object-contain max-h-[1200px] block rounded-lg shadow-sm" 
+                          loading="eager"
+                          onLoad={(e) => {
+                            e.currentTarget.style.display = 'block';
+                          }}
+                          onError={() => setImageError(true)}
+                        />
+                      )}
+                      {!imageError && (
+                        <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            className="h-8 text-[11px] gap-1.5 shadow-lg border border-primary/20 bg-white/90 backdrop-blur-sm text-primary hover:bg-primary hover:text-white"
+                            onClick={() => window.open(question.image_url, '_blank')}
+                          >
+                            <ZoomIn className="h-4 w-4" />
+                            Full Resolution
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -389,7 +426,7 @@ export default function DailyHotQuestion() {
                 ) : (
                   responses.filter(r => !r.parent_id).map(resp => (
                     <div key={resp.id} className="space-y-3">
-                      <div className="p-3 rounded-xl bg-secondary/20 border border-border/50 shadow-sm">
+                      <div className="p-3 rounded-xl bg-secondary/20 border border-border/50 shadow-sm relative overflow-hidden">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
@@ -402,6 +439,14 @@ export default function DailyHotQuestion() {
                             <Clock className="h-2 w-2" /> {new Date(resp.created_at).toLocaleTimeString()}
                           </span>
                         </div>
+                        
+                        {/* Nested Diagram in Discussion if exists (inherited from question for clarity) */}
+                        {question.image_url && resp.comment && (
+                          <div className="mb-3 rounded-lg border border-border/30 overflow-hidden bg-white/50 w-fit max-w-[150px]">
+                            <img src={question.image_url} alt="Reference" className="w-full h-auto object-contain max-h-[100px]" />
+                          </div>
+                        )}
+
                         <p className="text-sm px-1 mb-3">{resp.comment || 'No comment provided.'}</p>
                         <div className="flex items-center gap-4 border-t border-border/30 pt-2">
                           <Button 

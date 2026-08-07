@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Shield, Lock, Trash2, Activity, Ban, KeyRound, Loader2, FolderOpen, Share2, Mail, CheckCircle, XCircle, Star, History as HistoryIcon } from 'lucide-react';
+import { Shield, Lock, Trash2, Activity, Ban, KeyRound, Loader2, FolderOpen, Share2, Mail, CheckCircle, XCircle, Star, History as HistoryIcon, ZoomIn } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { FolderAccessManager } from '@/components/exam/FolderAccessManager';
 import {
@@ -306,6 +306,37 @@ export default function AdminPanel() {
   const todayVisits = visitLog.filter((v: any) => new Date(v.timestamp).toDateString() === new Date().toDateString()).length;
   const uniquePages = [...new Set(visitLog.map((v: any) => v.page))];
 
+  const hot_question_image_preview = hotQuestionImageUrl && (
+    <div className="mt-4 relative group w-full flex justify-center">
+      <div className="relative rounded-2xl overflow-hidden border-2 border-primary/20 shadow-neon bg-white p-3 flex justify-center items-center min-h-[200px] w-full max-w-2xl transition-all hover:border-primary/40">
+        <img 
+          src={hotQuestionImageUrl} 
+          alt="Admin Preview" 
+          className="max-h-[500px] w-full object-contain block rounded-lg" 
+          crossOrigin="anonymous"
+        />
+        <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            className="h-8 shadow-lg border border-primary/10 bg-white/90 backdrop-blur-sm text-primary"
+            onClick={() => window.open(hotQuestionImageUrl, '_blank')}
+          >
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            className="h-8 shadow-lg"
+            onClick={() => setHotQuestionImageUrl(null)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <MainLayout>
       <PageHeader title="Admin Panel" description="Manage posts, users, analytics & app data" />
@@ -535,7 +566,8 @@ export default function AdminPanel() {
                             .getPublicUrl(fileName);
                           
                           // Ensure we use the correct public URL format
-                          setHotQuestionImageUrl(publicUrl);
+                          // Append a timestamp to avoid cache issues if the same filename is reused (though we use Date.now in filename)
+                          setHotQuestionImageUrl(`${publicUrl}?t=${Date.now()}`);
                           toast.success('Image uploaded!');
                         }
                       }
@@ -543,28 +575,7 @@ export default function AdminPanel() {
                     input.click();
                   }}>Upload</Button>
                 </div>
-                {hotQuestionImageUrl && (
-                  <div className="mt-2 relative group w-fit">
-                    <div className="relative rounded-xl overflow-hidden border border-border/50 shadow-md bg-white p-2 flex justify-center items-center min-h-[100px] max-w-full">
-                      <img 
-                        src={hotQuestionImageUrl} 
-                        alt="Preview" 
-                        className="max-h-[300px] w-auto object-contain block" 
-                      />
-                      <Button 
-                        variant="destructive" 
-                        size="icon" 
-                        className="absolute top-2 right-2 h-8 w-8 shadow-lg z-10"
-                        onClick={() => setHotQuestionImageUrl(null)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-1 truncate max-w-[200px]">
-                      URL: {hotQuestionImageUrl}
-                    </p>
-                  </div>
-                )}
+                {hot_question_image_preview}
               </div>
 
               {(hotQuestionType === 'mcq' || hotQuestionType === 'msq' || hotQuestionType === 'poll') && (
