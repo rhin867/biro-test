@@ -296,8 +296,17 @@ export default function DailyHotQuestion() {
                     <LatexRenderer content={question.content} />
                     
                     {/* Interaction UI for solving */}
-                    <div className="border-t pt-6 mt-4">
-                      {!hasAnswered ? (
+                    <div className="border-t pt-6 mt-4" id="solve-area">
+                      {replyTo && (
+                        <div className="mb-4 p-2 bg-primary/10 rounded-lg flex items-center justify-between">
+                          <p className="text-xs text-primary font-bold">Replying to {replyTo.user_display_name}</p>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyTo(null)}>
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                      {!hasAnswered || replyTo ? (
+
                         <>
                           {question.type === 'mcq' || question.type === 'msq' || question.type === 'poll' ? (
                             <div className="space-y-4">
