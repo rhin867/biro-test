@@ -93,7 +93,7 @@ export default function DailyHotQuestion() {
   };
 
   const markNotificationRead = async (id: string) => {
-    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+    await (supabase as any).from('notifications').update({ is_read: true }).eq('id', id);
     fetchNotifications();
   };
 
