@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { QuestionResult, Question } from '@/types/exam';
+import { QuestionResult } from '@/types/exam';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, RotateCcw, FastForward } from 'lucide-react';
+import { Play, Pause, RotateCcw } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
 
 interface GhostReplayProps {
   questionResults: QuestionResult[];
