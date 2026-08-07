@@ -192,9 +192,15 @@ export default function AdminPanel() {
 
     let result;
     if (editingQuestionId) {
-      result = await supabase.from('hot_questions').update(questionData).eq('id', editingQuestionId);
+      result = await supabase.from('hot_questions').update({
+        ...questionData,
+        question_type: hotQuestionType // Sync with the column being read
+      }).eq('id', editingQuestionId);
     } else {
-      result = await supabase.from('hot_questions').insert(questionData);
+      result = await supabase.from('hot_questions').insert({
+        ...questionData,
+        question_type: hotQuestionType // Sync with the column being read
+      });
     }
 
     setSavingHot(false);
@@ -551,7 +557,7 @@ export default function AdminPanel() {
                         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
                         
                         const { data, error } = await supabase.storage
-                          .from('biro-images-private')
+                          .from('biro-images-private') // Keeping original but we'll check why it's failing
                           .upload(fileName, file, {
                             cacheControl: '3600',
                             upsert: false

@@ -114,6 +114,23 @@ export default function DailyHotQuestion() {
     fetchQuestion();
     fetchHistory();
     fetchNotifications();
+
+    // Set up real-time subscription for new questions
+    const channel = supabase
+      .channel('hot-questions-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'hot_questions' },
+        () => {
+          fetchQuestion();
+          fetchHistory();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleLike = async (respId: string, authorKey: string) => {
