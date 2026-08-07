@@ -458,8 +458,9 @@ export default function DailyHotQuestion() {
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className={`h-6 text-[9px] gap-1 rounded-full px-2 ${reply.liked_by?.includes(localStorage.getItem('user_key')) ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
+                              className={`h-6 text-[9px] gap-1 rounded-full px-2 ${(reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
                               onClick={() => handleLike(reply.id, reply.user_key)}
+
                             >
                               <ThumbsUp className="h-2.5 w-2.5" />
                               {reply.likes || 0}
