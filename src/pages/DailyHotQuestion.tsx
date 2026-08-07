@@ -7,21 +7,27 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { toast } from 'sonner';
-import { MessageSquare, Send, User, Clock, Star, History as HistoryIcon, ArrowLeft, CheckCircle, XCircle, Target, Plus } from 'lucide-react';
+import { MessageSquare, Send, User, Clock, Star, History as HistoryIcon, ArrowLeft, CheckCircle, XCircle, Target, Plus, ThumbsUp, Bell, BellOff, Reply } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function DailyHotQuestion() {
   const [question, setQuestion] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [responses, setResponses] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [replyTo, setReplyTo] = useState<any>(null);
   const [myResponse, setMyResponse] = useState('');
   const [myComment, setMyComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [hasAnswered, setHasAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+
 
   const fetchQuestion = async () => {
     const { data } = await supabase
@@ -72,8 +78,25 @@ export default function DailyHotQuestion() {
       .from('hot_question_responses')
       .select('*')
       .eq('question_id', qId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: true });
     if (data) setResponses(data);
+  };
+
+  const fetchNotifications = async () => {
+    const userKey = localStorage.getItem('user_key') || 'anonymous';
+    const { data } = await (supabase as any)
+      .from('notifications')
+
+      .select('*')
+      .eq('user_key', userKey)
+      .eq('is_read', false)
+      .order('created_at', { ascending: false });
+    if (data) setNotifications(data);
+  };
+
+  const markNotificationRead = async (id: string) => {
+    await (supabase as any).from('notifications').update({ is_read: true }).eq('id', id);
+    fetchNotifications();
   };
 
   const fetchHistory = async () => {
@@ -88,28 +111,78 @@ export default function DailyHotQuestion() {
   useEffect(() => {
     fetchQuestion();
     fetchHistory();
+    fetchNotifications();
   }, []);
+
+  const handleLike = async (respId: string, authorKey: string) => {
+    const userKey = localStorage.getItem('user_key') || 'anonymous';
+    const resp = responses.find(r => r.id === respId);
+    if (!resp) return;
+    
+    const likedBy = resp.liked_by || [];
+    if (likedBy.includes(userKey)) return toast.info('Already liked');
+
+    const { error } = await (supabase as any).from('hot_question_responses')
+      .update({ 
+        likes: (resp.likes || 0) + 1,
+        liked_by: [...likedBy, userKey]
+      })
+
+      .eq('id', respId);
+
+    if (!error) {
+      fetchResponses(question.id);
+      if (userKey !== authorKey) {
+        await (supabase as any).from('notifications').insert({
+          user_key: authorKey,
+          title: 'New Like!',
+          message: `${localStorage.getItem('community_author') || 'Someone'} liked your comment.`,
+          link: '/daily-hot-question'
+        });
+      }
+
+    }
+  };
 
   const handleSubmit = async () => {
     if (!question || !myResponse.trim()) return toast.error('Enter an answer/option');
     setIsSubmitting(true);
-    const { error } = await supabase.from('hot_question_responses').insert({
+    const userKey = localStorage.getItem('user_key') || 'anonymous';
+    const author = localStorage.getItem('community_author') || 'Anonymous';
+    
+    const { data, error } = await supabase.from('hot_question_responses').insert({
       question_id: question.id,
-      user_key: localStorage.getItem('user_key') || 'anonymous',
-      user_display_name: localStorage.getItem('community_author') || 'Anonymous',
+      user_key: userKey,
+      user_display_name: author,
       selected_option: myResponse.trim(),
-      comment: myComment.trim()
-    });
+      comment: myComment.trim(),
+      parent_id: replyTo?.id || null
+    }).select();
+
     setIsSubmitting(false);
     if (error) toast.error('Failed to submit');
     else {
-      toast.success('Response submitted!');
-      localStorage.setItem(`solved_q_${question.id}`, 'true');
-      localStorage.setItem(`ans_q_${question.id}`, myResponse.trim());
+      toast.success(replyTo ? 'Reply posted!' : 'Response submitted!');
+      if (!replyTo) {
+        localStorage.setItem(`solved_q_${question.id}`, 'true');
+        localStorage.setItem(`ans_q_${question.id}`, myResponse.trim());
+        setHasAnswered(true);
+      }
+      
+      if (replyTo && replyTo.user_key !== userKey) {
+        await (supabase as any).from('notifications').insert({
+          user_key: replyTo.user_key,
+          title: 'New Reply!',
+          message: `${author} replied to your comment.`,
+          link: '/daily-hot-question'
+        });
+      }
+
+
       setMyResponse('');
       setMyComment('');
-      setHasAnswered(true);
-      if (question?.correct_option) {
+      setReplyTo(null);
+      if (question?.correct_option && !replyTo) {
         setIsCorrect(myResponse.trim().toLowerCase() === question.correct_option.trim().toLowerCase());
       }
       fetchResponses(question.id);
@@ -118,14 +191,53 @@ export default function DailyHotQuestion() {
 
   if (!question) return <div className="p-8 text-center"><p className="animate-pulse">Loading challenge...</p></div>;
 
+
   return (
     <MainLayout>
       <PageHeader title="Daily Hot Question" description="Challenge yourself every day & discuss with others.">
-        <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)} className="gap-2">
-          {showHistory ? <ArrowLeft className="h-4 w-4" /> : <HistoryIcon className="h-4 w-4" />}
-          {showHistory ? 'Back to Today' : 'Question History'}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowNotifications(!showNotifications)} className="relative">
+            {notifications.length > 0 ? <Bell className="h-4 w-4 text-primary animate-bounce" /> : <BellOff className="h-4 w-4" />}
+            {notifications.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] px-1 rounded-full">{notifications.length}</span>}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)} className="gap-2">
+            {showHistory ? <ArrowLeft className="h-4 w-4" /> : <HistoryIcon className="h-4 w-4" />}
+            {showHistory ? 'Back to Today' : 'Question History'}
+          </Button>
+        </div>
       </PageHeader>
+
+      <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-primary" />
+              Notifications
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+            {notifications.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No new notifications</p>
+            ) : (
+              notifications.map(n => (
+                <div key={n.id} className="p-3 rounded-lg border bg-muted/30 relative group">
+                  <p className="text-sm font-bold">{n.title}</p>
+                  <p className="text-xs text-muted-foreground">{n.message}</p>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
+                    onClick={() => markNotificationRead(n.id)}
+                  >
+                    <CheckCircle className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
 
       {showHistory ? (
         <div className="space-y-4">
@@ -184,9 +296,18 @@ export default function DailyHotQuestion() {
                     <LatexRenderer content={question.content} />
                     
                     {/* Interaction UI for solving */}
-                    <div className="border-t pt-6 mt-4">
-                      {!hasAnswered ? (
+                    <div className="border-t pt-6 mt-4" id="solve-area">
+                      {replyTo && (
+                        <div className="mb-4 p-2 bg-primary/10 rounded-lg flex items-center justify-between">
+                          <p className="text-xs text-primary font-bold">Replying to {replyTo.user_display_name}</p>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyTo(null)}>
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                      {(!hasAnswered || replyTo) ? (
                         <>
+
                           {question.type === 'mcq' || question.type === 'msq' || question.type === 'poll' ? (
                             <div className="space-y-4">
                               <label className="text-xs uppercase font-bold text-primary flex items-center gap-2">
@@ -213,6 +334,8 @@ export default function DailyHotQuestion() {
                               </div>
                             </div>
                           ) : (
+
+
                             <div className="space-y-2">
                               <label className="text-xs uppercase font-bold text-primary flex items-center gap-2">
                                 <Plus className="h-4 w-4" /> Type Your Answer
@@ -241,11 +364,12 @@ export default function DailyHotQuestion() {
                             </Button>
                           </div>
                         </>
-                      ) : (
+                      ) : !replyTo && (
                         <div className="py-4 text-center bg-secondary/20 rounded-xl border border-dashed">
                           <p className="text-sm font-medium text-muted-foreground">You have already submitted your response for this challenge.</p>
                         </div>
                       )}
+
                     </div>
 
                     {hasAnswered && question.correct_option && (
@@ -271,27 +395,85 @@ export default function DailyHotQuestion() {
                   Discussions ({responses.length})
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 max-h-[500px] overflow-y-auto">
+              <CardContent className="space-y-4 max-h-[600px] overflow-y-auto custom-scrollbar">
                 {responses.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">Be the first to respond!</p>
                 ) : (
-                  responses.map(resp => (
-                    <div key={resp.id} className="p-3 rounded-lg bg-secondary/20 border border-border/50">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <User className="h-3 w-3 text-primary" />
-                          <span className="text-xs font-bold text-primary">{resp.user_display_name}</span>
-                          <Badge variant="secondary" className="text-[10px] h-4">Ans: {resp.selected_option}</Badge>
+                  responses.filter(r => !r.parent_id).map(resp => (
+                    <div key={resp.id} className="space-y-3">
+                      <div className="p-3 rounded-xl bg-secondary/20 border border-border/50 shadow-sm">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                              <User className="h-3 w-3 text-primary" />
+                            </div>
+                            <span className="text-xs font-bold text-primary">{resp.user_display_name}</span>
+                            <Badge variant="secondary" className="text-[9px] h-4">Ans: {resp.selected_option}</Badge>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <Clock className="h-2 w-2" /> {new Date(resp.created_at).toLocaleTimeString()}
+                          </span>
                         </div>
-                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                          <Clock className="h-2 w-2" /> {new Date(resp.created_at).toLocaleTimeString()}
-                        </span>
+                        <p className="text-sm px-1 mb-3">{resp.comment || 'No comment provided.'}</p>
+                        <div className="flex items-center gap-4 border-t border-border/30 pt-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className={`h-7 text-[10px] gap-1.5 rounded-full px-3 ${(resp.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
+                            onClick={() => handleLike(resp.id, resp.user_key)}
+                          >
+
+                            <ThumbsUp className={`h-3 w-3 ${(resp.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary' : ''}`} />
+                            {resp.likes || 0}
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-7 text-[10px] gap-1.5 rounded-full px-3 text-muted-foreground"
+                            onClick={() => {
+                              setReplyTo(resp);
+                              setMyResponse(resp.selected_option); // Default to parent answer
+                              document.getElementById('solve-area')?.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                          >
+                            <Reply className="h-3 w-3" />
+                            Reply
+                          </Button>
+                        </div>
                       </div>
-                      <p className="text-sm">{resp.comment || 'No comment provided.'}</p>
+
+                      {/* Render Replies */}
+                      <div className="ml-8 space-y-3 border-l-2 border-primary/10 pl-4">
+                        {responses.filter(r => r.parent_id === resp.id).map(reply => (
+                          <div key={reply.id} className="p-3 rounded-xl bg-muted/40 border border-border/30">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <User className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-xs font-bold">{reply.user_display_name}</span>
+                              </div>
+                              <span className="text-[10px] text-muted-foreground">
+                                {new Date(reply.created_at).toLocaleTimeString()}
+                              </span>
+                            </div>
+                            <p className="text-sm px-1 mb-2">{reply.comment}</p>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className={`h-6 text-[9px] gap-1 rounded-full px-2 ${(reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
+                              onClick={() => handleLike(reply.id, reply.user_key)}
+                            >
+                              <ThumbsUp className="h-2.5 w-2.5" />
+                              {reply.likes || 0}
+                            </Button>
+
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ))
                 )}
               </CardContent>
+
             </Card>
           </div>
 
