@@ -84,13 +84,13 @@ function DailyHotQuestionPreview() {
 
   if (!question) {
     return (
-      <Card className="border-dashed border-primary/20 bg-background flex items-center justify-center p-6 min-h-[160px]">
+      <Card className="border-dashed border-primary/20 bg-background flex flex-col items-center justify-center p-6 min-h-[160px]">
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 text-muted-foreground mb-1">
-            <Star className="h-4 w-4 opacity-50" />
-            <p className="text-sm font-bold uppercase tracking-tighter">Question of the Day</p>
+            <Star className="h-4 w-4 opacity-50 text-primary" />
+            <p className="text-xs font-bold uppercase tracking-tighter text-primary">Question of the Day</p>
           </div>
-          <p className="text-xs text-muted-foreground font-medium">Today hasn't had any question yet. Chill guys!</p>
+          <p className="text-sm font-medium text-foreground">Today hasn't had any question yet. Chill guys!</p>
           <p className="text-[10px] text-muted-foreground/60 italic">Check back later or solve previous challenges below.</p>
           <div className="pt-2">
             <Link to="/hot-question">
@@ -149,8 +149,8 @@ function DailyHotQuestionPreview() {
         <div className="bg-card/50 backdrop-blur-sm p-4 rounded-lg border border-border/50 group-hover:border-primary/30 transition-colors">
           <div className="space-y-3">
             {question.image_url && (
-              <div className="h-24 w-full bg-white rounded border border-border/50 flex items-center justify-center overflow-hidden">
-                <img src={question.image_url} alt="Question preview" className="w-full h-full object-contain" />
+              <div className="w-full bg-white rounded border border-border/50 flex items-center justify-center overflow-hidden mb-3">
+                <img src={question.image_url} alt="Question preview" className="w-full h-auto object-contain max-h-[200px]" />
               </div>
             )}
             <div className="text-sm line-clamp-2 overflow-hidden font-medium">

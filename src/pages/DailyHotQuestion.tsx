@@ -146,16 +146,78 @@ export default function DailyHotQuestion() {
                       <img src={question.image_url} alt="Question Diagram" className="w-full h-auto object-contain max-h-[400px]" />
                     </div>
                   )}
-                  <div className="text-base font-medium bg-card p-6 rounded-xl border border-border/50 shadow-inner relative">
+                  <div className="text-base font-medium bg-card p-6 rounded-xl border border-border/50 shadow-inner relative space-y-6">
                     <LatexRenderer content={question.content} />
-                    {hasAnswered && question.correct_option && (
-                      <div className={`mt-4 p-3 rounded-lg border ${isCorrect ? 'bg-correct/10 border-correct text-correct' : 'bg-incorrect/10 border-incorrect text-incorrect'}`}>
-                        <div className="flex items-center gap-2 font-bold mb-1">
-                          {isCorrect ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                          {isCorrect ? 'Correct Answer!' : 'Incorrect Answer'}
+                    
+                    {/* Interaction UI for solving */}
+                    <div className="border-t pt-6 mt-4">
+                      {question.type === 'mcq' || question.type === 'msq' || question.type === 'poll' ? (
+                        <div className="space-y-4">
+                          <label className="text-xs uppercase font-bold text-primary flex items-center gap-2">
+                            <Target className="h-4 w-4" /> Select Your Answer
+                          </label>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {question.options && question.options.map((opt: string, i: number) => (
+                              <Button
+                                key={i}
+                                variant={myResponse === String.fromCharCode(65 + i) ? "default" : "outline"}
+                                className={`justify-start h-auto py-3 px-4 text-sm transition-all border-2 ${
+                                  myResponse === String.fromCharCode(65 + i) ? "border-primary bg-primary/10 text-foreground" : "hover:border-primary/50"
+                                }`}
+                                onClick={() => !hasAnswered && setMyResponse(String.fromCharCode(65 + i))}
+                                disabled={hasAnswered}
+                              >
+                                <span className={`w-8 h-8 rounded-full border-2 flex items-center justify-center mr-3 text-xs font-bold ${
+                                  myResponse === String.fromCharCode(65 + i) ? "bg-primary text-primary-foreground border-primary" : "border-muted-foreground/30"
+                                }`}>
+                                  {String.fromCharCode(65 + i)}
+                                </span>
+                                <span className="truncate">{opt}</span>
+                              </Button>
+                            ))}
+                          </div>
                         </div>
-                        <p className="text-sm">
-                          The correct option is: <span className="font-bold underline">{question.correct_option}</span>
+                      ) : (
+                        <div className="space-y-2">
+                          <label className="text-xs uppercase font-bold text-primary flex items-center gap-2">
+                            <Plus className="h-4 w-4" /> Type Your Answer
+                          </label>
+                          <Input 
+                            value={myResponse} 
+                            onChange={e => setMyResponse(e.target.value)} 
+                            placeholder={question.type === 'integer' ? "e.g. 42" : "Type your answer..."} 
+                            disabled={hasAnswered}
+                            className="text-lg py-6 border-2 focus:border-primary"
+                          />
+                        </div>
+                      )}
+
+                      {!hasAnswered && (
+                        <div className="mt-6 space-y-4">
+                          <div className="space-y-2">
+                            <label className="text-[10px] uppercase font-bold text-muted-foreground">Explanation / Thought (Optional)</label>
+                            <Textarea 
+                              value={myComment} 
+                              onChange={e => setMyComment(e.target.value)} 
+                              placeholder="Why this answer?"
+                              rows={3}
+                            />
+                          </div>
+                          <Button className="w-full h-12 text-lg gap-2 glow-primary" onClick={handleSubmit} disabled={isSubmitting || !myResponse.trim()}>
+                            <Send className="h-5 w-5" /> {isSubmitting ? 'Submitting...' : 'Submit Final Answer'}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    {hasAnswered && question.correct_option && (
+                      <div className={`mt-6 p-4 rounded-xl border-2 animate-in fade-in slide-in-from-bottom-2 ${isCorrect ? 'bg-correct/10 border-correct text-correct' : 'bg-incorrect/10 border-incorrect text-incorrect'}`}>
+                        <div className="flex items-center gap-2 font-black text-lg mb-2">
+                          {isCorrect ? <CheckCircle className="h-6 w-6" /> : <XCircle className="h-6 w-6" />}
+                          {isCorrect ? 'CORRECT!' : 'INCORRECT'}
+                        </div>
+                        <p className="text-sm font-medium">
+                          The correct answer is: <span className="text-lg font-black underline decoration-2">{question.correct_option}</span>
                         </p>
                       </div>
                     )}
@@ -196,52 +258,29 @@ export default function DailyHotQuestion() {
           </div>
 
           <div className="space-y-6">
-            <Card className="sticky top-20">
-              <CardHeader>
-                <CardTitle className="text-sm font-bold">Your Response</CardTitle>
+            <Card className="sticky top-20 border-primary/20 bg-primary/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                  <Star className="h-4 w-4 text-primary" />
+                  Your Stats
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {question.type === 'mcq' || question.type === 'msq' || question.type === 'poll' ? (
-                  <div className="space-y-3">
-                    <label className="text-[10px] uppercase font-bold text-muted-foreground">Select Option</label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {question.options && question.options.map((opt: string, i: number) => (
-                        <Button
-                          key={i}
-                          variant={myResponse === String.fromCharCode(65 + i) ? "default" : "outline"}
-                          className="justify-start h-auto py-2 px-3 text-sm"
-                          onClick={() => setMyResponse(String.fromCharCode(65 + i))}
-                        >
-                          <span className="w-6 h-6 rounded-full border border-border flex items-center justify-center mr-2 text-[10px] font-bold">
-                            {String.fromCharCode(65 + i)}
-                          </span>
-                          <span className="truncate">{opt}</span>
-                        </Button>
-                      ))}
-                    </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-3 rounded-lg bg-background border text-center">
+                    <p className="text-[10px] uppercase text-muted-foreground font-bold">Solved</p>
+                    <p className="text-lg font-black">{responses.length}</p>
                   </div>
-                ) : (
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-muted-foreground">Your Answer</label>
-                    <Input 
-                      value={myResponse} 
-                      onChange={e => setMyResponse(e.target.value)} 
-                      placeholder={question.type === 'integer' ? "e.g. 42" : "Type your answer..."} 
-                    />
+                  <div className="p-3 rounded-lg bg-background border text-center">
+                    <p className="text-[10px] uppercase text-muted-foreground font-bold">Today</p>
+                    <p className="text-lg font-black">{hasAnswered ? (isCorrect ? '✓' : '✗') : '?'}</p>
                   </div>
-                )}
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-muted-foreground">Explanation / Thought</label>
-                  <Textarea 
-                    value={myComment} 
-                    onChange={e => setMyComment(e.target.value)} 
-                    placeholder="Why this answer?"
-                    rows={4}
-                  />
                 </div>
-                <Button className="w-full gap-2" onClick={handleSubmit} disabled={isSubmitting}>
-                  <Send className="h-4 w-4" /> {isSubmitting ? 'Submitting...' : 'Submit Answer'}
-                </Button>
+                {!hasAnswered && (
+                  <p className="text-[11px] text-muted-foreground text-center italic">
+                    Answer today's challenge to see your name in the discussion!
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>
