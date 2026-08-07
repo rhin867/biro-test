@@ -282,6 +282,7 @@ export default function DailyHotQuestion() {
                             onClick={() => {
                               setImageError(false);
                               const currentUrl = question.image_url;
+                              // Try to force a reload by changing URL slightly
                               setQuestion({...question, image_url: currentUrl + (currentUrl.includes('?') ? '&' : '?') + 'retry=' + Date.now()});
                             }}
                           >
