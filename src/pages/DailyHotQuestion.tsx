@@ -363,11 +363,12 @@ export default function DailyHotQuestion() {
                             </Button>
                           </div>
                         </>
-                      ) : (
+                      ) : !replyTo && (
                         <div className="py-4 text-center bg-secondary/20 rounded-xl border border-dashed">
                           <p className="text-sm font-medium text-muted-foreground">You have already submitted your response for this challenge.</p>
                         </div>
                       )}
+
                     </div>
 
                     {hasAnswered && question.correct_option && (
