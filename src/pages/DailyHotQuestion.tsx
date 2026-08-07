@@ -27,6 +27,7 @@ export default function DailyHotQuestion() {
   const [showHistory, setShowHistory] = useState(false);
   const [hasAnswered, setHasAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [imageError, setImageError] = useState(false);
 
 
   const fetchQuestion = async () => {
