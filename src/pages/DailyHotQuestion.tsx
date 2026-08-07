@@ -307,16 +307,19 @@ export default function DailyHotQuestion() {
                           </Button>
                         </div>
                       ) : (
-                        <img 
-                          src={question.image_url} 
-                          alt="Question Diagram" 
-                          className="max-w-full h-auto object-contain max-h-[1200px] block rounded-lg shadow-sm" 
-                          loading="eager"
-                          onLoad={(e) => {
-                            e.currentTarget.style.display = 'block';
-                          }}
-                          onError={() => setImageError(true)}
-                        />
+                        <div className="w-full h-full flex items-center justify-center">
+                          <img 
+                            src={question.image_url} 
+                            alt="Question Diagram" 
+                            className="max-w-full h-auto object-contain max-h-[1200px] block rounded-lg shadow-sm" 
+                            loading="eager"
+                            crossOrigin="anonymous"
+                            onLoad={(e) => {
+                              e.currentTarget.style.display = 'block';
+                            }}
+                            onError={() => setImageError(true)}
+                          />
+                        </div>
                       )}
                       {!imageError && (
                         <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
