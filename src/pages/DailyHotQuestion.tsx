@@ -168,13 +168,14 @@ export default function DailyHotQuestion() {
       }
       
       if (replyTo && replyTo.user_key !== userKey) {
-        await supabase.from('notifications').insert({
+        await (supabase as any).from('notifications').insert({
           user_key: replyTo.user_key,
           title: 'New Reply!',
           message: `${author} replied to your comment.`,
           link: '/daily-hot-question'
         });
       }
+
 
       setMyResponse('');
       setMyComment('');
