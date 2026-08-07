@@ -16,12 +16,16 @@ export default function DailyHotQuestion() {
   const [question, setQuestion] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [responses, setResponses] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [replyTo, setReplyTo] = useState<any>(null);
   const [myResponse, setMyResponse] = useState('');
   const [myComment, setMyComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [hasAnswered, setHasAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+
 
   const fetchQuestion = async () => {
     const { data } = await supabase
