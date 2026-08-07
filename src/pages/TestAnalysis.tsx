@@ -373,8 +373,8 @@ export default function TestAnalysis() {
             <TabsTrigger value="question-journey">Question Journey</TabsTrigger>
             <TabsTrigger value="painful">Painful Qs</TabsTrigger>
             <TabsTrigger value="missed-concepts">Missed Concepts</TabsTrigger>
+            <TabsTrigger value="comparison">Benchmarking</TabsTrigger>
             <TabsTrigger value="questions">Qs by Qs Analysis</TabsTrigger>
-            <TabsTrigger value="complete-analysis">Complete Analysis</TabsTrigger>
             <TabsTrigger value="chapters">Chapters</TabsTrigger>
             <TabsTrigger value="mistakes">Mistakes</TabsTrigger>
             <TabsTrigger value="learnings">Learnings</TabsTrigger>
