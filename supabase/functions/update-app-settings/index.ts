@@ -49,9 +49,20 @@ Deno.serve(async (req) => {
       });
     }
 
-    const storedValue = key.includes("password") && typeof value === "string"
-      ? await hashSecret(value)
-      : value;
+    const rawValue = value === undefined ? null : value;
+
+    if (rawValue === null) {
+      // app_settings.value is NOT NULL — clearing a setting means removing the row.
+      const { error: delErr } = await supabase.from("app_settings").delete().eq("key", key);
+      if (delErr) throw delErr;
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const storedValue = key.includes("password") && typeof rawValue === "string"
+      ? await hashSecret(rawValue)
+      : rawValue;
 
     const { error: upErr } = await supabase
       .from("app_settings")
