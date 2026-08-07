@@ -274,9 +274,17 @@ export default function DailyHotQuestion() {
                         alt="Question Diagram" 
                         className="max-w-full h-auto object-contain max-h-[1200px] block rounded-lg shadow-sm" 
                         loading="eager"
-                        crossOrigin="anonymous"
                         onLoad={(e) => {
                           e.currentTarget.style.display = 'block';
+                        }}
+                        onError={(e) => {
+                          console.error('Image Load Error:', e);
+                          const target = e.currentTarget;
+                          if (!target.src.includes('retry=1')) {
+                            setTimeout(() => {
+                              target.src = question.image_url + (question.image_url.includes('?') ? '&' : '?') + 'retry=1';
+                            }, 1000);
+                          }
                         }}
                       />
                       <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
