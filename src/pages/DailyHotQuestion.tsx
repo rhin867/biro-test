@@ -269,35 +269,48 @@ export default function DailyHotQuestion() {
                 <div className="space-y-4">
                   {question.image_url && (
                     <div className="rounded-xl overflow-hidden border-2 border-primary/20 shadow-neon bg-white p-3 mb-6 flex flex-col items-center group relative min-h-[200px] justify-center transition-all hover:border-primary/40">
-                      <img 
-                        src={question.image_url} 
-                        alt="Question Diagram" 
-                        className="max-w-full h-auto object-contain max-h-[1200px] block rounded-lg shadow-sm" 
-                        loading="eager"
-                        onLoad={(e) => {
-                          e.currentTarget.style.display = 'block';
-                        }}
-                        onError={(e) => {
-                          console.error('Image Load Error:', e);
-                          const target = e.currentTarget;
-                          if (!target.src.includes('retry=1')) {
-                            setTimeout(() => {
-                              target.src = question.image_url + (question.image_url.includes('?') ? '&' : '?') + 'retry=1';
-                            }, 1000);
-                          }
-                        }}
-                      />
-                      <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button 
-                          variant="secondary" 
-                          size="sm" 
-                          className="h-8 text-[11px] gap-1.5 shadow-lg border border-primary/20 bg-white/90 backdrop-blur-sm text-primary hover:bg-primary hover:text-white"
-                          onClick={() => window.open(question.image_url, '_blank')}
-                        >
-                          <ZoomIn className="h-4 w-4" />
-                          Full Resolution
-                        </Button>
-                      </div>
+                      {imageError ? (
+                        <div className="flex flex-col items-center justify-center p-8 text-muted-foreground gap-3">
+                          <XCircle className="h-10 w-10 text-destructive/50" />
+                          <p className="text-xs">Diagram failed to load. The link might be expired or restricted.</p>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 text-[10px]"
+                            onClick={() => {
+                              setImageError(false);
+                              const currentUrl = question.image_url;
+                              setQuestion({...question, image_url: currentUrl + (currentUrl.includes('?') ? '&' : '?') + 'retry=' + Date.now()});
+                            }}
+                          >
+                            Retry Loading
+                          </Button>
+                        </div>
+                      ) : (
+                        <img 
+                          src={question.image_url} 
+                          alt="Question Diagram" 
+                          className="max-w-full h-auto object-contain max-h-[1200px] block rounded-lg shadow-sm" 
+                          loading="eager"
+                          onLoad={(e) => {
+                            e.currentTarget.style.display = 'block';
+                          }}
+                          onError={() => setImageError(true)}
+                        />
+                      )}
+                      {!imageError && (
+                        <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            className="h-8 text-[11px] gap-1.5 shadow-lg border border-primary/20 bg-white/90 backdrop-blur-sm text-primary hover:bg-primary hover:text-white"
+                            onClick={() => window.open(question.image_url, '_blank')}
+                          >
+                            <ZoomIn className="h-4 w-4" />
+                            Full Resolution
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
 
