@@ -422,7 +422,7 @@ export default function DailyHotQuestion() {
                             onClick={() => handleLike(resp.id, resp.user_key)}
 
                           >
-                            <ThumbsUp className={`h-3 w-3 ${resp.liked_by?.includes(localStorage.getItem('user_key')) ? 'fill-primary' : ''}`} />
+                            <ThumbsUp className={`h-3 w-3 ${(resp.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary' : ''}`} />
                             {resp.likes || 0}
                           </Button>
                           <Button 
