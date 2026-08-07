@@ -115,7 +115,7 @@ function DailyHotQuestionPreview() {
           </CardTitle>
           <div className="flex items-center gap-2 ml-6">
             <Badge variant="outline" className="text-[9px] h-4 px-1 py-0 border-primary/30 text-primary uppercase font-bold">
-              {question.question_type || 'MCQ'}
+              {question.type || 'MCQ'}
             </Badge>
             <p className="text-[10px] text-muted-foreground font-medium">{new Date(question.created_at).toLocaleDateString()}</p>
             {question.correct_option && (
