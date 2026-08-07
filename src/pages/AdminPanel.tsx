@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Shield, Lock, Trash2, Activity, Ban, KeyRound, Loader2, FolderOpen, Share2, Mail, CheckCircle, XCircle, Star, History as HistoryIcon } from 'lucide-react';
+import { Shield, Lock, Trash2, Activity, Ban, KeyRound, Loader2, FolderOpen, Share2, Mail, CheckCircle, XCircle, Star, History as HistoryIcon, ZoomIn } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { FolderAccessManager } from '@/components/exam/FolderAccessManager';
 import {
