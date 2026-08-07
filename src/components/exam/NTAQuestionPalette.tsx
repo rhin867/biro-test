@@ -137,22 +137,30 @@ export function NTAQuestionPalette({
             {filteredQuestions.map((questionNum) => {
               const status = questionStatuses[questionNum] || 'unattempted';
               const isCurrent = questionNum === currentQuestion;
+              const q = testQuestions ? testQuestions[questionNum - 1] : null;
+              const hasImage = q && (q.croppedImageUrl || q.imageUrl);
 
               return (
                 <button
                   key={questionNum}
                   onClick={() => onQuestionClick(questionNum)}
                   className={cn(
-                    'h-10 w-10 rounded flex items-center justify-center text-sm font-medium transition-all',
+                    'h-10 w-10 rounded flex flex-col items-center justify-center text-sm font-medium transition-all relative',
                     statusStyles[status],
                     isCurrent && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
                   )}
                 >
-                  {questionNum}
+                  <span className={cn(hasImage && "mt-1")}>{questionNum}</span>
+                  {hasImage && (
+                    <div className="absolute top-0.5 right-0.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400 border border-white" title="Contains Image" />
+                    </div>
+                  )}
                 </button>
               );
             })}
           </div>
+
         )}
       </div>
 

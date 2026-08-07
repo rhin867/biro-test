@@ -122,15 +122,46 @@ export function QuestionDisplay({
         </div>
         {/* Show diagram directly below question prominently */}
         {question.croppedImageUrl ? (
-          <img src={question.croppedImageUrl} alt="Question diagram" className="mt-6 max-w-full rounded-lg object-contain border border-border mx-auto max-h-[400px]" />
+          <div className="mt-6 flex flex-col items-center gap-2">
+            <img src={question.croppedImageUrl} alt="Question diagram" className="max-w-full rounded-lg object-contain border border-border mx-auto max-h-[500px] shadow-sm" />
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-[10px] text-muted-foreground"
+              onClick={() => window.open(question.croppedImageUrl, '_blank')}
+            >
+              Open Image in New Tab
+            </Button>
+          </div>
         ) : question.imageUrl ? (
-          <img src={question.imageUrl} alt="Question diagram" className="mt-6 max-w-full rounded-lg object-contain mx-auto max-h-[400px]" />
+          <div className="mt-6 flex flex-col items-center gap-2">
+            <img src={question.imageUrl} alt="Question diagram" className="max-w-full rounded-lg object-contain mx-auto max-h-[500px]" />
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-[10px] text-muted-foreground"
+              onClick={() => window.open(question.imageUrl, '_blank')}
+            >
+              Open Image in New Tab
+            </Button>
+          </div>
         ) : question.hasDiagram && questionPageImage ? (
           <div className="mt-6 p-4 rounded-lg bg-muted/50 border border-border">
             <p className="text-sm text-muted-foreground mb-3 font-medium">📷 Reference Diagram (Extracted from PDF Page {question.pdfPageNumber}):</p>
-            <img src={questionPageImage.imageDataUrl} alt={`Page ${question.pdfPageNumber}`} className="max-w-full rounded object-contain mx-auto border border-border/50 max-h-[600px] shadow-sm" />
+            <div className="flex flex-col items-center gap-2">
+              <img src={questionPageImage.imageDataUrl} alt={`Page ${question.pdfPageNumber}`} className="max-w-full rounded object-contain mx-auto border border-border/50 max-h-[600px] shadow-sm" />
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-[10px] text-muted-foreground"
+                onClick={() => window.open(questionPageImage.imageDataUrl, '_blank')}
+              >
+                Open Page Image
+              </Button>
+            </div>
           </div>
         ) : null}
+
       </div>
       {/* Numerical Input or MCQ Options */}
       {isNumerical ? (
