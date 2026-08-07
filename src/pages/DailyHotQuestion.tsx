@@ -421,8 +421,8 @@ export default function DailyHotQuestion() {
                             size="sm" 
                             className={`h-7 text-[10px] gap-1.5 rounded-full px-3 ${(resp.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
                             onClick={() => handleLike(resp.id, resp.user_key)}
-
                           >
+
                             <ThumbsUp className={`h-3 w-3 ${(resp.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary' : ''}`} />
                             {resp.likes || 0}
                           </Button>
