@@ -305,9 +305,9 @@ export default function DailyHotQuestion() {
                           </Button>
                         </div>
                       )}
-                      {!hasAnswered || replyTo ? (
-
+                      {(!hasAnswered || replyTo) ? (
                         <>
+
                           {question.type === 'mcq' || question.type === 'msq' || question.type === 'poll' ? (
                             <div className="space-y-4">
                               <label className="text-xs uppercase font-bold text-primary flex items-center gap-2">
