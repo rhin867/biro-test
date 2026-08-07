@@ -664,12 +664,19 @@ function CreateTestInner() {
               </div>
             )}
             {pdfPageImages.length > 0 && (
-              <div className="space-y-2">
-                <Button variant="outline" onClick={() => setShowCropTool(true)} className="gap-2 w-full">
-                  <Crop className="h-4 w-4" /> Open Manual Crop Tool
+              <div className="space-y-3 p-4 rounded-xl border-2 border-primary/20 bg-primary/5">
+                <div className="flex items-center gap-2 text-primary font-semibold mb-1">
+                  <Crop className="h-5 w-5" />
+                  <span className="text-sm">Manual Selection Mode</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Building a test without AI? Use the manual crop tool to select questions directly from the PDF.
+                </p>
+                <Button variant="default" onClick={() => setShowCropTool(true)} className="gap-2 w-full h-11 text-base shadow-lg hover:shadow-primary/20 transition-all">
+                  <Crop className="h-5 w-5" /> Open Manual Crop Tool
                 </Button>
-                <p className="text-xs text-muted-foreground text-center">
-                  Tip: crop questions yourself to build a test without any AI calls — uses 0 credits.
+                <p className="text-[10px] text-muted-foreground text-center font-medium">
+                  0 AI CREDITS REQUIRED • UNLIMITED USE
                 </p>
               </div>
             )}
