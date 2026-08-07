@@ -535,7 +535,8 @@ export default function AdminPanel() {
                             .getPublicUrl(fileName);
                           
                           // Ensure we use the correct public URL format
-                          setHotQuestionImageUrl(publicUrl);
+                          // Append a timestamp to avoid cache issues if the same filename is reused (though we use Date.now in filename)
+                          setHotQuestionImageUrl(`${publicUrl}?t=${Date.now()}`);
                           toast.success('Image uploaded!');
                         }
                       }
