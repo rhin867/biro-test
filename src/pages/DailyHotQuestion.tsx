@@ -183,12 +183,8 @@ export default function DailyHotQuestion() {
     }
   };
 
-      }
-      fetchResponses(question.id);
-    }
-  };
-
   if (!question) return <div className="p-8 text-center"><p className="animate-pulse">Loading challenge...</p></div>;
+
 
   return (
     <MainLayout>
