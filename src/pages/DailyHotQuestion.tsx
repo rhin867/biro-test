@@ -268,30 +268,18 @@ export default function DailyHotQuestion() {
               <CardContent className="pb-6">
                 <div className="space-y-4">
                   {question.image_url && (
-                    <div className="rounded-xl overflow-hidden border border-border/50 shadow-neon bg-white p-4 mb-4 flex flex-col justify-center items-center min-h-[150px]">
+                    <div className="rounded-xl overflow-hidden border-2 border-primary/20 shadow-neon bg-white p-2 mb-6 flex flex-col items-center">
                       <img 
                         src={question.image_url} 
                         alt="Question Diagram" 
-                        className="max-w-full h-auto object-contain max-h-[600px] block rounded-lg" 
+                        className="max-w-full h-auto object-contain max-h-[800px] block rounded-lg" 
                         onLoad={(e) => {
                           e.currentTarget.style.display = 'block';
                         }}
-                        onError={(e) => {
-                          console.error("Image load error for URL:", question.image_url);
-                        }}
                       />
-                      <div className="mt-2 w-full flex justify-end">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="text-[10px] text-muted-foreground hover:text-primary"
-                          onClick={() => window.open(question.image_url, '_blank')}
-                        >
-                          Open Original Image
-                        </Button>
-                      </div>
                     </div>
                   )}
+
                   <div className="text-base font-medium bg-card p-6 rounded-xl border border-border/50 shadow-inner relative space-y-6">
                     <LatexRenderer content={question.content} />
                     
