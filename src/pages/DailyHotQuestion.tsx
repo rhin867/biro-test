@@ -333,7 +333,8 @@ export default function DailyHotQuestion() {
                                 ))}
                               </div>
                             </div>
-                      ) : !replyTo && (
+                          ) : (
+
 
                             <div className="space-y-2">
                               <label className="text-xs uppercase font-bold text-primary flex items-center gap-2">
