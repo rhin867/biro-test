@@ -233,9 +233,17 @@ export default function AdminPanel() {
   const handleDeleteQuestion = async (id: string) => {
     if (!confirm('Are you sure you want to delete this question?')) return;
     const { error } = await supabase.from('hot_questions').delete().eq('id', id);
-    if (error) toast.error('Failed to delete');
-    else {
+    if (error) {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete question');
+    } else {
       toast.success('Question deleted');
+      // If we deleted the "active" (latest) question, the real-time sub will trigger fetchQuestion
+      // but we should also clear local state if we were editing it
+      if (editingQuestionId === id) {
+        setEditingQuestionId(null);
+        setNewHotQuestion('');
+      }
       fetchHotQuestionsHistory();
     }
   };

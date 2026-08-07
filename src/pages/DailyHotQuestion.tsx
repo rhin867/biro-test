@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { toast } from 'sonner';
-import { MessageSquare, Send, User, Clock, Star, History as HistoryIcon, ArrowLeft, CheckCircle, XCircle, Target, Plus, ThumbsUp, Bell, BellOff, Reply, ZoomIn } from 'lucide-react';
+import { MessageSquare, Send, User, Clock, Star, History as HistoryIcon, ArrowLeft, CheckCircle, XCircle, Target, Plus, ThumbsUp, Bell, BellOff, Reply, ZoomIn, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function DailyHotQuestion() {
@@ -31,16 +31,26 @@ export default function DailyHotQuestion() {
 
 
   const fetchQuestion = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('hot_questions')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(1);
+
+    if (error) {
+      console.error('Error fetching hot question:', error);
+      return;
+    }
+
     if (data && data.length > 0) {
-      setQuestion(data[0]);
-      setImageError(false); // Reset error state on new question
-      fetchResponses(data[0].id);
-      checkIfAlreadyAnswered(data[0].id, data[0]);
+      const q = data[0];
+      // Check if the question is actually visible (not deleted or marked as hidden if we add that)
+      setQuestion(q);
+      setImageError(false);
+      fetchResponses(q.id);
+      checkIfAlreadyAnswered(q.id, q);
+    } else {
+      setQuestion(null);
     }
   };
 
@@ -116,12 +126,14 @@ export default function DailyHotQuestion() {
     fetchNotifications();
 
     // Set up real-time subscription for new questions
+    // This ensures that when an admin adds or deletes a question, the UI updates immediately
     const channel = supabase
       .channel('hot-questions-changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'hot_questions' },
-        () => {
+        (payload) => {
+          console.log('Real-time hot_questions change:', payload);
           fetchQuestion();
           fetchHistory();
         }
@@ -208,7 +220,20 @@ export default function DailyHotQuestion() {
     }
   };
 
-  if (!question) return <div className="p-8 text-center"><p className="animate-pulse">Loading challenge...</p></div>;
+  if (!question) return (
+    <MainLayout>
+      <div className="p-8 text-center space-y-4">
+        <div className="animate-bounce inline-block p-4 rounded-full bg-primary/10">
+          <Star className="h-10 w-10 text-primary" />
+        </div>
+        <p className="text-xl font-bold">No challenge active today.</p>
+        <p className="text-muted-foreground">Check back later for a new Hot Question!</p>
+        <Button variant="outline" onClick={fetchQuestion} className="gap-2">
+          <RefreshCw className="h-4 w-4" /> Refresh
+        </Button>
+      </div>
+    </MainLayout>
+  );
 
 
   return (
