@@ -110,7 +110,19 @@ const sections = [
 
 export default function Guide() {
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
-  useEffect(() => { fetchQuotaInfo().then(setQuota); }, []);
+  
+  useEffect(() => {
+    fetchQuotaInfo().then(setQuota);
+    
+    // Support deep linking to sections via URL hash
+    if (window.location.hash) {
+      const id = window.location.hash.substring(1);
+      setTimeout(() => {
+        const el = document.getElementById(id);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 500);
+    }
+  }, []);
 
   return (
     <MainLayout>
