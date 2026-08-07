@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { MainLayout, PageHeader } from '@/components/layout/MainLayout';
 import { StatCard } from '@/components/exam/StatCard';
 import { MultiProgressBar } from '@/components/exam/ProgressBar';
 import { supabase } from '@/integrations/supabase/client';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
-import { Star, MessageSquare, Clock, Plus, Target, TrendingUp, ChevronRight, FileText, BarChart, Loader2 } from 'lucide-react';
+import { Star, MessageSquare, Clock, Plus, Target, TrendingUp, ChevronRight, FileText, BarChart, Loader2, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -176,6 +176,7 @@ function DailyHotQuestionPreview() {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const tests = getTests();
   const results = getResults();
 
@@ -226,12 +227,23 @@ export default function Dashboard() {
         title="Dashboard"
         description="Track your JEE preparation progress"
       >
-        <Link to="/create">
-          <Button className="gap-2 glow-primary">
-            <Plus className="h-4 w-4" />
-            Create New Test
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="gap-2 text-[11px] h-9 border-primary/20 text-primary hover:bg-primary/5"
+            onClick={() => navigate('/guide')}
+          >
+            <HelpCircle className="h-4 w-4" />
+            User Guide
           </Button>
-        </Link>
+          <Link to="/create">
+            <Button className="gap-2 glow-primary h-9">
+              <Plus className="h-4 w-4" />
+              Create New Test
+            </Button>
+          </Link>
+        </div>
       </PageHeader>
 
       <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
