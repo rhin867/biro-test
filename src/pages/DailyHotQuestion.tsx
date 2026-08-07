@@ -204,7 +204,7 @@ export default function DailyHotQuestion() {
                 {question.type === 'mcq' || question.type === 'msq' || question.type === 'poll' ? (
                   <div className="space-y-3">
                     <label className="text-[10px] uppercase font-bold text-muted-foreground">Select Option</label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {question.options && question.options.map((opt: string, i: number) => (
                         <Button
                           key={i}
