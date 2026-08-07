@@ -184,7 +184,7 @@ export default function AdminPanel() {
       content: newHotQuestion.trim(),
       image_url: hotQuestionImageUrl,
       options: ['mcq', 'msq', 'poll'].includes(hotQuestionType)
-        ? hotQuestionOptions.filter(o => o !== null && o !== undefined) 
+        ? hotQuestionOptions.filter(o => o !== null && o !== undefined && o !== '') 
         : null,
       correct_option: hotQuestionCorrect.trim() || null,
       type: hotQuestionType 

@@ -331,7 +331,8 @@ function CreateTestInner() {
       return;
     }
     // Final confirmation gate
-    const phrase = (getCachedAppSettings().confirmation_phrase || 'I LOVE YOU BIRO').trim();
+    const settings = getCachedAppSettings();
+    const phrase = (settings.confirmation_phrase || 'I LOVE YOU BIRO').trim();
     const entered = window.prompt(`Type "${phrase}" to save and share this test:`);
     if (!entered || entered.trim().toUpperCase() !== phrase.toUpperCase()) {
       toast.error('Confirmation phrase did not match. Test not saved.');
@@ -367,6 +368,7 @@ function CreateTestInner() {
         duration,
         questions: storableQuestions,
         subjects,
+        hasAnswerKey,
         totalMarks: extractedQuestions.length * positiveMarking,
         positiveMarking,
         negativeMarking,
