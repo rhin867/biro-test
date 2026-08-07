@@ -23,6 +23,8 @@ import { PainfulQuestions } from '@/components/analysis/PainfulQuestions';
 import { CompleteAuditTable } from '@/components/analysis/CompleteAuditTable';
 import { TestLearnings } from '@/components/analysis/TestLearnings';
 import { Leaderboard } from '@/components/analysis/Leaderboard';
+import { FatigueHeatmap } from '@/components/analysis/FatigueHeatmap';
+import { GhostReplay } from '@/components/analysis/GhostReplay';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -514,6 +516,16 @@ export default function TestAnalysis() {
         {/* Subject Movement Tab */}
         <TabsContent value="subject-movement" className="space-y-6">
           <SubjectMovement questionResults={result.questionResults} />
+        </TabsContent>
+
+        {/* Fatigue Tab */}
+        <TabsContent value="fatigue" className="space-y-6">
+          <FatigueHeatmap questionResults={result.questionResults} />
+        </TabsContent>
+
+        {/* Ghost Replay Tab */}
+        <TabsContent value="ghost-replay" className="space-y-6">
+          <GhostReplay questionResults={result.questionResults} />
         </TabsContent>
 
         {/* Question Journey Tab */}
