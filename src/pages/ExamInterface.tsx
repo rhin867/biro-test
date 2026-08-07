@@ -25,7 +25,7 @@ import {
 import { calculateTestResult } from '@/lib/exam-utils';
 import { Test, TestAttempt, QuestionAttempt, QuestionStatus, Subject, MistakeType, QuestionType } from '@/types/exam';
 import { supabase } from '@/integrations/supabase/client';
-import { getCurrentDisplayName, getCurrentUserKey } from '@/lib/app-settings';
+import { getCurrentDisplayName, getCurrentUserKey, getCachedAppSettings } from '@/lib/app-settings';
 import { toast } from 'sonner';
 import {
   ChevronLeft,
