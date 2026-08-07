@@ -472,6 +472,10 @@ export default function TestAnalysis() {
             ))}
           </div>
 
+        </TabsContent>
+        
+        {/* Comparison Tab */}
+        <TabsContent value="comparison" className="space-y-6">
           <PerformanceComparison result={result} />
         </TabsContent>
 
