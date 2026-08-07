@@ -184,10 +184,10 @@ export default function AdminPanel() {
       content: newHotQuestion.trim(),
       image_url: hotQuestionImageUrl,
       options: ['mcq', 'msq', 'poll'].includes(hotQuestionType)
-        ? hotQuestionOptions.filter(o => o.trim() !== '') 
+        ? hotQuestionOptions.filter(o => o !== null && o !== undefined) 
         : null,
       correct_option: hotQuestionCorrect.trim() || null,
-      type: hotQuestionType // Used 'type' as per common schema, ensured it exists in migration
+      type: hotQuestionType 
     };
 
     let result;

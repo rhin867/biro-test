@@ -37,8 +37,18 @@ export default function DailyHotQuestion() {
   };
 
   const checkIfAlreadyAnswered = async (qId: string, currentQuestion: any) => {
-    const userKey = localStorage.getItem('user_key');
-    if (!userKey) return;
+    // We use a combination of localStorage and database check for better reliability
+    const userKey = localStorage.getItem('user_key') || 'anonymous';
+    const hasAlreadyAttempted = localStorage.getItem(`solved_q_${qId}`);
+    
+    if (hasAlreadyAttempted) {
+      setHasAnswered(true);
+      const savedAns = localStorage.getItem(`ans_q_${qId}`);
+      if (savedAns && currentQuestion?.correct_option) {
+        setIsCorrect(savedAns.trim().toLowerCase() === currentQuestion.correct_option.trim().toLowerCase());
+      }
+      return;
+    }
 
     const { data } = await supabase
       .from('hot_question_responses')
@@ -49,6 +59,8 @@ export default function DailyHotQuestion() {
 
     if (data && data.length > 0) {
       setHasAnswered(true);
+      localStorage.setItem(`solved_q_${qId}`, 'true');
+      localStorage.setItem(`ans_q_${qId}`, data[0].selected_option);
       if (currentQuestion?.correct_option) {
         setIsCorrect(data[0].selected_option.trim().toLowerCase() === currentQuestion.correct_option.trim().toLowerCase());
       }
@@ -92,6 +104,8 @@ export default function DailyHotQuestion() {
     if (error) toast.error('Failed to submit');
     else {
       toast.success('Response submitted!');
+      localStorage.setItem(`solved_q_${question.id}`, 'true');
+      localStorage.setItem(`ans_q_${question.id}`, myResponse.trim());
       setMyResponse('');
       setMyComment('');
       setHasAnswered(true);
@@ -142,8 +156,16 @@ export default function DailyHotQuestion() {
               <CardContent className="pb-6">
                 <div className="space-y-4">
                   {question.image_url && (
-                    <div className="rounded-xl overflow-hidden border border-border/50 shadow-md bg-white p-2">
-                      <img src={question.image_url} alt="Question Diagram" className="w-full h-auto object-contain max-h-[400px]" />
+                    <div className="rounded-xl overflow-hidden border border-border/50 shadow-md bg-white p-2 mb-4">
+                      <img 
+                        src={question.image_url} 
+                        alt="Question Diagram" 
+                        className="w-full h-auto object-contain max-h-[500px]" 
+                        onError={(e) => {
+                          console.error("Image load error:", question.image_url);
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
                     </div>
                   )}
                   <div className="text-base font-medium bg-card p-6 rounded-xl border border-border/50 shadow-inner relative space-y-6">
@@ -151,61 +173,65 @@ export default function DailyHotQuestion() {
                     
                     {/* Interaction UI for solving */}
                     <div className="border-t pt-6 mt-4">
-                      {question.type === 'mcq' || question.type === 'msq' || question.type === 'poll' ? (
-                        <div className="space-y-4">
-                          <label className="text-xs uppercase font-bold text-primary flex items-center gap-2">
-                            <Target className="h-4 w-4" /> Select Your Answer
-                          </label>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {question.options && question.options.map((opt: string, i: number) => (
-                              <Button
-                                key={i}
-                                variant={myResponse === String.fromCharCode(65 + i) ? "default" : "outline"}
-                                className={`justify-start h-auto py-3 px-4 text-sm transition-all border-2 ${
-                                  myResponse === String.fromCharCode(65 + i) ? "border-primary bg-primary/10 text-foreground" : "hover:border-primary/50"
-                                }`}
-                                onClick={() => !hasAnswered && setMyResponse(String.fromCharCode(65 + i))}
-                                disabled={hasAnswered}
-                              >
-                                <span className={`w-8 h-8 rounded-full border-2 flex items-center justify-center mr-3 text-xs font-bold ${
-                                  myResponse === String.fromCharCode(65 + i) ? "bg-primary text-primary-foreground border-primary" : "border-muted-foreground/30"
-                                }`}>
-                                  {String.fromCharCode(65 + i)}
-                                </span>
-                                <span className="truncate">{opt}</span>
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <label className="text-xs uppercase font-bold text-primary flex items-center gap-2">
-                            <Plus className="h-4 w-4" /> Type Your Answer
-                          </label>
-                          <Input 
-                            value={myResponse} 
-                            onChange={e => setMyResponse(e.target.value)} 
-                            placeholder={question.type === 'integer' ? "e.g. 42" : "Type your answer..."} 
-                            disabled={hasAnswered}
-                            className="text-lg py-6 border-2 focus:border-primary"
-                          />
-                        </div>
-                      )}
+                      {!hasAnswered ? (
+                        <>
+                          {question.type === 'mcq' || question.type === 'msq' || question.type === 'poll' ? (
+                            <div className="space-y-4">
+                              <label className="text-xs uppercase font-bold text-primary flex items-center gap-2">
+                                <Target className="h-4 w-4" /> Select Your Answer
+                              </label>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {question.options && question.options.map((opt: string, i: number) => (
+                                  <Button
+                                    key={i}
+                                    variant={myResponse === String.fromCharCode(65 + i) ? "default" : "outline"}
+                                    className={`justify-start h-auto py-3 px-4 text-sm transition-all border-2 ${
+                                      myResponse === String.fromCharCode(65 + i) ? "border-primary bg-primary/10 text-foreground" : "hover:border-primary/50"
+                                    }`}
+                                    onClick={() => setMyResponse(String.fromCharCode(65 + i))}
+                                  >
+                                    <span className={`w-8 h-8 rounded-full border-2 flex items-center justify-center mr-3 text-xs font-bold ${
+                                      myResponse === String.fromCharCode(65 + i) ? "bg-primary text-primary-foreground border-primary" : "border-muted-foreground/30"
+                                    }`}>
+                                      {String.fromCharCode(65 + i)}
+                                    </span>
+                                    <span className="truncate">{opt}</span>
+                                  </Button>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <label className="text-xs uppercase font-bold text-primary flex items-center gap-2">
+                                <Plus className="h-4 w-4" /> Type Your Answer
+                              </label>
+                              <Input 
+                                value={myResponse} 
+                                onChange={e => setMyResponse(e.target.value)} 
+                                placeholder={question.type === 'integer' ? "e.g. 42" : "Type your answer..."} 
+                                className="text-lg py-6 border-2 focus:border-primary"
+                              />
+                            </div>
+                          )}
 
-                      {!hasAnswered && (
-                        <div className="mt-6 space-y-4">
-                          <div className="space-y-2">
-                            <label className="text-[10px] uppercase font-bold text-muted-foreground">Explanation / Thought (Optional)</label>
-                            <Textarea 
-                              value={myComment} 
-                              onChange={e => setMyComment(e.target.value)} 
-                              placeholder="Why this answer?"
-                              rows={3}
-                            />
+                          <div className="mt-6 space-y-4">
+                            <div className="space-y-2">
+                              <label className="text-[10px] uppercase font-bold text-muted-foreground">Explanation / Thought (Optional)</label>
+                              <Textarea 
+                                value={myComment} 
+                                onChange={e => setMyComment(e.target.value)} 
+                                placeholder="Why this answer?"
+                                rows={3}
+                              />
+                            </div>
+                            <Button className="w-full h-12 text-lg gap-2 glow-primary" onClick={handleSubmit} disabled={isSubmitting || !myResponse.trim()}>
+                              <Send className="h-5 w-5" /> {isSubmitting ? 'Submitting...' : 'Submit Final Answer'}
+                            </Button>
                           </div>
-                          <Button className="w-full h-12 text-lg gap-2 glow-primary" onClick={handleSubmit} disabled={isSubmitting || !myResponse.trim()}>
-                            <Send className="h-5 w-5" /> {isSubmitting ? 'Submitting...' : 'Submit Final Answer'}
-                          </Button>
+                        </>
+                      ) : (
+                        <div className="py-4 text-center bg-secondary/20 rounded-xl border border-dashed">
+                          <p className="text-sm font-medium text-muted-foreground">You have already submitted your response for this challenge.</p>
                         </div>
                       )}
                     </div>
@@ -272,8 +298,8 @@ export default function DailyHotQuestion() {
                     <p className="text-lg font-black">{responses.length}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-background border text-center">
-                    <p className="text-[10px] uppercase text-muted-foreground font-bold">Today</p>
-                    <p className="text-lg font-black">{hasAnswered ? (isCorrect ? '✓' : '✗') : '?'}</p>
+                    <p className="text-[10px] uppercase text-muted-foreground font-bold">Status</p>
+                    <p className="text-lg font-black">{hasAnswered ? (isCorrect ? 'Correct' : 'Incorrect') : 'Pending'}</p>
                   </div>
                 </div>
                 {!hasAnswered && (
