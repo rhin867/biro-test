@@ -287,7 +287,7 @@ export default function DailyHotQuestion() {
               <CardContent className="pb-6">
                 <div className="space-y-4">
                   {question.image_url && (
-                    <div className="rounded-xl overflow-hidden border-2 border-primary/20 shadow-neon bg-white p-3 mb-6 flex flex-col items-center group relative min-h-[200px] justify-center transition-all hover:border-primary/40">
+                    <div className="rounded-xl overflow-hidden border-2 border-primary/20 shadow-neon bg-white p-3 mb-6 flex flex-col items-center group relative min-h-[300px] justify-center transition-all hover:border-primary/40">
                       {imageError ? (
                         <div className="flex flex-col items-center justify-center p-8 text-muted-foreground gap-3">
                           <XCircle className="h-10 w-10 text-destructive/50" />

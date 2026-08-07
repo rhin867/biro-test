@@ -286,7 +286,7 @@ function CreateTestInner() {
       if (pdfFile) {
         toast.info(BIRO_BACKEND_CONFIGURED
           ? 'Extracting via Biro backend (0 AI credits)…'
-          : 'Extracting via AI (set VITE_BIRO_BACKEND_URL to skip credits)…');
+          : 'Extracting via AI (High Accuracy Scanned PDF OCR Mode)…');
         const pdfBase64 = await fileToBase64(pdfFile);
         // If backend hasn't warmed yet, ping once more before the big call.
         if (extractionMode === 'auto' && BIRO_BACKEND_CONFIGURED && backendWarm !== 'ready') {
