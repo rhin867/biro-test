@@ -322,7 +322,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
               )}
             </div>
             <ScrollArea className="flex-1">
-              <div className="flex lg:flex-col gap-1.5 pr-1 overflow-x-auto lg:overflow-x-visible">
+              <div className="flex lg:flex-col gap-3 pr-1 overflow-x-auto lg:overflow-x-visible pb-2">
                 {croppedImages.length === 0 && (
                   <p className="text-[10px] text-muted-foreground p-2">Drag on the page to crop a question.</p>
                 )}
@@ -330,28 +330,51 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
                   <div key={i} className="relative border rounded-md overflow-hidden bg-card flex-shrink-0 w-36 lg:w-full">
                     <div className="relative bg-white">
                       <img src={ci.dataUrl} alt={`Crop ${i + 1}`} className="w-full max-h-20 object-contain" />
-                      <div className="absolute top-0.5 left-0.5 bg-primary/90 text-primary-foreground text-[9px] px-1 rounded">
+                      <div className="absolute top-0.5 left-0.5 bg-primary/90 text-primary-foreground text-[9px] px-1 rounded flex items-center gap-1">
                         Q{i + 1}
+                        {ci.qType && <span className="opacity-80">[{ci.qType}]</span>}
                       </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="absolute top-0.5 right-0.5 h-5 w-5 p-0 text-destructive hover:bg-destructive/10"
+                        onClick={() => setCroppedImages(prev => prev.filter((_, k) => k !== i))}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
                     </div>
-                    <div className="p-1 space-y-0.5">
-                      <div className="flex items-center gap-0.5">
-                        <Input value={ci.subject} onChange={(e) => updateCrop(i, { subject: e.target.value })}
-                               className="h-6 text-[10px] px-1" placeholder="Subject" />
-                        <Select value={ci.qType} onValueChange={(v) => updateCrop(i, { qType: v as CropQType })}>
-                          <SelectTrigger className="h-6 text-[10px] px-1 w-14"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="MCQ">MCQ</SelectItem>
-                            <SelectItem value="MSQ">MSQ</SelectItem>
-                            <SelectItem value="Numerical">Num</SelectItem>
-                            <SelectItem value="Integer">Int</SelectItem>
-                          </SelectContent>
-                        </Select>
+                    <div className="p-1.5 space-y-1.5">
+                      <div className="grid grid-cols-2 gap-1">
+                        <div>
+                          <label className="text-[8px] uppercase text-muted-foreground font-bold">Subject</label>
+                          <ComboInput value={ci.subject} onChange={(v) => updateCrop(i, { subject: v })}
+                                 presets={CANONICAL_SUBJECTS} placeholder="Subject" />
+                        </div>
+                        <div>
+                          <label className="text-[8px] uppercase text-muted-foreground font-bold">Type</label>
+                          <Select value={ci.qType} onValueChange={(v) => updateCrop(i, { qType: v as CropQType })}>
+                            <SelectTrigger className="h-8 text-[10px] px-1"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="MCQ">MCQ</SelectItem>
+                              <SelectItem value="MSQ">MSQ</SelectItem>
+                              <SelectItem value="Numerical">Num</SelectItem>
+                              <SelectItem value="Integer">Int</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
-                      <Input value={ci.section} onChange={(e) => updateCrop(i, { section: e.target.value })}
-                             className="h-6 text-[10px] px-1" placeholder="Section" />
-                      <Input value={ci.correctAnswer || ''} onChange={(e) => updateCrop(i, { correctAnswer: e.target.value })}
-                             className="h-6 text-[10px] px-1" placeholder="Correct ans (opt)" />
+                      <div>
+                        <label className="text-[8px] uppercase text-muted-foreground font-bold">Section / Chapter</label>
+                        <ComboInput value={ci.section} onChange={(v) => updateCrop(i, { section: v })}
+                               presets={SECTION_PRESETS} placeholder="Section" />
+                      </div>
+                      <div className="flex gap-1">
+                        <Input value={ci.correctAnswer || ''} onChange={(e) => updateCrop(i, { correctAnswer: e.target.value })}
+                               className="h-7 text-[10px] px-1 flex-1" placeholder="Answer (A, B...)" />
+                        <Button variant="outline" size="sm" className="h-7 px-1" onClick={() => setPreviewIdx(i)}>
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                       {ci.extraImages && ci.extraImages.length > 0 && (
                         <div className="flex flex-wrap gap-0.5 py-0.5">
                           {ci.extraImages.map((ex, j) => (
