@@ -110,7 +110,19 @@ const sections = [
 
 export default function Guide() {
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
-  useEffect(() => { fetchQuotaInfo().then(setQuota); }, []);
+  
+  useEffect(() => {
+    fetchQuotaInfo().then(setQuota);
+    
+    // Support deep linking to sections via URL hash
+    if (window.location.hash) {
+      const id = window.location.hash.substring(1);
+      setTimeout(() => {
+        const el = document.getElementById(id);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 500);
+    }
+  }, []);
 
   return (
     <MainLayout>
@@ -124,14 +136,20 @@ export default function Guide() {
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
             {sections.map((section, i) => (
-              <a 
+              <button 
                 key={i} 
-                href={`#${section.title.toLowerCase().replace(/\s+/g, '-')}`}
-                className="text-xs text-primary hover:underline flex items-center gap-1.5 p-2 rounded hover:bg-primary/10 transition-colors"
+                onClick={() => {
+                  const id = section.title.toLowerCase().replace(/\s+/g, '-');
+                  const el = document.getElementById(id);
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                }}
+                className="text-xs text-primary hover:underline flex items-center gap-1.5 p-2 rounded hover:bg-primary/10 transition-colors text-left w-full"
               >
                 <section.icon className="h-3.5 w-3.5" />
                 {section.title}
-              </a>
+              </button>
             ))}
           </div>
         </CardContent>
@@ -204,6 +222,26 @@ export default function Guide() {
                   </li>
                 ))}
               </ol>
+              <div className="mt-4 pt-3 border-t border-border/30">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase mb-2">Explore more topics:</p>
+                <div className="flex flex-wrap gap-2">
+                  {sections.filter(s => s.title !== section.title).map((s, idx) => (
+                    <Button 
+                      key={idx}
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-7 text-[10px] gap-1 px-2 text-primary hover:bg-primary/5"
+                      onClick={() => {
+                        const id = s.title.toLowerCase().replace(/\s+/g, '-');
+                        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                    >
+                      <s.icon className="h-3 w-3" />
+                      {s.title}
+                    </Button>
+                  ))}
+                </div>
+              </div>
             </CardContent>
           </Card>
         ))}
