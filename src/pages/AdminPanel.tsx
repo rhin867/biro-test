@@ -187,7 +187,7 @@ export default function AdminPanel() {
         ? hotQuestionOptions.filter(o => o.trim() !== '') 
         : null,
       correct_option: hotQuestionCorrect.trim() || null,
-      question_type: hotQuestionType
+      type: hotQuestionType // Used 'type' as per common schema, ensured it exists in migration
     };
 
     let result;
@@ -216,7 +216,7 @@ export default function AdminPanel() {
   const handleEditQuestion = (q: any) => {
     setEditingQuestionId(q.id);
     setNewHotQuestion(q.content || '');
-    setHotQuestionType(q.question_type || 'mcq');
+    setHotQuestionType(q.type || 'mcq');
     setHotQuestionOptions(q.options || ['', '', '', '']);
     setHotQuestionCorrect(q.correct_option || '');
     setHotQuestionImageUrl(q.image_url || null);
@@ -608,7 +608,7 @@ export default function AdminPanel() {
                       <div key={q.id} className="flex items-start justify-between p-3 rounded-lg border border-border bg-card">
                         <div className="flex-1 min-w-0 pr-4">
                           <div className="flex items-center gap-2 mb-1">
-                            <Badge variant="outline" className="text-[9px] uppercase">{q.question_type}</Badge>
+                            <Badge variant="outline" className="text-[9px] uppercase">{q.type}</Badge>
                             <span className="text-[10px] text-muted-foreground">{new Date(q.created_at).toLocaleDateString()}</span>
                           </div>
                           <div className="text-xs line-clamp-2 truncate">{q.content}</div>

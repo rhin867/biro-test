@@ -147,6 +147,7 @@ export type Database = {
           image_url: string | null
           options: Json | null
           question_type: string | null
+          type: string | null
         }
         Insert: {
           content: string
@@ -156,6 +157,7 @@ export type Database = {
           image_url?: string | null
           options?: Json | null
           question_type?: string | null
+          type?: string | null
         }
         Update: {
           content?: string
@@ -165,6 +167,7 @@ export type Database = {
           image_url?: string | null
           options?: Json | null
           question_type?: string | null
+          type?: string | null
         }
         Relationships: []
       }
