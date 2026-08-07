@@ -49,9 +49,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    const storedValue = key.includes("password") && typeof value === "string"
-      ? await hashSecret(value)
-      : value;
+    const rawValue = value === undefined ? null : value;
+    const storedValue = key.includes("password") && typeof rawValue === "string"
+      ? await hashSecret(rawValue)
+      : rawValue;
+
+    // app_settings.value is NOT NULL (jsonb). A JS null becomes SQL NULL via PostgREST,
+    // so send the JSON null literal instead to clear a setting.
+    const payloadValue = storedValue === null ? "null" : storedValue;
 
     const { error: upErr } = await supabase
       .from("app_settings")
