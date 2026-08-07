@@ -383,27 +383,83 @@ export default function DailyHotQuestion() {
                   Discussions ({responses.length})
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 max-h-[500px] overflow-y-auto">
+              <CardContent className="space-y-4 max-h-[600px] overflow-y-auto custom-scrollbar">
                 {responses.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">Be the first to respond!</p>
                 ) : (
-                  responses.map(resp => (
-                    <div key={resp.id} className="p-3 rounded-lg bg-secondary/20 border border-border/50">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <User className="h-3 w-3 text-primary" />
-                          <span className="text-xs font-bold text-primary">{resp.user_display_name}</span>
-                          <Badge variant="secondary" className="text-[10px] h-4">Ans: {resp.selected_option}</Badge>
+                  responses.filter(r => !r.parent_id).map(resp => (
+                    <div key={resp.id} className="space-y-3">
+                      <div className="p-3 rounded-xl bg-secondary/20 border border-border/50 shadow-sm">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                              <User className="h-3 w-3 text-primary" />
+                            </div>
+                            <span className="text-xs font-bold text-primary">{resp.user_display_name}</span>
+                            <Badge variant="secondary" className="text-[9px] h-4">Ans: {resp.selected_option}</Badge>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <Clock className="h-2 w-2" /> {new Date(resp.created_at).toLocaleTimeString()}
+                          </span>
                         </div>
-                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                          <Clock className="h-2 w-2" /> {new Date(resp.created_at).toLocaleTimeString()}
-                        </span>
+                        <p className="text-sm px-1 mb-3">{resp.comment || 'No comment provided.'}</p>
+                        <div className="flex items-center gap-4 border-t border-border/30 pt-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className={`h-7 text-[10px] gap-1.5 rounded-full px-3 ${resp.liked_by?.includes(localStorage.getItem('user_key')) ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
+                            onClick={() => handleLike(resp.id, resp.user_key)}
+                          >
+                            <ThumbsUp className={`h-3 w-3 ${resp.liked_by?.includes(localStorage.getItem('user_key')) ? 'fill-primary' : ''}`} />
+                            {resp.likes || 0}
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-7 text-[10px] gap-1.5 rounded-full px-3 text-muted-foreground"
+                            onClick={() => {
+                              setReplyTo(resp);
+                              setMyResponse(resp.selected_option); // Default to parent answer
+                              document.getElementById('solve-area')?.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                          >
+                            <Reply className="h-3 w-3" />
+                            Reply
+                          </Button>
+                        </div>
                       </div>
-                      <p className="text-sm">{resp.comment || 'No comment provided.'}</p>
+
+                      {/* Render Replies */}
+                      <div className="ml-8 space-y-3 border-l-2 border-primary/10 pl-4">
+                        {responses.filter(r => r.parent_id === resp.id).map(reply => (
+                          <div key={reply.id} className="p-3 rounded-xl bg-muted/40 border border-border/30">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <User className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-xs font-bold">{reply.user_display_name}</span>
+                              </div>
+                              <span className="text-[10px] text-muted-foreground">
+                                {new Date(reply.created_at).toLocaleTimeString()}
+                              </span>
+                            </div>
+                            <p className="text-sm px-1 mb-2">{reply.comment}</p>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className={`h-6 text-[9px] gap-1 rounded-full px-2 ${reply.liked_by?.includes(localStorage.getItem('user_key')) ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
+                              onClick={() => handleLike(reply.id, reply.user_key)}
+                            >
+                              <ThumbsUp className="h-2.5 w-2.5" />
+                              {reply.likes || 0}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ))
                 )}
               </CardContent>
+
             </Card>
           </div>
 
