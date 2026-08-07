@@ -37,8 +37,18 @@ export default function DailyHotQuestion() {
   };
 
   const checkIfAlreadyAnswered = async (qId: string, currentQuestion: any) => {
-    const userKey = localStorage.getItem('user_key');
-    if (!userKey) return;
+    // We use a combination of localStorage and database check for better reliability
+    const userKey = localStorage.getItem('user_key') || 'anonymous';
+    const hasAlreadyAttempted = localStorage.getItem(`solved_q_${qId}`);
+    
+    if (hasAlreadyAttempted) {
+      setHasAnswered(true);
+      const savedAns = localStorage.getItem(`ans_q_${qId}`);
+      if (savedAns && currentQuestion?.correct_option) {
+        setIsCorrect(savedAns.trim().toLowerCase() === currentQuestion.correct_option.trim().toLowerCase());
+      }
+      return;
+    }
 
     const { data } = await supabase
       .from('hot_question_responses')
@@ -49,6 +59,8 @@ export default function DailyHotQuestion() {
 
     if (data && data.length > 0) {
       setHasAnswered(true);
+      localStorage.setItem(`solved_q_${qId}`, 'true');
+      localStorage.setItem(`ans_q_${qId}`, data[0].selected_option);
       if (currentQuestion?.correct_option) {
         setIsCorrect(data[0].selected_option.trim().toLowerCase() === currentQuestion.correct_option.trim().toLowerCase());
       }
@@ -92,6 +104,8 @@ export default function DailyHotQuestion() {
     if (error) toast.error('Failed to submit');
     else {
       toast.success('Response submitted!');
+      localStorage.setItem(`solved_q_${question.id}`, 'true');
+      localStorage.setItem(`ans_q_${question.id}`, myResponse.trim());
       setMyResponse('');
       setMyComment('');
       setHasAnswered(true);
@@ -284,8 +298,8 @@ export default function DailyHotQuestion() {
                     <p className="text-lg font-black">{responses.length}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-background border text-center">
-                    <p className="text-[10px] uppercase text-muted-foreground font-bold">Today</p>
-                    <p className="text-lg font-black">{hasAnswered ? (isCorrect ? '✓' : '✗') : '?'}</p>
+                    <p className="text-[10px] uppercase text-muted-foreground font-bold">Status</p>
+                    <p className="text-lg font-black">{hasAnswered ? (isCorrect ? 'Correct' : 'Incorrect') : 'Pending'}</p>
                   </div>
                 </div>
                 {!hasAnswered && (
