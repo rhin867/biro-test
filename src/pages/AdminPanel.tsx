@@ -577,7 +577,6 @@ export default function AdminPanel() {
                 </div>
                 {hot_question_image_preview}
               </div>
-              </div>
 
               {(hotQuestionType === 'mcq' || hotQuestionType === 'msq' || hotQuestionType === 'poll') && (
                 <div className="space-y-2">
