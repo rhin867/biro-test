@@ -32,11 +32,11 @@ export default function DailyHotQuestion() {
     if (data && data.length > 0) {
       setQuestion(data[0]);
       fetchResponses(data[0].id);
-      checkIfAlreadyAnswered(data[0].id);
+      checkIfAlreadyAnswered(data[0].id, data[0]);
     }
   };
 
-  const checkIfAlreadyAnswered = async (qId: string) => {
+  const checkIfAlreadyAnswered = async (qId: string, currentQuestion: any) => {
     const userKey = localStorage.getItem('user_key');
     if (!userKey) return;
 
@@ -49,8 +49,8 @@ export default function DailyHotQuestion() {
 
     if (data && data.length > 0) {
       setHasAnswered(true);
-      if (question?.correct_option) {
-        setIsCorrect(data[0].selected_option === question.correct_option);
+      if (currentQuestion?.correct_option) {
+        setIsCorrect(data[0].selected_option.trim().toLowerCase() === currentQuestion.correct_option.trim().toLowerCase());
       }
     }
   };
@@ -96,7 +96,7 @@ export default function DailyHotQuestion() {
       setMyComment('');
       setHasAnswered(true);
       if (question?.correct_option) {
-        setIsCorrect(myResponse.trim() === question.correct_option);
+        setIsCorrect(myResponse.trim().toLowerCase() === question.correct_option.trim().toLowerCase());
       }
       fetchResponses(question.id);
     }
