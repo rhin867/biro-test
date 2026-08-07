@@ -368,7 +368,6 @@ function CreateTestInner() {
         duration,
         questions: storableQuestions,
         subjects,
-        hasAnswerKey,
         totalMarks: extractedQuestions.length * positiveMarking,
         positiveMarking,
         negativeMarking,
