@@ -407,7 +407,7 @@ export default function DailyHotQuestion() {
                 ) : (
                   responses.filter(r => !r.parent_id).map(resp => (
                     <div key={resp.id} className="space-y-3">
-                      <div className="p-3 rounded-xl bg-secondary/20 border border-border/50 shadow-sm">
+                      <div className="p-3 rounded-xl bg-secondary/20 border border-border/50 shadow-sm relative overflow-hidden">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
@@ -420,6 +420,14 @@ export default function DailyHotQuestion() {
                             <Clock className="h-2 w-2" /> {new Date(resp.created_at).toLocaleTimeString()}
                           </span>
                         </div>
+                        
+                        {/* Nested Diagram in Discussion if exists (inherited from question for clarity) */}
+                        {question.image_url && resp.comment && (
+                          <div className="mb-3 rounded-lg border border-border/30 overflow-hidden bg-white/50 w-fit max-w-[150px]">
+                            <img src={question.image_url} alt="Reference" className="w-full h-auto object-contain max-h-[100px]" />
+                          </div>
+                        )}
+
                         <p className="text-sm px-1 mb-3">{resp.comment || 'No comment provided.'}</p>
                         <div className="flex items-center gap-4 border-t border-border/30 pt-2">
                           <Button 
