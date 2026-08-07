@@ -832,7 +832,7 @@ function CreateTestInner() {
                           rows={4}
                         />
                       </div>
-                      {editingQuestion.type !== 'Numerical' && editingQuestion.type !== 'Integer' && (
+                      {editingQuestion.type === 'MCQ' || editingQuestion.type === 'MSQ' ? (
                         <div className="grid grid-cols-2 gap-3">
                           {(['A', 'B', 'C', 'D'] as const).map(opt => (
                             <div key={opt} className="space-y-1">

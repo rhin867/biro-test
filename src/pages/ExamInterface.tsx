@@ -313,8 +313,19 @@ export default function ExamInterface() {
     }
   }, []);
   // Submit test
-  const handleSubmitTest = () => {
+  const handleSubmitTest = async () => {
     if (!test || !attempt) return;
+    
+    // Final confirmation gate
+    const phrase = (getCachedAppSettings().confirmation_phrase || 'I LOVE YOU BIRO').trim();
+    const entered = window.prompt(`Type "${phrase}" to submit your test:`);
+    if (!entered || entered.trim().toUpperCase() !== phrase.toUpperCase()) {
+      toast.error('Confirmation phrase did not match. Test not submitted.');
+      return;
+    }
+
+    setShowSubmitDialog(false);
+    toast.info('Submitting test...');
     // Check if test has answer key
     if (!test.hasAnswerKey && !test.answerKey) {
       toast.info('Test submitted! Add answer key to view detailed analysis.');
