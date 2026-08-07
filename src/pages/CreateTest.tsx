@@ -330,14 +330,12 @@ function CreateTestInner() {
       toast.error('No questions to create test');
       return;
     }
-    // Confirmation phrase gate (admin-configurable via app_settings.confirmation_phrase)
-    const phrase = (getCachedAppSettings().confirmation_phrase || '').trim();
-    if (phrase) {
-      const entered = window.prompt(`Type the confirmation phrase to finalize this test:\n\n"${phrase}"`);
-      if (!entered || entered.trim().toUpperCase() !== phrase.toUpperCase()) {
-        toast.error('Confirmation phrase did not match. Test not saved.');
-        return;
-      }
+    // Final confirmation gate
+    const phrase = (getCachedAppSettings().confirmation_phrase || 'I LOVE YOU BIRO').trim();
+    const entered = window.prompt(`Type "${phrase}" to save and share this test:`);
+    if (!entered || entered.trim().toUpperCase() !== phrase.toUpperCase()) {
+      toast.error('Confirmation phrase did not match. Test not saved.');
+      return;
     }
     creatingRef.current = true;
     setIsCreating(true);
