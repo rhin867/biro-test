@@ -193,11 +193,49 @@ export default function DailyHotQuestion() {
   return (
     <MainLayout>
       <PageHeader title="Daily Hot Question" description="Challenge yourself every day & discuss with others.">
-        <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)} className="gap-2">
-          {showHistory ? <ArrowLeft className="h-4 w-4" /> : <HistoryIcon className="h-4 w-4" />}
-          {showHistory ? 'Back to Today' : 'Question History'}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowNotifications(!showNotifications)} className="relative">
+            {notifications.length > 0 ? <Bell className="h-4 w-4 text-primary animate-bounce" /> : <BellOff className="h-4 w-4" />}
+            {notifications.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] px-1 rounded-full">{notifications.length}</span>}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)} className="gap-2">
+            {showHistory ? <ArrowLeft className="h-4 w-4" /> : <HistoryIcon className="h-4 w-4" />}
+            {showHistory ? 'Back to Today' : 'Question History'}
+          </Button>
+        </div>
       </PageHeader>
+
+      <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-primary" />
+              Notifications
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+            {notifications.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No new notifications</p>
+            ) : (
+              notifications.map(n => (
+                <div key={n.id} className="p-3 rounded-lg border bg-muted/30 relative group">
+                  <p className="text-sm font-bold">{n.title}</p>
+                  <p className="text-xs text-muted-foreground">{n.message}</p>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
+                    onClick={() => markNotificationRead(n.id)}
+                  >
+                    <CheckCircle className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
 
       {showHistory ? (
         <div className="space-y-4">
