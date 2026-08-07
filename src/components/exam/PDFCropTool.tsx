@@ -40,7 +40,7 @@ interface PDFCropToolProps {
 }
 
 const CANONICAL_SUBJECTS = ['Physics', 'Chemistry', 'Maths', 'Biology', 'English', 'General'];
-const SECTION_PRESETS = ['Section 1', 'Section 2', 'Section 3', 'Section A', 'Section B'];
+const SECTION_PRESETS = ['Section 1', 'Section 2', 'Section 3', 'Section A', 'Section B', 'Physics', 'Chemistry', 'Maths', 'Biology'];
 
 async function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -84,9 +84,9 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
   const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
   const [cropRegion, setCropRegion] = useState<CropRegion | null>(null);
   const [croppedImages, setCroppedImages] = useState<CroppedImage[]>(initialCrops || []);
-  const [subject, setSubject] = useState<string>('Maths');
-  const [section, setSection] = useState<string>('Section 1');
-  const [qType, setQType] = useState<CropQType>('MCQ');
+  const [subject, setSubject] = useState<string>(initialCrops?.[0]?.subject || 'Maths');
+  const [section, setSection] = useState<string>(initialCrops?.[0]?.section || 'Section 1');
+  const [qType, setQType] = useState<CropQType>(initialCrops?.[0]?.qType || 'MCQ');
   const [zoom, setZoom] = useState(1);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [previewIdx, setPreviewIdx] = useState<number | null>(null);
@@ -307,8 +307,8 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
                 )}
               </div>
             </div>
-            <p className="text-[9px] md:text-[10px] text-muted-foreground text-center mt-0.5">
-              Pinch/zoom → drag on page → Add. Use "+ 🖼" to add from gallery without cropping.
+            <p className="text-[10px] md:text-xs text-muted-foreground bg-accent/30 p-2 rounded mt-1">
+              <span className="font-bold text-primary">Instructions:</span> 1. Use two fingers to zoom/pan. 2. Drag a rectangle to select a question area. 3. Use the "Add" button to save the crop. 4. Use "+ 🖼" to upload separate images/diagrams for any question.
             </p>
           </div>
 
