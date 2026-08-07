@@ -236,11 +236,11 @@ export default function Dashboard() {
 
       <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
         <DailyHotQuestionPreview />
-        <Card className="border-primary/20 bg-primary/5 flex items-center justify-center p-6 min-h-[160px] relative overflow-hidden group">
+        <Card className="border-primary/20 bg-primary/5 flex flex-col items-center justify-center p-6 min-h-[160px] relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-50" />
           <div className="text-center space-y-2 relative z-10">
             <div className="flex items-center justify-center gap-2 mb-1">
-              <BarChart className="h-4 w-4 text-primary animate-pulse" />
+              <TrendingUp className="h-4 w-4 text-primary animate-pulse" />
               <p className="text-sm font-bold text-primary tracking-widest uppercase">Performance Analysis</p>
             </div>
             <p className="text-xs text-muted-foreground max-w-[200px] mx-auto leading-relaxed">
