@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Shield, Lock, Trash2, Activity, Ban, KeyRound, Loader2, FolderOpen, Share2, Mail, CheckCircle, XCircle, Star } from 'lucide-react';
+import { Shield, Lock, Trash2, Activity, Ban, KeyRound, Loader2, FolderOpen, Share2, Mail, CheckCircle, XCircle, Star, History as HistoryIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { FolderAccessManager } from '@/components/exam/FolderAccessManager';
 import {
@@ -69,6 +69,9 @@ export default function AdminPanel() {
   const [hotQuestionImageUrl, setHotQuestionImageUrl] = useState<string | null>(null);
   const [savingHot, setSavingHot] = useState(false);
   const [savingPhrase, setSavingPhrase] = useState(false);
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
     fetchAppSettings().then((s) => {
@@ -158,37 +161,76 @@ export default function AdminPanel() {
     }
   };
 
+  const fetchHotQuestionsHistory = async () => {
+    setLoadingHistory(true);
+    const { data } = await supabase.from('hot_questions').select('*').order('created_at', { ascending: false });
+    if (data) setHistory(data);
+    setLoadingHistory(false);
+  };
+
+  useEffect(() => {
+    if (step === 'authenticated') {
+      fetchHotQuestionsHistory();
+    }
+  }, [step]);
+
   const handleSaveHotQuestion = async () => {
     if (!ownerPassword) return toast.error('Session expired, re-login');
     if (!newHotQuestion.trim() && !hotQuestionImageUrl) return toast.error('Enter question content or upload image');
 
     setSavingHot(true);
     
-    // 1. Update legacy app_settings for simple display (optional, keep for compatibility)
-    const r1 = await updateAppSetting('daily_hot_question', newHotQuestion.trim() || null, ownerPassword);
-    
-    // 2. Insert into hot_questions history table
-    const { error: histErr } = await supabase.from('hot_questions').insert({
+    const questionData = {
       content: newHotQuestion.trim(),
       image_url: hotQuestionImageUrl,
-      options: hotQuestionType === 'mcq' || hotQuestionType === 'msq' || hotQuestionType === 'poll' 
+      options: ['mcq', 'msq', 'poll'].includes(hotQuestionType)
         ? hotQuestionOptions.filter(o => o.trim() !== '') 
         : null,
       correct_option: hotQuestionCorrect.trim() || null,
       question_type: hotQuestionType
-    });
+    };
+
+    let result;
+    if (editingQuestionId) {
+      result = await supabase.from('hot_questions').update(questionData).eq('id', editingQuestionId);
+    } else {
+      result = await supabase.from('hot_questions').insert(questionData);
+    }
 
     setSavingHot(false);
-    if (!histErr && r1.ok) {
-      toast.success('Daily Hot Question updated & logged to history');
+    if (!result.error) {
+      toast.success(editingQuestionId ? 'Question updated' : 'Daily Hot Question posted');
       setSettings(await fetchAppSettings());
       setNewHotQuestion('');
       setHotQuestionImageUrl(null);
       setHotQuestionOptions(['', '', '', '']);
       setHotQuestionCorrect('');
+      setEditingQuestionId(null);
+      fetchHotQuestionsHistory();
     } else {
-      console.error('Save hot question error:', histErr);
-      toast.error(histErr?.message || r1.error || 'Failed to update');
+      console.error('Save hot question error:', result.error);
+      toast.error(result.error.message || 'Failed to update');
+    }
+  };
+
+  const handleEditQuestion = (q: any) => {
+    setEditingQuestionId(q.id);
+    setNewHotQuestion(q.content || '');
+    setHotQuestionType(q.question_type || 'mcq');
+    setHotQuestionOptions(q.options || ['', '', '', '']);
+    setHotQuestionCorrect(q.correct_option || '');
+    setHotQuestionImageUrl(q.image_url || null);
+    // Scroll to the management section
+    document.getElementById('daily-hot-question')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleDeleteQuestion = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this question?')) return;
+    const { error } = await supabase.from('hot_questions').delete().eq('id', id);
+    if (error) toast.error('Failed to delete');
+    else {
+      toast.success('Question deleted');
+      fetchHotQuestionsHistory();
     }
   };
 
@@ -411,10 +453,22 @@ export default function AdminPanel() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Star className="h-5 w-5 text-yellow-400" />
-                Daily Hot Question Management
+                Daily Hot Question Management {editingQuestionId && <Badge className="ml-2">Editing Mode</Badge>}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {editingQuestionId && (
+                <div className="flex items-center justify-between bg-primary/10 p-2 rounded border border-primary/20 text-xs">
+                  <span>You are editing an existing question. Saving will update it.</span>
+                  <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => {
+                    setEditingQuestionId(null);
+                    setNewHotQuestion('');
+                    setHotQuestionImageUrl(null);
+                    setHotQuestionOptions(['', '', '', '']);
+                    setHotQuestionCorrect('');
+                  }}>Cancel Edit</Button>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
                 Post a new challenge. It will appear on the Dashboard for 24 hours and stay in history forever.
               </p>
@@ -536,9 +590,42 @@ export default function AdminPanel() {
               )}
 
               <Button onClick={handleSaveHotQuestion} disabled={savingHot} className="w-full gap-2">
-                {savingHot ? <Loader2 className="h-4 w-4 animate-spin" /> : <Star className="h-4 w-4" />}
-                Post Daily Hot Question
+                {savingHot ? <Loader2 className="h-4 w-4 animate-spin" /> : (editingQuestionId ? <CheckCircle className="h-4 w-4" /> : <Star className="h-4 w-4" />)}
+                {editingQuestionId ? 'Update Question' : 'Post Daily Hot Question'}
               </Button>
+
+              <div className="mt-8 space-y-4">
+                <h3 className="text-sm font-bold flex items-center gap-2">
+                  <HistoryIcon className="h-4 w-4" /> Question History & Management
+                </h3>
+                <div className="space-y-2">
+                  {loadingHistory ? (
+                    <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                  ) : history.length === 0 ? (
+                    <p className="text-center text-xs text-muted-foreground py-4">No questions posted yet.</p>
+                  ) : (
+                    history.map(q => (
+                      <div key={q.id} className="flex items-start justify-between p-3 rounded-lg border border-border bg-card">
+                        <div className="flex-1 min-w-0 pr-4">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant="outline" className="text-[9px] uppercase">{q.question_type}</Badge>
+                            <span className="text-[10px] text-muted-foreground">{new Date(q.created_at).toLocaleDateString()}</span>
+                          </div>
+                          <div className="text-xs line-clamp-2 truncate">{q.content}</div>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => handleEditQuestion(q)}>
+                            <KeyRound className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteQuestion(q.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
