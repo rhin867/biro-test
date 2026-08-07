@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { toast } from 'sonner';
-import { MessageSquare, Send, User, Clock, Star, History as HistoryIcon, ArrowLeft, CheckCircle, XCircle, Target, Plus } from 'lucide-react';
+import { MessageSquare, Send, User, Clock, Star, History as HistoryIcon, ArrowLeft, CheckCircle, XCircle, Target, Plus, ThumbsUp, Bell, BellOff, Reply } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function DailyHotQuestion() {
