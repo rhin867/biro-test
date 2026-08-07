@@ -370,6 +370,8 @@ export default function TestAnalysis() {
             <TabsTrigger value="time-analysis">Time Analysis</TabsTrigger>
             <TabsTrigger value="difficulty">Difficulty</TabsTrigger>
             <TabsTrigger value="subject-movement">Subject Movement</TabsTrigger>
+            <TabsTrigger value="fatigue">Fatigue Heatmap</TabsTrigger>
+            <TabsTrigger value="ghost-replay">Ghost Replay</TabsTrigger>
             <TabsTrigger value="question-journey">Question Journey</TabsTrigger>
             <TabsTrigger value="painful">Painful Qs</TabsTrigger>
             <TabsTrigger value="missed-concepts">Missed Concepts</TabsTrigger>
