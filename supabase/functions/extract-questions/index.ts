@@ -3,19 +3,19 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
-const systemPrompt = `You are a fast question paper parser for JEE Main/Advanced exams. Extract ALL questions from the document into JSON.
+const systemPrompt = `You are an expert question paper parser for JEE/NEET/CUET exams. Extract ALL questions from the document into JSON.
 RULES:
-1. Extract EVERY question - even without numbering, detect by A/B/C/D option pattern.
-2. Use LaTeX for ALL math: √x→$\\sqrt{x}$, x²→$x^2$, ∫→$\\int$, Σ→$\\sum$, fractions→$\\frac{a}{b}$
-3. Detect Subject (Physics/Chemistry/Maths) and Chapter.
-4. Detect question type: MCQ (4 options), MSQ (multiple correct), Numerical (integer/decimal answer).
-5. 4 options per MCQ (A,B,C,D). Set hasDiagram:true if image/diagram/graph/figure/circuit is referenced.
-6. Detect correct answer if visible in the document, else null.
-7. Skip ALL headers, footers, instructions, watermarks, page numbers.
-8. For scanned/image PDFs: perform OCR, preserve mathematical symbols.
-9. Handle pages with 15-30 questions efficiently.
-OUTPUT (STRICT JSON, NO MARKDOWN):
-{"examTitle":"Title","questions":[{"id":1,"question":"text with $LaTeX$","options":["A","B","C","D"],"correctAnswer":"A","subject":"Physics","chapter":"Mechanics","type":"MCQ","hasDiagram":false,"pageNumber":1}],"totalExtracted":75,"subjectCounts":{"Physics":25}}`;
+1. Extract EVERY question - even without numbering. Detect questions by Subject headers (Physics, Chemistry, Maths), Section headers, or A/B/C/D option patterns.
+2. For SCANNED PDFs/Images: Use high-quality OCR internally. Preserve mathematical symbols and equations accurately.
+3. Use LaTeX for ALL math: √x→$\\sqrt{x}$, x²→$x^2$, ∫→$\\int$, Σ→$\\sum$, fractions→$\\frac{a}{b}$
+4. Detect Subject (Physics/Chemistry/Maths) and Chapter. If unclear, infer from question context.
+5. Detect question type: MCQ (4 options), MSQ (multiple correct), Numerical (integer/decimal answer), Integer (exact integer).
+6. options: {A: "...", B: "...", C: "...", D: "..."}. Set hasDiagram:true if image/diagram/graph/figure/circuit is present or referenced.
+7. Detect correct answer if visible (e.g., answer key at end or circled), else null.
+8. Skip instructions, watermarks, and non-question text.
+9. Support multi-page documents (up to 75 questions).
+OUTPUT (STRICT JSON):
+{"examTitle":"Title","questions":[{"questionNumber":1,"question":"text with $LaTeX$","options":{"A":"","B":"","C":"","D":""},"correctAnswer":"A","subject":"Physics","chapter":"Mechanics","type":"MCQ","hasDiagram":false,"pageNumber":1}],"totalExtracted":75,"subjectCounts":{"Physics":25}}`;
 const answerKeyPrompt = `You are an answer key extractor. Extract the answer key from this document.
 Return STRICT JSON only, no markdown. Format:
 {"answerKey":{"1":"A","2":"B","3":"C"}}
@@ -33,16 +33,13 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    // Auto-Crop mode: MUST use user API key, never touch owner's credits.
     if (userKeyOnly && !userApiKey) {
       return new Response(
         JSON.stringify({ error: "Add your own Gemini API key to use this mode." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    // Owners AI (Lovable API Key) is ONLY for AI extraction mode.
     const LOVABLE_API_KEY = userKeyOnly ? null : Deno.env.get("LOVABLE_API_KEY");
-    // Fallback logic: if user provided a key, use it. Otherwise use the server's key if NOT in userKeyOnly mode.
     const fallbackGeminiKey = userApiKey || (userKeyOnly ? null : Deno.env.get("Biro_test_api_key"));
     const useGateway = !!LOVABLE_API_KEY;
     
@@ -70,7 +67,6 @@ serve(async (req) => {
     if (!content) {
       throw new Error("No response from AI. The PDF may be too complex or empty.");
     }
-    // Parse JSON response
     let parsed = parseJsonResponse(content);
     if (extractAnswerKeyOnly) {
       return new Response(
@@ -91,7 +87,6 @@ serve(async (req) => {
       hasDiagram: q.hasDiagram || false,
       pdfPageNumber: q.pageNumber || null
     }));
-    console.log(`Successfully extracted ${transformedQuestions.length} questions`);
     return new Response(
       JSON.stringify({
         examTitle: parsed.examTitle || "Extracted Test",
@@ -124,21 +119,17 @@ async function callLovableAI(apiKey: string, systemPrompt: string, pdfText?: str
       role: "user",
       content: isPdf
         ? [
-            { type: "text", text: "Convert this complete exam PDF into CBT-ready JSON. Preserve every question, option, answer key if present, pageNumber, and mark diagram/figure questions." },
+            { type: "text", text: "Convert this complete exam PDF into CBT-ready JSON. Extract EVERY question, subject, option, and answer key. Detect diagrams." },
             { type: "file", file: { filename: "exam.pdf", file_data: dataUrl } }
           ]
         : [
-            { type: "text", text: "Convert this exam image into CBT-ready JSON. Preserve the question/options and mark diagram/figure questions." },
+            { type: "text", text: "Convert this exam image into CBT-ready JSON. Preserve question/options and detect diagrams." },
             { type: "image_url", image_url: { url: dataUrl } }
           ]
     });
   } else if (pdfText) {
-    messages.push({
-      role: "user",
-      content: `Convert this extracted exam text into CBT-ready JSON. Preserve question numbers, subjects, options, numerical questions, answer key if visible, and page numbers.\n\n${pdfText}`,
-    });
+    messages.push({ role: "user", content: `Convert this extracted exam text into CBT-ready JSON.\n\n${pdfText}` });
   }
-
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -147,24 +138,21 @@ async function callLovableAI(apiKey: string, systemPrompt: string, pdfText?: str
       "X-Lovable-AIG-SDK": "manual-fetch",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "google/gemini-2.0-flash",
       messages,
       temperature: 0.05,
       max_tokens: 65536,
     }),
   });
   if (!response.ok) {
-    if (response.status === 429) throw new Error("Rate limit exceeded. Please try again in a moment.");
-    if (response.status === 402) throw new Error("Payment required. Please add credits to your workspace.");
     const errText = await response.text();
-    console.error("Lovable AI error:", response.status, errText.substring(0, 300));
     throw new Error(`AI gateway error (${response.status})`);
   }
   const data = await response.json();
   return data.choices?.[0]?.message?.content || "";
 }
 async function callGeminiDirect(apiKey: string, promptContent: string, pdfText?: string, pdfBase64?: string, mimeType?: string): Promise<string> {
-  const models = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+  const models = ["gemini-2.0-flash", "gemini-1.5-flash"];
   const parts: any[] = [
     { text: promptContent + "\n\nExtract ALL questions. Return STRICT JSON only, no markdown." }
   ];
@@ -179,29 +167,18 @@ async function callGeminiDirect(apiKey: string, promptContent: string, pdfText?:
   });
   for (const model of models) {
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      if (attempt > 0) await new Promise(r => setTimeout(r, 3000));
-      try {
-        const res = await fetch(apiUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body });
-        if (res.ok) {
-          const data = await res.json();
-          const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          if (content) return content;
-        }
-        if (res.status === 400) {
-          const errText = await res.text();
-          if (errText.includes("API_KEY") || errText.includes("API key")) {
-            throw new Error("Invalid API key. Check your Gemini API key in Settings.");
-          }
-        }
-        if (res.status !== 503 && res.status !== 429) break;
-      } catch (e) {
-        if (e instanceof Error && e.message.includes("API key")) throw e;
-        continue;
+    try {
+      const res = await fetch(apiUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body });
+      if (res.ok) {
+        const data = await res.json();
+        const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        if (content) return content;
       }
+    } catch {
+      continue;
     }
   }
-  throw new Error("All AI models busy. Please try again in 30 seconds.");
+  throw new Error("AI service unavailable. Try again later.");
 }
 function parseJsonResponse(content: string): any {
   let jsonContent = content;
@@ -217,6 +194,6 @@ function parseJsonResponse(content: string): any {
     if (jsonMatch) {
       try { return JSON.parse(jsonMatch[0]); } catch {}
     }
-    throw new Error("Failed to parse AI response. Try again or use a different PDF.");
+    throw new Error("Failed to parse AI response.");
   }
 }

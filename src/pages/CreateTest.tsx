@@ -8,14 +8,15 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { saveTest, generateId, saveTestPdfPageImages, saveTestQuestionImages, saveTestPdfFile } from '@/lib/storage';
-import { Test, Question, Subject } from '@/types/exam';
+import { Test, Question, Subject, QuestionType } from '@/types/exam';
 import { supabase } from '@/integrations/supabase/client';
 import { renderPDFPagesToImages, fileToBase64, PDFPageImage } from '@/lib/pdf-cropper';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { PDFCropTool } from '@/components/exam/PDFCropTool';
-import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Crop, RefreshCw, Download, FileUp, Lock, Eye, EyeOff } from 'lucide-react';
+import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Crop, RefreshCw, Download, FileUp, Lock, Eye, EyeOff, Pencil, Trash2, ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fetchQuotaInfo, logTestCreation, QuotaInfo, verifyPassword, isTestCreationUnlocked, markTestCreationUnlocked, getCachedAppSettings } from '@/lib/app-settings';
 import { getUserApiKey, setUserApiKey } from '@/pages/Settings';
@@ -74,6 +75,7 @@ function CreateTestInner() {
   const [ownKey, setOwnKey] = useState(() => getUserApiKey() || '');
   const [ownKeySaved, setOwnKeySaved] = useState(() => !!getUserApiKey());
   const [showOwnKey, setShowOwnKey] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   React.useEffect(() => { fetchQuotaInfo().then(setQuota); }, []);
   // Warm the Render dyno as soon as the user opens the page — kills the "unavailable" first-call error.
   React.useEffect(() => {
@@ -331,7 +333,8 @@ function CreateTestInner() {
       return;
     }
     // Final confirmation gate
-    const phrase = (getCachedAppSettings().confirmation_phrase || 'I LOVE YOU BIRO').trim();
+    const settings = getCachedAppSettings();
+    const phrase = (settings.confirmation_phrase || 'I LOVE YOU BIRO').trim();
     const entered = window.prompt(`Type "${phrase}" to save and share this test:`);
     if (!entered || entered.trim().toUpperCase() !== phrase.toUpperCase()) {
       toast.error('Confirmation phrase did not match. Test not saved.');
@@ -744,7 +747,7 @@ function CreateTestInner() {
             <CardContent>
               <div className="space-y-3 md:space-y-4 max-h-[350px] md:max-h-[400px] overflow-y-auto pr-2">
                 {extractedQuestions.map((q, index) => (
-                  <div key={q.id} className="p-3 md:p-4 rounded-lg border border-border bg-card/50">
+                  <div key={q.id} className="p-3 md:p-4 rounded-lg border border-border bg-card/50 hover:border-primary/50 transition-colors">
                     <div className="flex items-start justify-between gap-2 mb-2 flex-wrap">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="flex h-6 w-6 items-center justify-center rounded bg-primary/20 text-xs font-medium text-primary">{index + 1}</span>
@@ -755,32 +758,163 @@ function CreateTestInner() {
                             <Image className="h-3 w-3" /> Diagram
                           </span>
                         )}
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 px-2 text-[10px] ml-auto hover:bg-primary/10 hover:text-primary"
+                          onClick={() => setEditingQuestion(q)}
+                        >
+                          <Pencil className="h-3 w-3 mr-1" /> Edit
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 px-2 text-[10px] text-destructive hover:bg-destructive/10"
+                          onClick={() => setExtractedQuestions(prev => prev.filter(item => item.id !== q.id))}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
                       </div>
                       {q.correctAnswer && <span className="text-xs text-muted-foreground italic">✓ Answer: {q.correctAnswer}</span>}
                     </div>
-                    <div className="text-sm mb-2 line-clamp-3">
+                    <div className="text-sm mb-2 line-clamp-2">
                       <LatexRenderer content={q.question} />
                     </div>
-                    <div className="mt-2 mb-2">
-                      {q.croppedImageUrl ? (
-                        <img src={q.croppedImageUrl} className="max-h-32 object-contain rounded border border-border" />
-                      ) : q.hasDiagram && q.pdfPageNumber && pdfPageImages.find(p => p.pageNumber === q.pdfPageNumber) ? (
-                        <div className="p-2 rounded bg-muted/50 border border-border">
-                          <p className="text-xs text-muted-foreground mb-1">Uncropped diagram from Page {q.pdfPageNumber}:</p>
-                          <img src={pdfPageImages.find(p => p.pageNumber === q.pdfPageNumber)!.imageDataUrl} className="max-h-24 object-contain rounded opacity-80" />
+                    {q.croppedImageUrl && (
+                      <div className="mt-2 mb-2 relative group">
+                        <img src={q.croppedImageUrl} className="max-h-24 object-contain rounded border border-border" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded">
+                           <Button size="sm" variant="secondary" className="h-6 text-[10px]" onClick={() => setEditingQuestion(q)}>Change Image</Button>
                         </div>
-                      ) : null}
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
-                      {Object.entries(q.options).map(([key, value]) => (
-                        <div key={key} className="p-1.5 rounded">
-                          ({key}) {value ? <LatexRenderer content={value} /> : <span className="italic">Empty</span>}
-                        </div>
-                      ))}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
+
+              {/* Edit Question Dialog */}
+              {editingQuestion && (
+                <Dialog open={!!editingQuestion} onOpenChange={(open) => !open && setEditingQuestion(null)}>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Edit Question {extractedQuestions.findIndex(q => q.id === editingQuestion.id) + 1}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Subject</Label>
+                          <Input 
+                            value={editingQuestion.subject} 
+                            onChange={e => setEditingQuestion({...editingQuestion, subject: e.target.value as Subject})} 
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Type</Label>
+                          <Select 
+                            value={editingQuestion.type} 
+                            onValueChange={v => setEditingQuestion({...editingQuestion, type: v as QuestionType})}
+                          >
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="MCQ">MCQ</SelectItem>
+                              <SelectItem value="MSQ">MSQ</SelectItem>
+                              <SelectItem value="Numerical">Numerical</SelectItem>
+                              <SelectItem value="Integer">Integer</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Question Text (LaTeX supported)</Label>
+                        <Textarea 
+                          value={editingQuestion.question} 
+                          onChange={e => setEditingQuestion({...editingQuestion, question: e.target.value})}
+                          rows={4}
+                        />
+                      </div>
+                      {(editingQuestion.type === 'MCQ' || editingQuestion.type === 'MSQ') && (
+                        <div className="grid grid-cols-2 gap-3">
+                          {(['A', 'B', 'C', 'D'] as const).map(opt => (
+                            <div key={opt} className="space-y-1">
+                              <Label>Option {opt}</Label>
+                              <Input 
+                                value={editingQuestion.options[opt]} 
+                                onChange={e => setEditingQuestion({
+                                  ...editingQuestion, 
+                                  options: {...editingQuestion.options, [opt]: e.target.value}
+                                })} 
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Correct Answer</Label>
+                          <Input 
+                            value={editingQuestion.correctAnswer || ''} 
+                            onChange={e => setEditingQuestion({...editingQuestion, correctAnswer: e.target.value})}
+                            placeholder="A, B, C, D or a number"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Chapter</Label>
+                          <Input 
+                            value={editingQuestion.chapter} 
+                            onChange={e => setEditingQuestion({...editingQuestion, chapter: e.target.value})}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Diagram / Image</Label>
+                        {editingQuestion.croppedImageUrl ? (
+                          <div className="relative group">
+                            <img src={editingQuestion.croppedImageUrl} className="max-h-40 object-contain rounded border" />
+                            <Button 
+                              variant="destructive" 
+                              size="sm" 
+                              className="absolute top-2 right-2 h-6 px-2"
+                              onClick={() => setEditingQuestion({...editingQuestion, croppedImageUrl: undefined, hasDiagram: false})}
+                            >
+                              Remove Image
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button variant="outline" className="w-full" onClick={() => {
+                            const input = document.createElement('input');
+                            input.type = 'file';
+                            input.accept = 'image/*';
+                            input.onchange = async (e) => {
+                              const file = (e.target as HTMLInputElement).files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (re) => {
+                                  setEditingQuestion({
+                                    ...editingQuestion, 
+                                    croppedImageUrl: re.target?.result as string,
+                                    hasDiagram: true
+                                  });
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            };
+                            input.click();
+                          }}>
+                            <ImageIcon className="h-4 w-4 mr-2" /> Upload Diagram
+                          </Button>
+                        )}
+                      </div>
+                      <Button className="w-full" onClick={() => {
+                        setExtractedQuestions(prev => prev.map(q => q.id === editingQuestion.id ? editingQuestion : q));
+                        setEditingQuestion(null);
+                        toast.success('Question updated');
+                      }}>
+                        Save Changes
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
             </CardContent>
           </Card>
           {extractedQuestions.some(q => q.correctAnswer) && (

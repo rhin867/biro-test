@@ -1,8 +1,8 @@
 // Core exam types for the JEE CBT Analysis System
 
-export type Subject = 'Physics' | 'Chemistry' | 'Maths';
+export type Subject = 'Physics' | 'Chemistry' | 'Maths' | string;
 
-export type QuestionType = 'MCQ' | 'Numerical' | 'MSQ';
+export type QuestionType = 'MCQ' | 'Numerical' | 'MSQ' | 'Integer' | 'Subjective';
 
 export type QuestionStatus = 
   | 'unattempted' 

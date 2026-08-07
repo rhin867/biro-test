@@ -156,14 +156,21 @@ export default function DailyHotQuestion() {
               <CardContent className="pb-6">
                 <div className="space-y-4">
                   {question.image_url && (
-                    <div className="rounded-xl overflow-hidden border border-border/50 shadow-md bg-white p-2 mb-4">
+                    <div className="rounded-xl overflow-hidden border border-border/50 shadow-md bg-white p-2 mb-4 flex justify-center items-center min-h-[100px]">
                       <img 
                         src={question.image_url} 
                         alt="Question Diagram" 
-                        className="w-full h-auto object-contain max-h-[500px]" 
+                        className="max-w-full h-auto object-contain max-h-[600px] block" 
+
+                        onLoad={(e) => {
+                          console.log("Image loaded successfully:", question.image_url);
+                          e.currentTarget.style.display = 'block';
+                        }}
                         onError={(e) => {
-                          console.error("Image load error:", question.image_url);
-                          e.currentTarget.style.display = 'none';
+                          console.error("Image load error for URL:", question.image_url);
+                          // Don't hide completely if it might be a temporary network issue, 
+                          // but show a fallback if needed. For now, keep it visible so 
+                          // the user sees a broken icon instead of nothing.
                         }}
                       />
                     </div>
@@ -295,7 +302,7 @@ export default function DailyHotQuestion() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="p-3 rounded-lg bg-background border text-center">
                     <p className="text-[10px] uppercase text-muted-foreground font-bold">Solved</p>
-                    <p className="text-lg font-black">{responses.length}</p>
+                    <p className="text-lg font-black">{hasAnswered ? 1 : 0}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-background border text-center">
                     <p className="text-[10px] uppercase text-muted-foreground font-bold">Status</p>
