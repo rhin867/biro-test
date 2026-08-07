@@ -131,13 +131,14 @@ export default function DailyHotQuestion() {
     if (!error) {
       fetchResponses(question.id);
       if (userKey !== authorKey) {
-        await supabase.from('notifications').insert({
+        await (supabase as any).from('notifications').insert({
           user_key: authorKey,
           title: 'New Like!',
           message: `${localStorage.getItem('community_author') || 'Someone'} liked your comment.`,
           link: '/daily-hot-question'
         });
       }
+
     }
   };
 
