@@ -38,6 +38,7 @@ export default function DailyHotQuestion() {
       .limit(1);
     if (data && data.length > 0) {
       setQuestion(data[0]);
+      setImageError(false); // Reset error state on new question
       fetchResponses(data[0].id);
       checkIfAlreadyAnswered(data[0].id, data[0]);
     }
