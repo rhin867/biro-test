@@ -190,22 +190,51 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
     const srcW = Math.min(img.naturalWidth - srcX, Math.round(cropRegion.width * scaleX));
     const srcH = Math.min(img.naturalHeight - srcY, Math.round(cropRegion.height * scaleY));
     if (srcW < 5 || srcH < 5) return;
-    const canvas = document.createElement('canvas');
-    canvas.width = srcW; canvas.height = srcH;
-    const ctx = canvas.getContext('2d')!;
-    const tmp = new Image(); tmp.crossOrigin = 'anonymous';
-    tmp.onload = () => {
+
+    const processCrop = async () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = srcW; canvas.height = srcH;
+      const ctx = canvas.getContext('2d')!;
+      
+      const tmp = new window.Image();
+      tmp.crossOrigin = 'anonymous';
+      await new Promise((resolve, reject) => {
+        tmp.onload = resolve;
+        tmp.onerror = reject;
+        tmp.src = page.imageDataUrl;
+      });
+      
       ctx.drawImage(tmp, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+      const mainDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+      const extraImages: string[] = [];
+      for (const opt of optionRegions) {
+        const oX = Math.max(0, Math.round(opt.x * scaleX));
+        const oY = Math.max(0, Math.round(opt.y * scaleY));
+        const oW = Math.min(img.naturalWidth - oX, Math.round(opt.width * scaleX));
+        const oH = Math.min(img.naturalHeight - oY, Math.round(opt.height * scaleY));
+        if (oW < 5 || oH < 5) continue;
+        
+        const oCanvas = document.createElement('canvas');
+        oCanvas.width = oW; oCanvas.height = oH;
+        const oCtx = oCanvas.getContext('2d')!;
+        oCtx.drawImage(tmp, oX, oY, oW, oH, 0, 0, oW, oH);
+        extraImages.push(oCanvas.toDataURL('image/jpeg', 0.82));
+      }
+
       setCroppedImages(prev => [...prev, {
-        dataUrl: canvas.toDataURL('image/jpeg', 0.85),
+        dataUrl: mainDataUrl,
         pageNumber: page.pageNumber,
         index: prev.length,
         subject, section, qType,
+        extraImages: extraImages.length > 0 ? extraImages : undefined,
       }]);
       setCropRegion(null);
+      setOptionRegions([]);
     };
-    tmp.src = page.imageDataUrl;
-  }, [cropRegion, page, subject, section, qType]);
+
+    processCrop().catch(console.error);
+  }, [cropRegion, optionRegions, page, subject, section, qType]);
 
   const updateCrop = (i: number, patch: Partial<CroppedImage>) =>
     setCroppedImages(prev => prev.map((c, j) => j === i ? { ...c, ...patch } : c));
