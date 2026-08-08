@@ -667,7 +667,29 @@ export default function DailyHotQuestion() {
                                 <span className="text-[10px] text-muted-foreground">• {new Date(reply.created_at).toLocaleTimeString()}</span>
                               </div>
                             </div>
-                            <p className="text-sm px-1 mb-3 leading-relaxed whitespace-pre-wrap">{reply.comment}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm px-1 mb-3 leading-relaxed whitespace-pre-wrap">{reply.comment}</p>
+                              {reply.image_url && (
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-primary hover:bg-primary/10">
+                                      <ImageIcon className="h-3 w-3" />
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-2xl">
+                                    <DialogHeader>
+                                      <DialogTitle>{reply.user_display_name}'s Shared Image</DialogTitle>
+                                    </DialogHeader>
+                                    <img 
+                                      src={reply.image_url} 
+                                      alt="User attachment" 
+                                      className="w-full h-auto rounded-lg border shadow-lg"
+                                      crossOrigin="anonymous"
+                                    />
+                                  </DialogContent>
+                                </Dialog>
+                              )}
+                            </div>
                             <Button 
                               variant="ghost" 
                               size="sm" 
