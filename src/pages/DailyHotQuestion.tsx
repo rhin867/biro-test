@@ -474,7 +474,7 @@ export default function DailyHotQuestion() {
                           </div>
                         </div>
                         
-                        <div className="text-sm px-1 mb-4 leading-relaxed whitespace-pre-wrap">{resp.comment || 'No explanation provided.'}</div>
+                        <div className="text-sm px-1 mb-4 leading-relaxed whitespace-pre-wrap"><LatexRenderer content={resp.comment || 'No explanation provided.'} /></div>
                         
                         <div className="flex items-center gap-3 border-t border-border/30 pt-3">
                           <Button 
