@@ -415,7 +415,7 @@ export default function AdminPanel() {
     <div className="mt-4 relative group w-full flex justify-center">
       <div className="relative rounded-2xl overflow-hidden border-2 border-primary/20 shadow-neon bg-white p-3 flex justify-center items-center min-h-[200px] w-full max-w-2xl transition-all hover:border-primary/40">
         <img 
-          src={hotQuestionImageUrl.includes('supabase.co') && !hotQuestionImageUrl.includes('t=') ? `${hotQuestionImageUrl}?t=${Date.now()}` : hotQuestionImageUrl} 
+          src={hotQuestionImageUrl.includes('supabase') && !hotQuestionImageUrl.includes('t=') ? `${hotQuestionImageUrl}?t=${Date.now()}` : hotQuestionImageUrl} 
           alt="Admin Preview" 
           key={hotQuestionImageUrl}
           className="max-h-[500px] w-full object-contain block rounded-lg" 
@@ -676,8 +676,8 @@ export default function AdminPanel() {
                           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
                           const publicUrl = `${supabaseUrl}/storage/v1/object/public/biro-test-images/${fileName}`;
                           
-                          // Force cache busting on the URL
-                          const freshUrl = `${publicUrl}?t=${Date.now()}`;
+                          // Force cache busting on the URL and ensure it's absolute
+                          const freshUrl = publicUrl.startsWith('http') ? `${publicUrl}?t=${Date.now()}` : `${window.location.origin}${publicUrl}?t=${Date.now()}`;
                           setHotQuestionImageUrl(freshUrl);
                           toast.success('Image uploaded!');
                         }
