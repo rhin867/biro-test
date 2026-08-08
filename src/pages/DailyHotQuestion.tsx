@@ -519,8 +519,8 @@ export default function DailyHotQuestion() {
                             <Reply className="h-3.5 w-3.5" />
                             <span className="font-bold">Reply</span>
                           </Button>
-                          </Button>
                         </div>
+                      </div>
                       </div>
 
                       {/* Render Replies */}
