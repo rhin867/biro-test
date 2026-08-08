@@ -284,7 +284,40 @@ export default function DailyHotQuestion() {
     </MainLayout>
   );
 
+  if (!isUnlocked) {
+    return (
+      <MainLayout>
+        <div className="flex flex-col items-center justify-center h-[70vh] gap-6 text-center px-4">
+          <div className="p-4 rounded-full bg-primary/10 animate-bounce">
+            <Lock className="h-12 w-12 text-primary" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black uppercase tracking-tighter">Biro's Private Sanctum</h2>
+            <p className="text-muted-foreground text-sm max-w-md font-medium">
+              This section is reserved for the true fans. Enter the secret code to proceed.
+            </p>
+          </div>
+          <div className="flex gap-2 w-full max-w-sm">
+            <Input 
+              type="password" 
+              placeholder="Enter Secret Key..." 
+              value={gatePassword}
+              onChange={(e) => setGatePassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleGateUnlock()}
+              className="font-bold tracking-widest text-center"
+            />
+            <Button onClick={handleGateUnlock} className="font-bold">UNLOCK</Button>
+          </div>
+          <p className="text-[10px] text-muted-foreground uppercase font-black opacity-30 tracking-widest">
+            Hint: A specific phrase for Biro
+          </p>
+        </div>
+      </MainLayout>
+    );
+  }
+
   return (
+
     <MainLayout>
       <PageHeader title="Daily Hot Question" description="Challenge yourself every day & discuss with others.">
         <div className="flex gap-2">
