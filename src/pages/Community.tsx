@@ -453,6 +453,35 @@ export default function Community() {
                       <span className="text-xs text-muted-foreground">{new Date(post.created_at).toLocaleDateString()}</span>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {post.author === author && (
+                        <>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                            const newContent = prompt('Edit post:', post.content);
+                            if (newContent && newContent !== post.content) {
+                              supabase.from('community_messages' as any).update({ content: newContent } as any).eq('id', post.id).then(({ error }) => {
+                                if (!error) {
+                                  toast.success('Post updated');
+                                  setPosts(prev => prev.map(p => p.id === post.id ? { ...p, content: newContent } : p));
+                                }
+                              });
+                            }
+                          }}>
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive" onClick={() => {
+                            if (confirm('Delete post?')) {
+                              supabase.from('community_messages' as any).delete().eq('id', post.id).then(({ error }) => {
+                                if (!error) {
+                                  toast.success('Post deleted');
+                                  setPosts(prev => prev.filter(p => p.id !== post.id));
+                                }
+                              });
+                            }
+                          }}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      )}
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleVote(post.id, 'up')}>
                         <ThumbsUp className={`h-3.5 w-3.5 ${(post.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary text-primary' : ''}`} />
                       </Button>
@@ -461,6 +490,7 @@ export default function Community() {
                         <ThumbsDown className={`h-3.5 w-3.5 ${(post.disliked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-destructive text-destructive' : ''}`} />
                       </Button>
                     </div>
+
                   </div>
                   <p className="text-sm">{post.content}</p>
                 </CardContent>
