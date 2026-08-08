@@ -27,7 +27,9 @@ export default function DailyHotQuestion() {
   const [showHistory, setShowHistory] = useState(false);
   const [hasAnswered, setHasAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [revealedAnswer, setRevealedAnswer] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
+
 
 
   const [isGateOpen, setIsGateOpen] = useState(false);
