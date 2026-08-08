@@ -24,7 +24,11 @@ const REWARDS_KEY = 'user_rewards';
 interface ChatMessage {
   id: string; author: string; content: string; created_at: string; msg_type: string; post_type: string;
   upvotes: number; downvotes: number;
+  liked_by?: string[];
+  disliked_by?: string[];
+  parent_id?: string;
 }
+
 
 function getLockedAuthor() {
   const name = localStorage.getItem(AUTHOR_KEY) || '';
