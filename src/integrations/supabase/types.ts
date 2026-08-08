@@ -289,6 +289,9 @@ export type Database = {
           display_name: string | null
           email: string | null
           id: string
+          last_engagement_at: string | null
+          streak: number | null
+          total_xp: number | null
           updated_at: string
           user_id: string
         }
@@ -298,6 +301,9 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          last_engagement_at?: string | null
+          streak?: number | null
+          total_xp?: number | null
           updated_at?: string
           user_id: string
         }
@@ -307,6 +313,9 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          last_engagement_at?: string | null
+          streak?: number | null
+          total_xp?: number | null
           updated_at?: string
           user_id?: string
         }
