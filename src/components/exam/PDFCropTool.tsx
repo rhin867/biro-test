@@ -375,6 +375,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
               </Select>
             </div>
           </div>
+        </div>
 
         <div className="flex flex-col lg:flex-row gap-2 flex-1 min-h-0 mt-1.5 overflow-hidden">
           {/* PDF viewer — takes most of the space */}
