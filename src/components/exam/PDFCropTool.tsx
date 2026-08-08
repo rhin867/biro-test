@@ -110,7 +110,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
     }
   }, [open, initialCrops]);
 
-  const getRelativeCoords = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+  const getRelativeCoords = useCallback((e: React.MouseEvent | React.TouchEvent | { clientX: number, clientY: number }) => {
     const img = imgRef.current;
     if (!img) return { x: 0, y: 0 };
     const rect = img.getBoundingClientRect();
