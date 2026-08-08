@@ -82,6 +82,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
   const [currentPage, setCurrentPage] = useState(0);
   const [isDrawing, setIsDrawing] = useState(false);
   const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
+  const [currentRegion, setCurrentRegion] = useState<CropRegion | null>(null);
   const [cropRegion, setCropRegion] = useState<CropRegion | null>(null);
   const [optionRegions, setOptionRegions] = useState<CropRegion[]>([]);
   const [croppedImages, setCroppedImages] = useState<CroppedImage[]>(initialCrops || []);
@@ -109,7 +110,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
     }
   }, [open, initialCrops]);
 
-  const getRelativeCoords = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+  const getRelativeCoords = useCallback((e: React.MouseEvent | React.TouchEvent | { clientX: number, clientY: number }) => {
     const img = imgRef.current;
     if (!img) return { x: 0, y: 0 };
     const rect = img.getBoundingClientRect();
@@ -150,14 +151,9 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
       width: Math.abs(c.x - cropStart.x), height: Math.abs(c.y - cropStart.y),
     };
     
-    if (e.shiftKey) {
-      // Temporarily show the current option being drawn
-      const region = {
-        x: Math.min(cropStart.x, c.x), y: Math.min(cropStart.y, c.y),
-        width: Math.abs(c.x - cropStart.x), height: Math.abs(c.y - cropStart.y),
-      };
-      // We don't set it in state yet to avoid flicker, just visual feedback during move if we had a temporary overlay
-    } else {
+    setCurrentRegion(region);
+    
+    if (!e.shiftKey) {
       setCropRegion(region);
     }
   }, [isDrawing, cropStart, getRelativeCoords, lastTouchDist]);
@@ -179,8 +175,44 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
       }
     }
     setIsDrawing(false);
+    setCurrentRegion(null);
     setLastTouchDist(null);
   }, [isDrawing, cropStart, getRelativeCoords]);
+
+  const moveCrop = (dx: number, dy: number) => {
+    if (!cropRegion) return;
+    setCropRegion(prev => prev ? {
+      ...prev,
+      x: Math.max(0, prev.x + dx),
+      y: Math.max(0, prev.y + dy)
+    } : null);
+  };
+
+  const resizeCrop = (dw: number, dh: number) => {
+    if (!cropRegion) return;
+    setCropRegion(prev => prev ? {
+      ...prev,
+      width: Math.max(10, prev.width + dw),
+      height: Math.max(10, prev.height + dh)
+    } : null);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!cropRegion) return;
+    const step = e.shiftKey ? 10 : 2;
+    
+    switch (e.key) {
+      case 'ArrowUp': moveCrop(0, -step); e.preventDefault(); break;
+      case 'ArrowDown': moveCrop(0, step); e.preventDefault(); break;
+      case 'ArrowLeft': moveCrop(-step, 0); e.preventDefault(); break;
+      case 'ArrowRight': moveCrop(step, 0); e.preventDefault(); break;
+      case 'w': resizeCrop(0, -step); e.preventDefault(); break;
+      case 's': resizeCrop(0, step); e.preventDefault(); break;
+      case 'a': resizeCrop(-step, 0); e.preventDefault(); break;
+      case 'd': resizeCrop(step, 0); e.preventDefault(); break;
+      case 'Enter': handleCrop(); break;
+    }
+  };
 
   const handleCrop = useCallback(() => {
     if (!cropRegion || !page || !imgRef.current) return;
@@ -338,9 +370,10 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
 
             <div className="relative border rounded-md overflow-auto flex-1 bg-muted/30 overscroll-none min-h-[300px] touch-pan-x touch-pan-y">
               <div
-                className="relative inline-block cursor-crosshair select-none"
+                className="relative inline-block cursor-crosshair select-none outline-none focus-within:ring-2 ring-primary/20"
+                tabIndex={0}
+                onKeyDown={handleKeyDown}
                 style={{ touchAction: 'none', transformOrigin: '0 0' }}
-
                 onMouseDown={handleStart} onMouseMove={handleMove}
                 onMouseUp={handleEnd} onMouseLeave={handleEnd}
                 onTouchStart={handleStart} onTouchMove={handleMove} onTouchEnd={handleEnd}
@@ -382,6 +415,15 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
                     </div>
                   </div>
                 ))}
+                {currentRegion && currentRegion.width > 2 && currentRegion.height > 2 && (
+                  <div
+                    className="absolute border border-primary/50 bg-primary/10 pointer-events-none"
+                    style={{
+                      left: currentRegion.x, top: currentRegion.y,
+                      width: currentRegion.width, height: currentRegion.height,
+                    }}
+                  />
+                )}
               </div>
             </div>
             <p className="text-[10px] md:text-xs text-muted-foreground bg-accent/30 p-2 rounded mt-1">

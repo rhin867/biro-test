@@ -47,6 +47,7 @@ async function cropQuestionBandFromPage(imageDataUrl: string, indexOnPage: numbe
 function CreateTestInner() {
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [parseProgress, setParseProgress] = useState(0);
   const [pdfText, setPdfText] = useState('');
   const [testName, setTestName] = useState('');
   const [duration, setDuration] = useState(180);
@@ -165,6 +166,7 @@ function CreateTestInner() {
     }
     setIsProcessing(true);
     toast.info('Processing PDF...');
+    setParseProgress(0);
     setPdfFile(file);
     try {
       const pdfjsLib = await import('pdfjs-dist');
@@ -182,11 +184,13 @@ function CreateTestInner() {
         const textContent = await page.getTextContent();
         const pageText = textContent.items.map((item: any) => item.str).join(' ');
         fullText += `[Page ${i}]\n${pageText}\n\n`;
+        setParseProgress(Math.round((i / pdf.numPages) * 50));
       }
       setPdfText(fullText);
       setTestName(file.name.replace('.pdf', ''));
       toast.info('Rendering pages for preview & cropping...');
       const pageImages = await renderPDFPagesToImages(bufferForImages, 1.5);
+      setParseProgress(100);
       setPdfPageImages(pageImages);
       toast.success(`PDF processed: ${pdf.numPages} pages`);
       setStep('configure');
@@ -447,7 +451,13 @@ function CreateTestInner() {
                 {isProcessing ? (
                   <div className="flex flex-col items-center gap-2">
                     <Loader2 className="h-8 md:h-10 w-8 md:w-10 text-primary animate-spin" />
-                    <p className="text-sm text-muted-foreground">Processing PDF...</p>
+                    <p className="text-sm text-muted-foreground font-medium">Processing PDF... {parseProgress}%</p>
+                    <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden mt-1">
+                      <div 
+                        className="h-full bg-primary transition-all duration-300" 
+                        style={{ width: `${parseProgress}%` }}
+                      />
+                    </div>
                   </div>
                 ) : (
                   <>
