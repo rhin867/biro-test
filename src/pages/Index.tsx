@@ -10,7 +10,7 @@ const Index = () => {
 
   return (
     <div className="hidden">
-      {`Masarchod jabb bucket hi na bfa rha hai image upload krne pr to tu kaise bol rha hai ki bucket sahi hai sabb fixed krdiya hai sabb theek chl rha hai visible ho rha hai etc,madarchod jabb reality mein fix ho jaaye tbb btayekar, PROBLEM:
+      {`PROBLEM:
 
       The Daily Hot Question feature shows "Diagram failed to load" because the question image URL points to a Supabase Storage bucket that returns 404 NoSuchBucket error.
 
@@ -31,7 +31,7 @@ const Index = () => {
 
       1. CREATE SUPABASE STORAGE BUCKET:
 
-         - Bucket name: "question-images" (or whatever is referenced in code)
+         - Bucket name: "question-images"
 
          - Set it as PUBLIC bucket (public read access)
 
@@ -55,35 +55,22 @@ const Index = () => {
 
       3. CHANGE IMAGE DISPLAY LOGIC:
 
-         - In the Daily Hot Question component (and anywhere question images are shown), render the image using a standard <img> tag with the stored public URL as src
+         - Render image using a standard <img> tag with the stored public URL as src
 
          - Do NOT use any iframe, embed, or external diagram renderer
 
-         - Show the image directly like: <img src={question.image_url} alt="Question diagram" style={{width: '100%', borderRadius: '8px'}} />
-
-         - Handle loading and error states gracefully
+         - <img src={question.image_url} alt="Question diagram" style={{width: '100%', borderRadius: '8px'}} />
 
 
 
 
       4. ADMIN PANEL:
 
-         - When admin creates/edits a daily hot question, show a file input to upload image
+         - File input to upload image
 
-         - Preview the image immediately after upload (before saving)
+         - Preview immediately after upload
 
-         - The stored value should always be the Supabase public URL, never a local blob URL or external link
-
-
-
-
-      GOAL: Question images should display inline — exactly like WhatsApp/Telegram image previews — both on the student-facing daily question card AND in the admin edit panel, without any external links or diagram renderers.
-
-      Add storage health check,add admin upload diagnostic,add image retry ui,add cache busting on load,give me the links of supabase project,and give me the links of buckets so that i can see that is it build or not
-      Reddit type upvoting downvoting system purely har ek comments replies mein add kro fix kro checkout keo
-      Madarchod to main kaise pta krunga kaunaa project hai and kaunsa project mein tu bucket kaunsa use kr rha hai
-      Implement the full CBT exam runner UI with a global timer, per-question timer, navigation, and answer submission flow.
-      `}
+         - Store only the Supabase public URL, never a blob URL or external link`}
 
 
     </div>
