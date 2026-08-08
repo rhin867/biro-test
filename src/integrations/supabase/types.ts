@@ -174,9 +174,12 @@ export type Database = {
       mistake_book: {
         Row: {
           added_at: string
+          ai_remediation_suggested: boolean | null
           correct_answer: string
           id: string
+          last_practiced_at: string | null
           mastered: boolean | null
+          mastery_level: number | null
           mistake_types: string[] | null
           notes: string | null
           question: Json
@@ -189,9 +192,12 @@ export type Database = {
         }
         Insert: {
           added_at?: string
+          ai_remediation_suggested?: boolean | null
           correct_answer: string
           id?: string
+          last_practiced_at?: string | null
           mastered?: boolean | null
+          mastery_level?: number | null
           mistake_types?: string[] | null
           notes?: string | null
           question: Json
@@ -204,9 +210,12 @@ export type Database = {
         }
         Update: {
           added_at?: string
+          ai_remediation_suggested?: boolean | null
           correct_answer?: string
           id?: string
+          last_practiced_at?: string | null
           mastered?: boolean | null
+          mastery_level?: number | null
           mistake_types?: string[] | null
           notes?: string | null
           question?: Json

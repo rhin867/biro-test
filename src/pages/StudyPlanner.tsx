@@ -30,8 +30,28 @@ export default function StudyPlanner() {
   const [selectedDay, setSelectedDay] = useState(0);
 
   useEffect(() => {
-    const plan = getCurrentWeeklyPlan();
-    if (plan) setCurrentPlan(plan);
+    const fetchPlan = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data, error } = await supabase
+          .from('study_plans')
+          .select('plan_data')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (data && data.plan_data) {
+          setCurrentPlan(data.plan_data as any as WeeklyPlan);
+          return;
+        }
+      }
+
+      const plan = getCurrentWeeklyPlan();
+      if (plan) setCurrentPlan(plan);
+    };
+
+    fetchPlan();
   }, []);
 
   const generateNewPlan = async () => {
@@ -82,6 +102,16 @@ export default function StudyPlanner() {
         formulaRevisionList: planData.formulaRevisionList || [],
         practiceTheoryRatio: planData.practiceTheoryRatio || 0.6,
       };
+
+      // Save to Supabase if authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('study_plans').insert({
+          user_id: user.id,
+          week_start: newPlan.weekStartDate,
+          plan_data: newPlan as any,
+        });
+      }
 
       saveWeeklyPlan(newPlan);
       setCurrentPlan(newPlan);
