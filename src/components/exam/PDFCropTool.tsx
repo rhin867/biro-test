@@ -145,16 +145,38 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
     }
     if (!isDrawing || !cropStart) return;
     const c = getRelativeCoords(e);
-    setCropRegion({
+    const region = {
       x: Math.min(cropStart.x, c.x), y: Math.min(cropStart.y, c.y),
       width: Math.abs(c.x - cropStart.x), height: Math.abs(c.y - cropStart.y),
-    });
+    };
+    
+    if ((e as any).shiftKey) {
+      // Temporarily show the current option being drawn if we wanted, 
+      // but for simplicity we just update the last one or wait for handleEnd
+    } else {
+      setCropRegion(region);
+    }
   }, [isDrawing, cropStart, getRelativeCoords, lastTouchDist]);
 
-  const handleEnd = useCallback(() => {
+  const handleEnd = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (isDrawing && cropStart) {
+      const c = getRelativeCoords(e as any);
+      const region = {
+        x: Math.min(cropStart.x, c.x), y: Math.min(cropStart.y, c.y),
+        width: Math.abs(c.x - cropStart.x), height: Math.abs(c.y - cropStart.y),
+      };
+      
+      if (region.width > 5 && region.height > 5) {
+        if ((e as any).shiftKey) {
+          setOptionRegions(prev => [...prev, region]);
+        } else {
+          setCropRegion(region);
+        }
+      }
+    }
     setIsDrawing(false);
     setLastTouchDist(null);
-  }, []);
+  }, [isDrawing, cropStart, getRelativeCoords]);
 
   const handleCrop = useCallback(() => {
     if (!cropRegion || !page || !imgRef.current) return;
