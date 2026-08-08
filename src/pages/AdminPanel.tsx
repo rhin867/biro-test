@@ -751,6 +751,10 @@ export default function AdminPanel() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="moderation">
+          <ModerationDashboard ownerPassword={ownerPassword} />
+        </TabsContent>
       </Tabs>
     </MainLayout>
   );
