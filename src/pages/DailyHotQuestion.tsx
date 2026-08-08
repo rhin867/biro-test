@@ -44,7 +44,6 @@ export default function DailyHotQuestion() {
 
     if (data && data.length > 0) {
       const q = data[0];
-      // Check if the question is actually visible (not deleted or marked as hidden if we add that)
       setQuestion(q);
       setImageError(false);
       fetchResponses(q.id);
@@ -55,7 +54,6 @@ export default function DailyHotQuestion() {
   };
 
   const checkIfAlreadyAnswered = async (qId: string, currentQuestion: any) => {
-    // We use a combination of localStorage and database check for better reliability
     const userKey = localStorage.getItem('user_key') || 'anonymous';
     const hasAlreadyAttempted = localStorage.getItem(`solved_q_${qId}`);
     
@@ -98,7 +96,6 @@ export default function DailyHotQuestion() {
     const userKey = localStorage.getItem('user_key') || 'anonymous';
     const { data } = await supabase
       .from('notifications' as any)
-
       .select('*')
       .eq('user_key', userKey)
       .eq('is_read', false)
@@ -125,15 +122,12 @@ export default function DailyHotQuestion() {
     fetchHistory();
     fetchNotifications();
 
-    // Set up real-time subscription for new questions
-    // This ensures that when an admin adds or deletes a question, the UI updates immediately
     const channel = supabase
       .channel('hot-questions-changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'hot_questions' },
         (payload) => {
-          console.log('Real-time hot_questions change:', payload);
           fetchQuestion();
           fetchHistory();
         }
@@ -170,7 +164,6 @@ export default function DailyHotQuestion() {
           link: '/daily-hot-question'
         });
       }
-
     }
   };
 
@@ -210,7 +203,6 @@ export default function DailyHotQuestion() {
         });
       }
 
-
       setMyResponse('');
       setMyComment('');
       setReplyTo(null);
@@ -235,7 +227,6 @@ export default function DailyHotQuestion() {
       </div>
     </MainLayout>
   );
-
 
   return (
     <MainLayout>
@@ -283,7 +274,6 @@ export default function DailyHotQuestion() {
         </DialogContent>
       </Dialog>
 
-
       {showHistory ? (
         <div className="space-y-4">
           {history.map(h => (
@@ -325,7 +315,6 @@ export default function DailyHotQuestion() {
                             onClick={() => {
                               setImageError(false);
                               const currentUrl = question.image_url;
-                              // Try to force a reload by changing URL slightly
                               setQuestion({...question, image_url: currentUrl + (currentUrl.includes('?') ? '&' : '?') + 'retry=' + Date.now()});
                             }}
                           >
@@ -340,9 +329,6 @@ export default function DailyHotQuestion() {
                             className="max-w-full h-auto object-contain max-h-[1200px] block rounded-lg shadow-sm" 
                             loading="eager"
                             crossOrigin="anonymous"
-                            onLoad={(e) => {
-                              e.currentTarget.style.display = 'block';
-                            }}
                             onError={() => setImageError(true)}
                           />
                         </div>
@@ -366,7 +352,6 @@ export default function DailyHotQuestion() {
                   <div className="text-base font-medium bg-card p-6 rounded-xl border border-border/50 shadow-inner relative space-y-6">
                     <LatexRenderer content={question.content} />
                     
-                    {/* Interaction UI for solving */}
                     <div className="border-t pt-6 mt-4" id="solve-area">
                       {replyTo && (
                         <div className="mb-4 p-2 bg-primary/10 rounded-lg flex items-center justify-between">
@@ -378,7 +363,6 @@ export default function DailyHotQuestion() {
                       )}
                       {(!hasAnswered || replyTo) ? (
                         <>
-
                           {question.type === 'mcq' || question.type === 'msq' || question.type === 'poll' ? (
                             <div className="space-y-4">
                               <label className="text-xs uppercase font-bold text-primary flex items-center gap-2">
@@ -405,8 +389,6 @@ export default function DailyHotQuestion() {
                               </div>
                             </div>
                           ) : (
-
-
                             <div className="space-y-2">
                               <label className="text-xs uppercase font-bold text-primary flex items-center gap-2">
                                 <Plus className="h-4 w-4" /> Type Your Answer
@@ -512,7 +494,7 @@ export default function DailyHotQuestion() {
                             className="h-8 text-[11px] gap-2 rounded-full px-4 text-muted-foreground hover:bg-muted"
                             onClick={() => {
                               setReplyTo(resp);
-                              setMyResponse(resp.selected_option); // Default to parent answer
+                              setMyResponse(resp.selected_option);
                               document.getElementById('solve-area')?.scrollIntoView({ behavior: 'smooth' });
                             }}
                           >
@@ -521,40 +503,7 @@ export default function DailyHotQuestion() {
                           </Button>
                         </div>
                       </div>
-                      </div>
-
-                      {/* Render Replies */}
-                      <div className="ml-10 space-y-4 border-l-2 border-primary/20 pl-6 mt-4">
-                        {responses.filter(r => r.parent_id === resp.id).map(reply => (
-                          <div key={reply.id} className="p-3.5 rounded-xl bg-muted/30 border border-border/40 relative group/reply hover:border-primary/20 transition-all">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <User className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-xs font-black text-muted-foreground">{reply.user_display_name}</span>
-                                <span className="text-[10px] text-muted-foreground">• {new Date(reply.created_at).toLocaleTimeString()}</span>
-                              </div>
-                            </div>
-                            <p className="text-sm px-1 mb-3 leading-relaxed">{reply.comment}</p>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className={`h-7 text-[10px] gap-2 rounded-full px-3 transition-all ${
-                                (reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') 
-                                  ? 'text-primary bg-primary/10 hover:bg-primary/20' 
-                                  : 'text-muted-foreground hover:bg-muted'
-                              }`}
-                              onClick={() => handleLike(reply.id, reply.user_key)}
-                            >
-                              <ThumbsUp className={`h-3 w-3 ${
-                                (reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary' : ''
-                              }`} />
-                              <span className="font-bold">{reply.likes || 0}</span>
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
                       
-                      {/* Render Replies */}
                       <div className="ml-10 space-y-4 border-l-2 border-primary/20 pl-6 mt-4">
                         {responses.filter(r => r.parent_id === resp.id).map(reply => (
                           <div key={reply.id} className="p-3.5 rounded-xl bg-muted/30 border border-border/40 relative group/reply hover:border-primary/20 transition-all">
@@ -586,3 +535,40 @@ export default function DailyHotQuestion() {
                       </div>
                     </div>
                   ))
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-6">
+            <Card className="sticky top-20 border-primary/20 bg-primary/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                  <Star className="h-4 w-4 text-primary" />
+                  Your Stats
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-3 rounded-lg bg-background border text-center">
+                    <p className="text-[10px] uppercase text-muted-foreground font-bold">Solved</p>
+                    <p className="text-lg font-black">{hasAnswered ? 1 : 0}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-background border text-center">
+                    <p className="text-[10px] uppercase text-muted-foreground font-bold">Status</p>
+                    <p className="text-lg font-black">{hasAnswered ? (isCorrect ? 'Correct' : 'Incorrect') : 'Pending'}</p>
+                  </div>
+                </div>
+                {!hasAnswered && (
+                  <p className="text-[11px] text-muted-foreground text-center italic">
+                    Answer today's challenge to see your name in the discussion!
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+    </MainLayout>
+  );
+}
