@@ -652,7 +652,7 @@ export default function AdminPanel() {
                           toast.error('Upload failed: ' + error.message);
                         } else {
                           const { data: { publicUrl } } = supabase.storage
-                            .from('biro-images-private')
+                            .from('biro-test-images')
                             .getPublicUrl(fileName);
                           
                           // Ensure we use the correct public URL format
