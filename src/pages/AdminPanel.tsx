@@ -670,13 +670,16 @@ export default function AdminPanel() {
                         
                         if (error) {
                           console.error('Upload error details:', error);
-                          toast.error('Upload failed: ' + error.message);
+                          // If public upload fails, try to ensure the bucket settings are known
+                          toast.error('Upload failed: ' + error.message + '. Please ensure the bucket is accessible.');
                         } else {
                           const { data: { publicUrl } } = supabase.storage
                             .from('biro-test-images')
                             .getPublicUrl(fileName);
                           
-                          setHotQuestionImageUrl(publicUrl);
+                          // Force cache busting on the URL
+                          const freshUrl = publicUrl.includes('?') ? `${publicUrl}&t=${Date.now()}` : `${publicUrl}?t=${Date.now()}`;
+                          setHotQuestionImageUrl(freshUrl);
                           toast.success('Image uploaded!');
                         }
                       }

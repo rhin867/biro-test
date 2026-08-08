@@ -570,11 +570,14 @@ export default function DailyHotQuestion() {
                                         .upload(fileName, file, {
                                           upsert: true
                                         });
-                                      if (error) toast.error('Upload failed');
-                                      else {
+                                      if (error) {
+                                        console.error('Upload error:', error);
+                                        toast.error('Upload failed: ' + error.message);
+                                      } else {
                                         const { data: { publicUrl } } = supabase.storage.from('biro-test-images').getPublicUrl(fileName);
+                                        const freshUrl = publicUrl.includes('?') ? `${publicUrl}&t=${Date.now()}` : `${publicUrl}?t=${Date.now()}`;
                                         toast.success('Image uploaded! Submitting...');
-                                        handleSubmit(publicUrl);
+                                        handleSubmit(freshUrl);
                                       }
                                     }
                                   }}
