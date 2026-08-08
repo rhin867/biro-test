@@ -177,11 +177,12 @@ export default function DailyHotQuestion() {
     if (!error) {
       fetchResponses(question.id);
       if (userKey !== authorKey) {
-        await supabase.from('notifications' as any).insert({
+        await supabase.from('notifications').insert({
           user_key: authorKey,
           title: 'New Like!',
           message: `${localStorage.getItem('community_author') || 'Someone'} liked your comment.`,
-          link: '/daily-hot-question'
+          link: '/daily-hot-question',
+          is_read: false
         });
       }
     }
@@ -542,7 +543,7 @@ export default function DailyHotQuestion() {
                                 </Button>
                               </div>
                             </div>
-                            <Button className="w-full h-12 text-lg gap-2 glow-primary" onClick={handleSubmit} disabled={isSubmitting || !myResponse.trim()}>
+                            <Button className="w-full h-12 text-lg gap-2 glow-primary" onClick={() => handleSubmit()} disabled={isSubmitting || !myResponse.trim()}>
                               <Send className="h-5 w-5" /> {isSubmitting ? 'Submitting...' : 'Submit Final Answer'}
                             </Button>
                           </div>
