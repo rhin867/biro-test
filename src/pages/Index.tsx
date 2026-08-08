@@ -59,7 +59,7 @@ const Index = () => {
 
          - Do NOT use any iframe, embed, or external diagram renderer
 
-         - Show the image directly like: <img src={question.image_url} alt="Question diagram" style={{width: '100%', borderRadius: '8px'}} />
+         - Show the image directly like: &lt;img src={question.image_url} alt="Question diagram" style={{width: '100%', borderRadius: '8px'}} /&gt;
 
          - Handle loading and error states gracefully
 
@@ -82,7 +82,5 @@ const Index = () => {
 
   );
 };
-
-export default Index;
 
 export default Index;
