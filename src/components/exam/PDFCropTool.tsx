@@ -83,6 +83,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
   const [isDrawing, setIsDrawing] = useState(false);
   const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
   const [cropRegion, setCropRegion] = useState<CropRegion | null>(null);
+  const [optionRegions, setOptionRegions] = useState<CropRegion[]>([]);
   const [croppedImages, setCroppedImages] = useState<CroppedImage[]>(initialCrops || []);
   const [subject, setSubject] = useState<string>(initialCrops?.[0]?.subject || 'Maths');
   const [section, setSection] = useState<string>(initialCrops?.[0]?.section || 'Section 1');
