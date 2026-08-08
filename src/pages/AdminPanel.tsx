@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Shield, Lock, Trash2, Activity, Ban, KeyRound, Loader2, FolderOpen, Share2, Mail, CheckCircle, XCircle, Star, History as HistoryIcon, ZoomIn } from 'lucide-react';
+import { Shield, Lock, Trash2, Activity, Ban, KeyRound, Loader2, FolderOpen, Share2, Mail, CheckCircle, XCircle, Star, History as HistoryIcon, ZoomIn, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { FolderAccessManager } from '@/components/exam/FolderAccessManager';
 import {
@@ -37,6 +37,78 @@ if (typeof window !== 'undefined') {
   localStorage.setItem('last_visit', new Date().toISOString());
   logVisit();
 }
+
+function ModerationDashboard({ ownerPassword }: { ownerPassword: string }) {
+  const [responses, setResponses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchResponses = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('hot_question_responses')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (data) setResponses(data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchResponses();
+  }, []);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this response?')) return;
+    const { error } = await supabase.from('hot_question_responses').delete().eq('id', id);
+    if (error) toast.error('Failed to delete');
+    else {
+      toast.success('Deleted');
+      fetchResponses();
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Shield className="h-5 w-5 text-primary" />
+          Response Moderation
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4 max-h-[600px] overflow-y-auto">
+          {loading ? (
+            <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          ) : responses.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">No responses found</p>
+          ) : (
+            responses.map((r) => (
+              <div key={r.id} className="p-4 rounded-xl border border-border bg-card group">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-black">{r.user_display_name}</span>
+                    <Badge variant="outline" className="text-[10px]">{new Date(r.created_at).toLocaleDateString()}</Badge>
+                    {r.parent_id && <Badge className="text-[9px] bg-muted text-muted-foreground">Reply</Badge>}
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100" onClick={() => handleDelete(r.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-sm mb-2">{r.comment || <span className="italic text-muted-foreground">No comment</span>}</p>
+                <div className="flex gap-4 text-[10px] text-muted-foreground">
+                  <span>Selected: <span className="font-bold">{r.selected_option}</span></span>
+                  <span>Likes: {r.likes || 0}</span>
+                  <span className="truncate max-w-[150px]">Key: {r.user_key}</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 
 export default function AdminPanel() {
   const [step, setStep] = useState<'pass1' | 'pass2' | 'authenticated'>('pass1');
@@ -179,6 +251,9 @@ export default function AdminPanel() {
     if (!newHotQuestion.trim() && !hotQuestionImageUrl) return toast.error('Enter question content or upload image');
 
     setSavingHot(true);
+    
+    // Check if hot_questions table has a column for image_url
+    // If not, we should probably handle it or ensure schema is updated.
     
     const questionData = {
       content: newHotQuestion.trim(),
@@ -386,6 +461,7 @@ export default function AdminPanel() {
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="shares">Shares</TabsTrigger>
+          <TabsTrigger value="moderation">Moderation</TabsTrigger>
         </TabsList>
 
         <TabsContent value="passwords" className="space-y-4">
@@ -565,7 +641,7 @@ export default function AdminPanel() {
                         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
                         
                         const { data, error } = await supabase.storage
-                          .from('biro-images-private') // Keeping original but we'll check why it's failing
+                          .from('biro-test-images') // Changed from biro-images-private for testing
                           .upload(fileName, file, {
                             cacheControl: '3600',
                             upsert: false
@@ -576,7 +652,7 @@ export default function AdminPanel() {
                           toast.error('Upload failed: ' + error.message);
                         } else {
                           const { data: { publicUrl } } = supabase.storage
-                            .from('biro-images-private')
+                            .from('biro-test-images')
                             .getPublicUrl(fileName);
                           
                           // Ensure we use the correct public URL format
@@ -749,6 +825,10 @@ export default function AdminPanel() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="moderation">
+          <ModerationDashboard ownerPassword={ownerPassword} />
         </TabsContent>
       </Tabs>
     </MainLayout>

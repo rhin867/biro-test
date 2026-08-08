@@ -44,7 +44,6 @@ export default function DailyHotQuestion() {
 
     if (data && data.length > 0) {
       const q = data[0];
-      // Check if the question is actually visible (not deleted or marked as hidden if we add that)
       setQuestion(q);
       setImageError(false);
       fetchResponses(q.id);
@@ -55,7 +54,6 @@ export default function DailyHotQuestion() {
   };
 
   const checkIfAlreadyAnswered = async (qId: string, currentQuestion: any) => {
-    // We use a combination of localStorage and database check for better reliability
     const userKey = localStorage.getItem('user_key') || 'anonymous';
     const hasAlreadyAttempted = localStorage.getItem(`solved_q_${qId}`);
     
@@ -96,9 +94,8 @@ export default function DailyHotQuestion() {
 
   const fetchNotifications = async () => {
     const userKey = localStorage.getItem('user_key') || 'anonymous';
-    const { data } = await (supabase as any)
-      .from('notifications')
-
+    const { data } = await supabase
+      .from('notifications' as any)
       .select('*')
       .eq('user_key', userKey)
       .eq('is_read', false)
@@ -107,7 +104,7 @@ export default function DailyHotQuestion() {
   };
 
   const markNotificationRead = async (id: string) => {
-    await (supabase as any).from('notifications').update({ is_read: true }).eq('id', id);
+    await supabase.from('notifications' as any).update({ is_read: true }).eq('id', id);
     fetchNotifications();
   };
 
@@ -125,15 +122,12 @@ export default function DailyHotQuestion() {
     fetchHistory();
     fetchNotifications();
 
-    // Set up real-time subscription for new questions
-    // This ensures that when an admin adds or deletes a question, the UI updates immediately
     const channel = supabase
       .channel('hot-questions-changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'hot_questions' },
         (payload) => {
-          console.log('Real-time hot_questions change:', payload);
           fetchQuestion();
           fetchHistory();
         }
@@ -153,25 +147,23 @@ export default function DailyHotQuestion() {
     const likedBy = resp.liked_by || [];
     if (likedBy.includes(userKey)) return toast.info('Already liked');
 
-    const { error } = await (supabase as any).from('hot_question_responses')
+    const { error } = await supabase.from('hot_question_responses' as any)
       .update({ 
         likes: (resp.likes || 0) + 1,
         liked_by: [...likedBy, userKey]
       })
-
       .eq('id', respId);
 
     if (!error) {
       fetchResponses(question.id);
       if (userKey !== authorKey) {
-        await (supabase as any).from('notifications').insert({
+        await supabase.from('notifications' as any).insert({
           user_key: authorKey,
           title: 'New Like!',
           message: `${localStorage.getItem('community_author') || 'Someone'} liked your comment.`,
           link: '/daily-hot-question'
         });
       }
-
     }
   };
 
@@ -187,8 +179,10 @@ export default function DailyHotQuestion() {
       user_display_name: author,
       selected_option: myResponse.trim(),
       comment: myComment.trim(),
-      parent_id: replyTo?.id || null
-    }).select();
+      parent_id: replyTo?.id || null,
+      likes: 0,
+      liked_by: []
+    } as any).select();
 
     setIsSubmitting(false);
     if (error) toast.error('Failed to submit');
@@ -198,13 +192,17 @@ export default function DailyHotQuestion() {
         localStorage.setItem(`solved_q_${question.id}`, 'true');
         localStorage.setItem(`ans_q_${question.id}`, myResponse.trim());
         setHasAnswered(true);
+        
+        // Update XP tracking
+        const currentSolved = parseInt(localStorage.getItem('solved_daily_count') || '0');
+        localStorage.setItem('solved_daily_count', String(currentSolved + 1));
       }
       
       if (replyTo && replyTo.user_key !== userKey) {
-        await (supabase as any).from('notifications').insert({
+        await supabase.from('notifications' as any).insert({
           user_key: replyTo.user_key,
           title: 'New Reply!',
-          message: `${author} replied to your comment.`,
+          message: `${author} replied to your comment on the Daily Challenge.`,
           link: '/daily-hot-question'
         });
       }
@@ -234,7 +232,6 @@ export default function DailyHotQuestion() {
       </div>
     </MainLayout>
   );
-
 
   return (
     <MainLayout>
@@ -282,7 +279,6 @@ export default function DailyHotQuestion() {
         </DialogContent>
       </Dialog>
 
-
       {showHistory ? (
         <div className="space-y-4">
           {history.map(h => (
@@ -324,7 +320,6 @@ export default function DailyHotQuestion() {
                             onClick={() => {
                               setImageError(false);
                               const currentUrl = question.image_url;
-                              // Try to force a reload by changing URL slightly
                               setQuestion({...question, image_url: currentUrl + (currentUrl.includes('?') ? '&' : '?') + 'retry=' + Date.now()});
                             }}
                           >
@@ -339,9 +334,6 @@ export default function DailyHotQuestion() {
                             className="max-w-full h-auto object-contain max-h-[1200px] block rounded-lg shadow-sm" 
                             loading="eager"
                             crossOrigin="anonymous"
-                            onLoad={(e) => {
-                              e.currentTarget.style.display = 'block';
-                            }}
                             onError={() => setImageError(true)}
                           />
                         </div>
@@ -365,7 +357,6 @@ export default function DailyHotQuestion() {
                   <div className="text-base font-medium bg-card p-6 rounded-xl border border-border/50 shadow-inner relative space-y-6">
                     <LatexRenderer content={question.content} />
                     
-                    {/* Interaction UI for solving */}
                     <div className="border-t pt-6 mt-4" id="solve-area">
                       {replyTo && (
                         <div className="mb-4 p-2 bg-primary/10 rounded-lg flex items-center justify-between">
@@ -377,7 +368,6 @@ export default function DailyHotQuestion() {
                       )}
                       {(!hasAnswered || replyTo) ? (
                         <>
-
                           {question.type === 'mcq' || question.type === 'msq' || question.type === 'poll' ? (
                             <div className="space-y-4">
                               <label className="text-xs uppercase font-bold text-primary flex items-center gap-2">
@@ -404,8 +394,6 @@ export default function DailyHotQuestion() {
                               </div>
                             </div>
                           ) : (
-
-
                             <div className="space-y-2">
                               <label className="text-xs uppercase font-bold text-primary flex items-center gap-2">
                                 <Plus className="h-4 w-4" /> Type Your Answer
@@ -434,12 +422,12 @@ export default function DailyHotQuestion() {
                             </Button>
                           </div>
                         </>
-                      ) : !replyTo && (
-                        <div className="py-4 text-center bg-secondary/20 rounded-xl border border-dashed">
-                          <p className="text-sm font-medium text-muted-foreground">You have already submitted your response for this challenge.</p>
+                      ) : !replyTo ? (
+                        <div className="py-4 text-center bg-secondary/10 rounded-xl border border-dashed border-primary/30">
+                          <p className="text-sm font-bold text-primary mb-1">Response Submitted!</p>
+                          <p className="text-[11px] text-muted-foreground">You can still discuss and reply to others below.</p>
                         </div>
-                      )}
-
+                      ) : null}
                     </div>
 
                     {hasAnswered && question.correct_option && (
@@ -465,85 +453,88 @@ export default function DailyHotQuestion() {
                   Discussions ({responses.length})
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 max-h-[600px] overflow-y-auto custom-scrollbar">
+              <CardContent className="space-y-4 max-h-[800px] overflow-y-auto custom-scrollbar p-6">
                 {responses.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">Be the first to respond!</p>
                 ) : (
                   responses.filter(r => !r.parent_id).map(resp => (
-                    <div key={resp.id} className="space-y-3">
-                      <div className="p-3 rounded-xl bg-secondary/20 border border-border/50 shadow-sm relative overflow-hidden">
-                        <div className="flex items-center justify-between mb-2">
+                    <div key={resp.id} className="space-y-4 border-b pb-6 last:border-0">
+                      <div className="p-4 rounded-xl bg-card border border-border/60 shadow-md relative group hover:border-primary/30 transition-all">
+                        <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-                              <User className="h-3 w-3 text-primary" />
+                            <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center shadow-inner">
+                              <User className="h-4 w-4 text-primary" />
                             </div>
-                            <span className="text-xs font-bold text-primary">{resp.user_display_name}</span>
-                            <Badge variant="secondary" className="text-[9px] h-4">Ans: {resp.selected_option}</Badge>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-black text-primary leading-tight">{resp.user_display_name}</span>
+                              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <Clock className="h-2.5 w-2.5" /> {new Date(resp.created_at).toLocaleTimeString()}
+                              </span>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] font-bold border-primary/20 bg-primary/5 ml-2">Ans: {resp.selected_option}</Badge>
                           </div>
-                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                            <Clock className="h-2 w-2" /> {new Date(resp.created_at).toLocaleTimeString()}
-                          </span>
                         </div>
                         
-                        {/* Nested Diagram in Discussion if exists (inherited from question for clarity) */}
-                        {question.image_url && resp.comment && (
-                          <div className="mb-3 rounded-lg border border-border/30 overflow-hidden bg-white/50 w-fit max-w-[150px]">
-                            <img src={question.image_url} alt="Reference" className="w-full h-auto object-contain max-h-[100px]" />
-                          </div>
-                        )}
-
-                        <p className="text-sm px-1 mb-3">{resp.comment || 'No comment provided.'}</p>
-                        <div className="flex items-center gap-4 border-t border-border/30 pt-2">
+                        <div className="text-sm px-1 mb-4 leading-relaxed whitespace-pre-wrap"><LatexRenderer content={resp.comment || 'No explanation provided.'} /></div>
+                        
+                        <div className="flex items-center gap-3 border-t border-border/30 pt-3">
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            className={`h-7 text-[10px] gap-1.5 rounded-full px-3 ${(resp.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
+                            className={`h-8 text-[11px] gap-2 rounded-full px-4 transition-all ${
+                              (resp.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') 
+                                ? 'text-primary bg-primary/10 hover:bg-primary/20 shadow-sm' 
+                                : 'text-muted-foreground hover:bg-muted'
+                            }`}
                             onClick={() => handleLike(resp.id, resp.user_key)}
                           >
-
-                            <ThumbsUp className={`h-3 w-3 ${(resp.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary' : ''}`} />
-                            {resp.likes || 0}
+                            <ThumbsUp className={`h-3.5 w-3.5 ${
+                              (resp.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary' : ''
+                            }`} />
+                            <span className="font-bold">{resp.likes || 0}</span>
                           </Button>
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="h-7 text-[10px] gap-1.5 rounded-full px-3 text-muted-foreground"
+                            className="h-8 text-[11px] gap-2 rounded-full px-4 text-muted-foreground hover:bg-muted"
                             onClick={() => {
                               setReplyTo(resp);
-                              setMyResponse(resp.selected_option); // Default to parent answer
+                              setMyResponse(resp.selected_option);
                               document.getElementById('solve-area')?.scrollIntoView({ behavior: 'smooth' });
                             }}
                           >
-                            <Reply className="h-3 w-3" />
-                            Reply
+                            <Reply className="h-3.5 w-3.5" />
+                            <span className="font-bold">Reply</span>
                           </Button>
                         </div>
                       </div>
-
-                      {/* Render Replies */}
-                      <div className="ml-8 space-y-3 border-l-2 border-primary/10 pl-4">
+                      
+                      <div className="ml-10 space-y-4 border-l-2 border-primary/20 pl-6 mt-4">
                         {responses.filter(r => r.parent_id === resp.id).map(reply => (
-                          <div key={reply.id} className="p-3 rounded-xl bg-muted/40 border border-border/30">
+                          <div key={reply.id} className="p-3.5 rounded-xl bg-muted/30 border border-border/40 relative group/reply hover:border-primary/20 transition-all">
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">
                                 <User className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-xs font-bold">{reply.user_display_name}</span>
+                                <span className="text-xs font-black text-muted-foreground">{reply.user_display_name}</span>
+                                <span className="text-[10px] text-muted-foreground">• {new Date(reply.created_at).toLocaleTimeString()}</span>
                               </div>
-                              <span className="text-[10px] text-muted-foreground">
-                                {new Date(reply.created_at).toLocaleTimeString()}
-                              </span>
                             </div>
-                            <p className="text-sm px-1 mb-2">{reply.comment}</p>
+                            <p className="text-sm px-1 mb-3 leading-relaxed whitespace-pre-wrap">{reply.comment}</p>
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className={`h-6 text-[9px] gap-1 rounded-full px-2 ${(reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
+                              className={`h-7 text-[10px] gap-2 rounded-full px-3 transition-all ${
+                                (reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') 
+                                  ? 'text-primary bg-primary/10 hover:bg-primary/20' 
+                                  : 'text-muted-foreground hover:bg-muted'
+                              }`}
                               onClick={() => handleLike(reply.id, reply.user_key)}
                             >
-                              <ThumbsUp className="h-2.5 w-2.5" />
-                              {reply.likes || 0}
+                              <ThumbsUp className={`h-3 w-3 ${
+                                (reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary' : ''
+                              }`} />
+                              <span className="font-bold">{reply.likes || 0}</span>
                             </Button>
-
                           </div>
                         ))}
                       </div>
@@ -551,7 +542,6 @@ export default function DailyHotQuestion() {
                   ))
                 )}
               </CardContent>
-
             </Card>
           </div>
 
