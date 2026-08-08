@@ -55,7 +55,7 @@ const Index = () => {
 
       3. CHANGE IMAGE DISPLAY LOGIC:
 
-         - In the Daily Hot Question component (and anywhere question images are shown), render the image using a standard <img> tag with the stored public URL as src
+         - In the Daily Hot Question component (and anywhere question images are shown), render the image using a standard &lt;img&gt; tag with the stored public URL as src
 
          - Do NOT use any iframe, embed, or external diagram renderer
 
