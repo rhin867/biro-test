@@ -185,9 +185,10 @@ export default function Community() {
     if (!newPost.trim() || !author.trim()) { toast.error('Enter name and message'); return; }
     if (!authorLocked) lockAuthor();
     
-    await supabase.from('community_messages' as any).insert({
-      author: author.trim(), content: newPost.trim(), msg_type: 'post', post_type: postType,
+    await supabaseKeyed.from('community_messages' as any).insert({
+      author: author.trim(), author_key: getUserKey(), content: newPost.trim(), msg_type: 'post', post_type: postType,
     } as any);
+
     setNewPost('');
     addReward(10, 'Posted in community');
     toast.success('Posted! +10 XP');
@@ -299,35 +300,17 @@ export default function Community() {
                           <span className="text-xs text-muted-foreground">{new Date(msg.created_at).toLocaleTimeString()}</span>
                         </div>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {msg.author === author && (
+                          {msg.author_key === getUserKey() && (
                             <>
-                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
-                                const newContent = prompt('Edit message:', msg.content);
-                                if (newContent && newContent !== msg.content) {
-                                  supabase.from('community_messages' as any).update({ content: newContent } as any).eq('id', msg.id).then(({ error }) => {
-                                    if (!error) {
-                                      toast.success('Message updated');
-                                      setChatMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: newContent } : m));
-                                    }
-                                  });
-                                }
-                              }}>
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditMessage(msg, true)}>
                                 <Edit2 className="h-3 w-3" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-destructive" onClick={() => {
-                                if (confirm('Delete message?')) {
-                                  supabase.from('community_messages' as any).delete().eq('id', msg.id).then(({ error }) => {
-                                    if (!error) {
-                                      toast.success('Message deleted');
-                                      setChatMessages(prev => prev.filter(m => m.id !== msg.id));
-                                    }
-                                  });
-                                }
-                              }}>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-destructive" onClick={() => handleDeleteMessage(msg, true)}>
                                 <Trash2 className="h-3 w-3" />
                               </Button>
                             </>
                           )}
+
                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleVote(msg.id, 'up')}>
                             <ThumbsUp className={`h-3 w-3 ${(msg.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary text-primary' : ''}`} />
                           </Button>
@@ -354,35 +337,17 @@ export default function Community() {
                               <span className="text-[10px] text-muted-foreground">{new Date(reply.created_at).toLocaleTimeString()}</span>
                             </div>
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity scale-90">
-                              {reply.author === author && (
+                              {reply.author_key === getUserKey() && (
                                 <>
-                                  <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => {
-                                    const newContent = prompt('Edit reply:', reply.content);
-                                    if (newContent && newContent !== reply.content) {
-                                      supabase.from('community_messages' as any).update({ content: newContent } as any).eq('id', reply.id).then(({ error }) => {
-                                        if (!error) {
-                                          toast.success('Reply updated');
-                                          setChatMessages(prev => prev.map(m => m.id === reply.id ? { ...m, content: newContent } : m));
-                                        }
-                                      });
-                                    }
-                                  }}>
+                                  <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleEditMessage(reply, true)}>
                                     <Edit2 className="h-2.5 w-2.5" />
                                   </Button>
-                                  <Button variant="ghost" size="icon" className="h-5 w-5 hover:text-destructive" onClick={() => {
-                                    if (confirm('Delete reply?')) {
-                                      supabase.from('community_messages' as any).delete().eq('id', reply.id).then(({ error }) => {
-                                        if (!error) {
-                                          toast.success('Reply deleted');
-                                          setChatMessages(prev => prev.filter(m => m.id !== reply.id));
-                                        }
-                                      });
-                                    }
-                                  }}>
+                                  <Button variant="ghost" size="icon" className="h-5 w-5 hover:text-destructive" onClick={() => handleDeleteMessage(reply, true)}>
                                     <Trash2 className="h-2.5 w-2.5" />
                                   </Button>
                                 </>
                               )}
+
                               <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleVote(reply.id, 'up')}>
                                 <ThumbsUp className={`h-2.5 w-2.5 ${(reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary text-primary' : ''}`} />
                               </Button>
@@ -449,35 +414,17 @@ export default function Community() {
                       <span className="text-xs text-muted-foreground">{new Date(post.created_at).toLocaleDateString()}</span>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {post.author === author && (
+                      {post.author_key === getUserKey() && (
                         <>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                            const newContent = prompt('Edit post:', post.content);
-                            if (newContent && newContent !== post.content) {
-                              supabase.from('community_messages' as any).update({ content: newContent } as any).eq('id', post.id).then(({ error }) => {
-                                if (!error) {
-                                  toast.success('Post updated');
-                                  setPosts(prev => prev.map(p => p.id === post.id ? { ...p, content: newContent } : p));
-                                }
-                              });
-                            }
-                          }}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditMessage(post, false)}>
                             <Edit2 className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive" onClick={() => {
-                            if (confirm('Delete post?')) {
-                              supabase.from('community_messages' as any).delete().eq('id', post.id).then(({ error }) => {
-                                if (!error) {
-                                  toast.success('Post deleted');
-                                  setPosts(prev => prev.filter(p => p.id !== post.id));
-                                }
-                              });
-                            }
-                          }}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive" onClick={() => handleDeleteMessage(post, false)}>
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </>
                       )}
+
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleVote(post.id, 'up')}>
                         <ThumbsUp className={`h-3.5 w-3.5 ${(post.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary text-primary' : ''}`} />
                       </Button>
