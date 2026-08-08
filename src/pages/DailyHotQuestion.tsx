@@ -413,7 +413,7 @@ export default function DailyHotQuestion() {
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <img 
-                            src={question.image_url} 
+                            src={question.image_url.includes('supabase.co') && !question.image_url.includes('t=') ? `${question.image_url}?t=${Date.now()}` : question.image_url} 
                             alt="Question Diagram" 
                             className="max-w-full h-auto object-contain max-h-[1200px] block rounded-lg shadow-sm" 
                             loading="eager"
