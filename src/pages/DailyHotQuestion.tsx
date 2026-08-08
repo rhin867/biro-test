@@ -623,20 +623,22 @@ export default function DailyHotQuestion() {
                               variant="outline" 
                               size="sm" 
                               className="h-7 text-[10px] gap-1"
-                              onClick={() => {
-                                const myResp = responses.find(r => r.user_key === (localStorage.getItem('user_key') || 'anonymous') && !r.parent_id);
-                                if (myResp) {
-                                  const newComment = prompt('Edit your response:', myResp.comment);
-                                  if (newComment && newComment !== myResp.comment) {
-                                    supabase.from('hot_question_responses').update({ comment: newComment }).eq('id', myResp.id).then(({ error }) => {
-                                      if (!error) {
-                                        toast.success('Response updated');
-                                        setResponses(prev => prev.map(r => r.id === myResp.id ? { ...r, comment: newComment } : r));
-                                      }
-                                    });
+                                onClick={() => {
+                                  const myResp = responses.find(r => r.user_key === (localStorage.getItem('user_key') || 'anonymous') && !r.parent_id);
+                                  if (myResp) {
+                                    const newComment = prompt('Edit your response:', myResp.comment);
+                                    if (newComment !== null && newComment !== myResp.comment) {
+                                      supabase.from('hot_question_responses').update({ comment: newComment.trim() }).eq('id', myResp.id).then(({ error }) => {
+                                        if (!error) {
+                                          toast.success('Response updated');
+                                          setResponses(prev => prev.map(r => r.id === myResp.id ? { ...r, comment: newComment.trim() } : r));
+                                        } else {
+                                          toast.error('Failed to update: ' + error.message);
+                                        }
+                                      });
+                                    }
                                   }
-                                }
-                              }}
+                                }}
                             >
                               <Edit2 className="h-3 w-3" /> Edit My Answer
                             </Button>
@@ -733,7 +735,52 @@ export default function DailyHotQuestion() {
                               <User className="h-4 w-4 text-primary" />
                             </div>
                             <div className="flex flex-col">
-                              <span className="text-sm font-black text-primary leading-tight">{resp.user_display_name}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-black text-primary leading-tight">{resp.user_display_name}</span>
+                                {resp.user_key === (localStorage.getItem('user_key') || 'anonymous') && (
+                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-5 w-5 text-muted-foreground hover:text-primary"
+                                      onClick={() => {
+                                        const newComment = prompt('Edit your comment:', resp.comment);
+                                        if (newComment !== null && newComment !== resp.comment) {
+                                          supabase.from('hot_question_responses').update({ comment: newComment.trim() }).eq('id', resp.id).then(({ error }) => {
+                                            if (!error) {
+                                              toast.success('Comment updated');
+                                              setResponses(prev => prev.map(r => r.id === resp.id ? { ...r, comment: newComment.trim() } : r));
+                                            } else {
+                                              toast.error('Failed to update');
+                                            }
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <Edit2 className="h-3 w-3" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-5 w-5 text-muted-foreground hover:text-destructive"
+                                      onClick={() => {
+                                        if (confirm('Delete your comment? This will also remove any replies.')) {
+                                          supabase.from('hot_question_responses').delete().eq('id', resp.id).then(({ error }) => {
+                                            if (!error) {
+                                              toast.success('Comment deleted');
+                                              setResponses(prev => prev.filter(r => r.id !== resp.id && r.parent_id !== resp.id));
+                                            } else {
+                                              toast.error('Failed to delete');
+                                            }
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
                               <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                                 <Clock className="h-2.5 w-2.5" /> {new Date(resp.created_at).toLocaleTimeString()}
                               </span>
@@ -850,11 +897,13 @@ export default function DailyHotQuestion() {
                                       className="h-6 w-6 text-muted-foreground hover:text-primary"
                                       onClick={() => {
                                         const newComment = prompt('Edit your reply:', reply.comment);
-                                        if (newComment && newComment !== reply.comment) {
-                                          supabase.from('hot_question_responses').update({ comment: newComment }).eq('id', reply.id).then(({ error }) => {
+                                        if (newComment !== null && newComment !== reply.comment) {
+                                          supabase.from('hot_question_responses').update({ comment: newComment.trim() }).eq('id', reply.id).then(({ error }) => {
                                             if (!error) {
                                               toast.success('Reply updated');
-                                              setResponses(prev => prev.map(r => r.id === reply.id ? { ...r, comment: newComment } : r));
+                                              setResponses(prev => prev.map(r => r.id === reply.id ? { ...r, comment: newComment.trim() } : r));
+                                            } else {
+                                              toast.error('Failed to update: ' + error.message);
                                             }
                                           });
                                         }
