@@ -661,14 +661,14 @@ export default function AdminPanel() {
                         const fileExt = file.name.split('.').pop();
                         const fileName = `hot-q-${Date.now()}.${fileExt}`;
                         
-                        const { data, uploadError } = await supabase.storage
+                        const { data, error } = await supabase.storage
                           .from('biro-test-images')
                           .upload(fileName, file, {
                             cacheControl: '0', 
                             upsert: true
-                          }) as any;
+                          });
                         
-                        if (uploadError) {
+                        if (error) {
                           console.error('Upload error details:', uploadError);
                           toast.error('Upload failed: ' + uploadError.message);
                         } else {
