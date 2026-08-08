@@ -661,24 +661,23 @@ export default function AdminPanel() {
                         const fileExt = file.name.split('.').pop();
                         const fileName = `hot-q-${Date.now()}.${fileExt}`;
                         
-                        const { data, error } = await supabase.storage
+                        const { data, uploadError } = await supabase.storage
                           .from('biro-test-images')
                           .upload(fileName, file, {
-                            cacheControl: '0', // No cache for fresh uploads
+                            cacheControl: '0', 
                             upsert: true
-                          });
+                          }) as any;
                         
-                        if (error) {
-                          console.error('Upload error details:', error);
-                          // If public upload fails, try to ensure the bucket settings are known
-                          toast.error('Upload failed: ' + error.message + '. Please ensure the bucket is accessible.');
+                        if (uploadError) {
+                          console.error('Upload error details:', uploadError);
+                          toast.error('Upload failed: ' + uploadError.message);
                         } else {
-                          const { data: { publicUrl } } = supabase.storage
-                            .from('biro-test-images')
-                            .getPublicUrl(fileName);
+                          // Use the standard URL construction for public buckets
+                          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+                          const publicUrl = `${supabaseUrl}/storage/v1/object/public/biro-test-images/${fileName}`;
                           
                           // Force cache busting on the URL
-                          const freshUrl = publicUrl.includes('?') ? `${publicUrl}&t=${Date.now()}` : `${publicUrl}?t=${Date.now()}`;
+                          const freshUrl = `${publicUrl}?t=${Date.now()}`;
                           setHotQuestionImageUrl(freshUrl);
                           toast.success('Image uploaded!');
                         }
