@@ -701,17 +701,18 @@ export default function DailyHotQuestion() {
                       )}
                     </div>
 
-                    {hasAnswered && question.correct_option && (
+                    {hasAnswered && revealedAnswer && (
                       <div className={`mt-6 p-4 rounded-xl border-2 animate-in fade-in slide-in-from-bottom-2 ${isCorrect ? 'bg-correct/10 border-correct text-correct' : 'bg-incorrect/10 border-incorrect text-incorrect'}`}>
                         <div className="flex items-center gap-2 font-black text-lg mb-2">
                           {isCorrect ? <CheckCircle className="h-6 w-6" /> : <XCircle className="h-6 w-6" />}
                           {isCorrect ? 'CORRECT!' : 'INCORRECT'}
                         </div>
                         <p className="text-sm font-medium">
-                          The correct answer is: <span className="text-lg font-black underline decoration-2">{question.correct_option}</span>
+                          The correct answer is: <span className="text-lg font-black underline decoration-2">{revealedAnswer}</span>
                         </p>
                       </div>
                     )}
+
                   </div>
                 </div>
               </CardContent>
