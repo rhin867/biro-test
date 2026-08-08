@@ -330,7 +330,10 @@ export default function DailyHotQuestion() {
     <MainLayout>
       <PageHeader title="Daily Hot Question" description="Challenge yourself every day & discuss with others.">
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowNotifications(!showNotifications)} className="relative">
+          <Button variant="outline" size="sm" onClick={() => {
+            setShowNotifications(!showNotifications);
+            if (!showNotifications) fetchNotifications();
+          }} className="relative">
             {notifications.length > 0 ? <Bell className="h-4 w-4 text-primary animate-bounce" /> : <BellOff className="h-4 w-4" />}
             {notifications.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] px-1 rounded-full">{notifications.length}</span>}
           </Button>
