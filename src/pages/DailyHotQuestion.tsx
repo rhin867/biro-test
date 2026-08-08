@@ -509,15 +509,16 @@ export default function DailyHotQuestion() {
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="h-7 text-[10px] gap-1.5 rounded-full px-3 text-muted-foreground"
+                            className="h-8 text-[11px] gap-2 rounded-full px-4 text-muted-foreground hover:bg-muted"
                             onClick={() => {
                               setReplyTo(resp);
                               setMyResponse(resp.selected_option); // Default to parent answer
                               document.getElementById('solve-area')?.scrollIntoView({ behavior: 'smooth' });
                             }}
                           >
-                            <Reply className="h-3 w-3" />
-                            Reply
+                            <Reply className="h-3.5 w-3.5" />
+                            <span className="font-bold">Reply</span>
+                          </Button>
                           </Button>
                         </div>
                       </div>
