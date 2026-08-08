@@ -188,7 +188,7 @@ export default function DailyHotQuestion() {
   };
 
   const handleSubmit = async () => {
-    if (!question || !myResponse.trim()) return toast.error('Enter an answer/option');
+    if (!question || (!myResponse.trim() && !replyTo)) return toast.error('Enter an answer/option');
     setIsSubmitting(true);
     const userKey = localStorage.getItem('user_key') || 'anonymous';
     const author = localStorage.getItem('community_author') || 'Anonymous';
