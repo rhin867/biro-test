@@ -386,6 +386,7 @@ export default function AdminPanel() {
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="shares">Shares</TabsTrigger>
+          <TabsTrigger value="moderation">Moderation</TabsTrigger>
         </TabsList>
 
         <TabsContent value="passwords" className="space-y-4">
