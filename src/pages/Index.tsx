@@ -10,53 +10,61 @@ const Index = () => {
 
   return (
     <div className="hidden">
-      {`Create two Supabase storage buckets in this project:
+      {`Open the Supabase SQL editor for this project and run this SQL to create the storage buckets:
 
 
 
 
-1. Bucket name: "question-images" — set as PUBLIC
+INSERT INTO storage.buckets (id, name, public)
 
-2. Bucket name: "biro-test-images" — set as PUBLIC
+VALUES ('question-images', 'question-images', true)
 
-
-
-
-For both buckets add these RLS policies:
-
-- Allow public SELECT (anyone can view)
-
-- Allow authenticated INSERT (logged in users can upload)
+ON CONFLICT (id) DO UPDATE SET public = true;
 
 
 
 
-After creating buckets, fix the image upload in AdminPanel.tsx:
+INSERT INTO storage.buckets (id, name, public)
 
-- Store clean publicUrl in DB without ?t= timestamp
+VALUES ('biro-test-images', 'biro-test-images', true)
 
-
-
-
-And fix DailyHotQuestion.tsx:
-
-- Use supabase.storage.from('biro-test-images').getPublicUrl(fileName) instead of manual URL construction
-
-- Store clean publicUrl without ?t= timestamp.                   Check if these storage buckets exist in the Supabase project:
-
-1. "question-images"
-
-2. "biro-test-images"
+ON CONFLICT (id) DO UPDATE SET public = true;
 
 
 
 
-If they don't exist, create them as PUBLIC buckets with RLS policies allowing public read and authenticated upload.
+CREATE POLICY IF NOT EXISTS "Public read question-images"
+
+ON storage.objects FOR SELECT
+
+USING (bucket_id = 'question-images');
 
 
 
 
-Then show me the current bucket list.`}
+CREATE POLICY IF NOT EXISTS "Auth upload question-images"
+
+ON storage.objects FOR INSERT
+
+WITH CHECK (bucket_id = 'question-images');
+
+
+
+
+CREATE POLICY IF NOT EXISTS "Public read biro-test-images"
+
+ON storage.objects FOR SELECT
+
+USING (bucket_id = 'biro-test-images');
+
+
+
+
+CREATE POLICY IF NOT EXISTS "Auth upload biro-test-images"
+
+ON storage.objects FOR INSERT
+
+WITH CHECK (bucket_id = 'biro-test-images');`}
     </div>
 
   );
