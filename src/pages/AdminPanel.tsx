@@ -669,8 +669,8 @@ export default function AdminPanel() {
                           });
                         
                         if (error) {
-                          console.error('Upload error details:', uploadError);
-                          toast.error('Upload failed: ' + uploadError.message);
+                          console.error('Upload error details:', error);
+                          toast.error('Upload failed: ' + error.message);
                         } else {
                           // Use the standard URL construction for public buckets
                           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
