@@ -179,6 +179,9 @@ export default function MyTests() {
           <Button variant="outline" className="gap-2" onClick={() => setShowFolderDialog(true)}>
             <Plus className="h-4 w-4" /> New Folder
           </Button>
+          <Link to="/history">
+            <Button variant="outline" className="gap-2"><HistoryIcon className="h-4 w-4" /> Test History</Button>
+          </Link>
           <Link to="/create">
             <Button className="gap-2"><Plus className="h-4 w-4" /> Create New Test</Button>
           </Link>
@@ -223,6 +226,9 @@ export default function MyTests() {
             <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">No Tests Yet</h3>
             <p className="text-muted-foreground mb-4">Create your first test by uploading a PDF</p>
+          <Link to="/history">
+            <Button variant="outline" className="gap-2"><HistoryIcon className="h-4 w-4" /> Test History</Button>
+          </Link>
             <Link to="/create"><Button className="gap-2"><Plus className="h-4 w-4" /> Create Test</Button></Link>
           </CardContent>
         </Card>
