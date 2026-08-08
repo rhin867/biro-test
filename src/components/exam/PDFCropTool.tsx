@@ -127,7 +127,12 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
       setLastTouchDist(dist);
       return;
     }
-    const c = getRelativeCoords(e); setCropStart(c); setCropRegion(null); setIsDrawing(true);
+    const c = getRelativeCoords(e); setCropStart(c); 
+    if (!e.shiftKey) {
+      setCropRegion(null); 
+      setOptionRegions([]);
+    }
+    setIsDrawing(true);
   }, [getRelativeCoords]);
 
   const handleMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
