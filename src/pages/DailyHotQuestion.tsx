@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { toast } from 'sonner';
-import { MessageSquare, Send, User, Clock, Star, History as HistoryIcon, ArrowLeft, CheckCircle, XCircle, Target, Plus, ThumbsUp, Bell, BellOff, Reply, ZoomIn, RefreshCw } from 'lucide-react';
+import { MessageSquare, Send, User, Clock, Star, History as HistoryIcon, ArrowLeft, CheckCircle, XCircle, Target, Plus, ThumbsUp, Bell, BellOff, Reply, ZoomIn, RefreshCw, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function DailyHotQuestion() {
@@ -29,6 +29,26 @@ export default function DailyHotQuestion() {
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [imageError, setImageError] = useState(false);
 
+
+  const [isGateOpen, setIsGateOpen] = useState(false);
+  const [gatePassword, setGatePassword] = useState('');
+  const [isUnlocked, setIsUnlocked] = useState(false);
+
+  useEffect(() => {
+    const unlocked = localStorage.getItem('biro_gate_unlocked') === 'true';
+    if (unlocked) setIsUnlocked(true);
+  }, []);
+
+  const handleGateUnlock = () => {
+    if (gatePassword.toUpperCase() === 'I LOVE YOU BIRO') {
+      localStorage.setItem('biro_gate_unlocked', 'true');
+      setIsUnlocked(true);
+      setIsGateOpen(false);
+      toast.success('Access Granted');
+    } else {
+      toast.error('Incorrect Secret Key');
+    }
+  };
 
   const fetchQuestion = async () => {
     const { data, error } = await supabase
@@ -193,25 +213,39 @@ export default function DailyHotQuestion() {
         localStorage.setItem(`ans_q_${question.id}`, myResponse.trim());
         setHasAnswered(true);
         
-        // Update XP and Streak tracking
-        const currentSolved = parseInt(localStorage.getItem('solved_daily_count') || '0');
-        localStorage.setItem('solved_daily_count', String(currentSolved + 1));
-        
-        // Simple daily streak logic
-        const lastSolved = localStorage.getItem('last_solved_date');
-        const today = new Date().toDateString();
-        if (lastSolved !== today) {
+        // Update XP and Streak tracking in DB
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
           const currentStreak = parseInt(localStorage.getItem('user_streak') || '0');
+          const lastSolved = localStorage.getItem('last_solved_date');
+          const today = new Date().toDateString();
           const yesterday = new Date();
           yesterday.setDate(yesterday.getDate() - 1);
-          
-          if (lastSolved === yesterday.toDateString()) {
-            localStorage.setItem('user_streak', String(currentStreak + 1));
-          } else {
-            localStorage.setItem('user_streak', '1');
+
+          let newStreak = currentStreak;
+          if (lastSolved !== today) {
+            if (lastSolved === yesterday.toDateString()) {
+              newStreak = currentStreak + 1;
+            } else {
+              newStreak = 1;
+            }
           }
+
+          const { data: profile } = await supabase.from('profiles').select('total_xp').eq('id', user.id).single();
+          const newXP = (profile?.total_xp || 0) + 10; // 10 XP per daily question
+
+          await supabase.from('profiles').update({
+            user_streak: newStreak,
+            total_xp: newXP,
+            last_engagement_at: new Date().toISOString()
+          }).eq('id', user.id);
+
+          localStorage.setItem('user_streak', String(newStreak));
           localStorage.setItem('last_solved_date', today);
         }
+
+        const currentSolved = parseInt(localStorage.getItem('solved_daily_count') || '0');
+        localStorage.setItem('solved_daily_count', String(currentSolved + 1));
 
       }
       
@@ -250,7 +284,40 @@ export default function DailyHotQuestion() {
     </MainLayout>
   );
 
+  if (!isUnlocked) {
+    return (
+      <MainLayout>
+        <div className="flex flex-col items-center justify-center h-[70vh] gap-6 text-center px-4">
+          <div className="p-4 rounded-full bg-primary/10 animate-bounce">
+            <Lock className="h-12 w-12 text-primary" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black uppercase tracking-tighter">Biro's Private Sanctum</h2>
+            <p className="text-muted-foreground text-sm max-w-md font-medium">
+              This section is reserved for the true fans. Enter the secret code to proceed.
+            </p>
+          </div>
+          <div className="flex gap-2 w-full max-w-sm">
+            <Input 
+              type="password" 
+              placeholder="Enter Secret Key..." 
+              value={gatePassword}
+              onChange={(e) => setGatePassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleGateUnlock()}
+              className="font-bold tracking-widest text-center"
+            />
+            <Button onClick={handleGateUnlock} className="font-bold">UNLOCK</Button>
+          </div>
+          <p className="text-[10px] text-muted-foreground uppercase font-black opacity-30 tracking-widest">
+            Hint: A specific phrase for Biro
+          </p>
+        </div>
+      </MainLayout>
+    );
+  }
+
   return (
+
     <MainLayout>
       <PageHeader title="Daily Hot Question" description="Challenge yourself every day & discuss with others.">
         <div className="flex gap-2">

@@ -79,10 +79,16 @@ export default function MistakeBook() {
     toast.success('Removed from Mistake Book');
   };
 
-  const handleMarkMastered = (id: string) => {
-    updateMistakeBookEntry(id, { mastered: true });
+  const handleMarkMastered = (id: string, mastered: boolean = true) => {
+    updateMistakeBookEntry(id, { mastered });
     setEntries(getMistakeBook());
-    toast.success('Marked as mastered!');
+    toast.success(mastered ? 'Marked as mastered!' : 'Marked as needs practice');
+  };
+
+  const handleUpdateMastery = (id: string, level: MistakeBookEntry['masteryLevel']) => {
+    updateMistakeBookEntry(id, { masteryLevel: level });
+    setEntries(getMistakeBook());
+    toast.success(`Mastery updated to ${level}`);
   };
 
   const handleAddQuestion = () => {
@@ -389,6 +395,34 @@ export default function MistakeBook() {
                     </Button>
                   </div>
                 </div>
+                <div className="flex items-center gap-4 mb-3">
+                  <div className="flex-1">
+                    <Label className="text-[10px] uppercase text-muted-foreground">Mastery Level</Label>
+                    <Select 
+                      value={entry.masteryLevel || 'Novice'} 
+                      onValueChange={(v) => handleUpdateMastery(entry.id, v as any)}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Unfamiliar">Unfamiliar</SelectItem>
+                        <SelectItem value="Novice">Novice</SelectItem>
+                        <SelectItem value="Proficient">Proficient</SelectItem>
+                        <SelectItem value="Mastered">Mastered</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {entry.aiRemediationSuggested && (
+                    <div className="flex-1">
+                      <Label className="text-[10px] uppercase text-muted-foreground">AI Suggestion</Label>
+                      <Badge variant="secondary" className="block text-[10px] truncate py-1">
+                        {entry.aiRemediationSuggested}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+
                 <p className="text-sm mb-3 line-clamp-3">{entry.question.question}</p>
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex flex-wrap gap-1">
