@@ -10,32 +10,21 @@ const Index = () => {
 
   return (
     <div className="hidden">
-      {`Bhai dubara checkup kro
-I need you to create two Supabase storage buckets using a database migration. Create a new migration file that runs this SQL:
+      {`Go to the Supabase dashboard for this project and navigate to Storage. Create these two public buckets manually:
 
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('question-images', 'question-images', true)
-ON CONFLICT (id) DO UPDATE SET public = true;
+1. question-images (public)
 
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('biro-test-images', 'biro-test-images', true)
-ON CONFLICT (id) DO UPDATE SET public = true;
+2. biro-test-images (public)
 
-CREATE POLICY "Public read question-images" ON storage.objects
-FOR SELECT USING (bucket_id = 'question-images');
 
-CREATE POLICY "Auth upload question-images" ON storage.objects
-FOR INSERT WITH CHECK (bucket_id = 'question-images');
 
-CREATE POLICY "Public read biro-test-images" ON storage.objects
-FOR SELECT USING (bucket_id = 'biro-test-images');
 
-CREATE POLICY "Auth upload biro-test-images" ON storage.objects
-FOR INSERT WITH CHECK (bucket_id = 'biro-test-images');
+Also run this in the SQL editor:
 
-Apply this migration now so the buckets exist in the database.`}
+INSERT INTO storage.buckets (id, name, public) VALUES ('question-images', 'question-images', true) ON CONFLICT (id) DO UPDATE SET public = true;
+
+INSERT INTO storage.buckets (id, name, public) VALUES ('biro-test-images', 'biro-test-images', true) ON CONFLICT (id) DO UPDATE SET public = true;`}
     </div>
-
   );
 };
 
