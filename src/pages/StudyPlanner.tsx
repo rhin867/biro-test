@@ -33,8 +33,8 @@ export default function StudyPlanner() {
     const fetchPlan = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data } = await supabase
-          .from('study_plans')
+        const { data, error } = await supabase
+          .from('study_plans' as any)
           .select('plan_data')
           .eq('user_id', user.id)
           .eq('is_active', true)
@@ -42,8 +42,8 @@ export default function StudyPlanner() {
           .limit(1)
           .maybeSingle();
 
-        if (data) {
-          setCurrentPlan(data.plan_data as WeeklyPlan);
+        if (data && (data as any).plan_data) {
+          setCurrentPlan((data as any).plan_data as WeeklyPlan);
           return;
         }
       }
@@ -107,11 +107,11 @@ export default function StudyPlanner() {
       // Save to Supabase if authenticated
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase.from('study_plans').insert({
+        await supabase.from('study_plans' as any).insert({
           user_id: user.id,
           week_start_date: newPlan.weekStartDate,
           week_end_date: newPlan.weekEndDate,
-          plan_data: newPlan,
+          plan_data: newPlan as any,
         });
       }
 
