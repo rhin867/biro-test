@@ -458,7 +458,7 @@ export default function DailyHotQuestion() {
                       {imageError ? (
                         <div className="flex flex-col items-center justify-center p-8 text-muted-foreground gap-3">
                           <XCircle className="h-10 w-10 text-destructive/50" />
-                          <p className="text-xs">Diagram failed to load. The link might be expired or restricted.</p>
+                          <p className="text-xs font-medium">Diagram failed to load.</p>
                           <Button 
                             variant="outline" 
                             size="sm" 
@@ -475,11 +475,11 @@ export default function DailyHotQuestion() {
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <img 
-                            src={`${question.image_url}${question.image_url.includes('?') ? '&' : '?'}t=${Date.now()}`} 
+                            src={question.image_url.includes('?') ? question.image_url : `${question.image_url}?t=${Date.now()}`} 
                             alt="Question Diagram" 
-                            className="max-w-full h-auto object-contain max-h-[1200px] block rounded-lg shadow-sm" 
+                            className="max-w-full h-auto object-contain max-h-[1200px] block rounded-lg" 
+                            style={{ width: '100%', borderRadius: '8px' }}
                             loading="eager"
-                            crossOrigin="anonymous"
                             onError={(e) => {
                               console.error("Hot question image failed to load");
                               setImageError(true);

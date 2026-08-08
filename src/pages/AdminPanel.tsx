@@ -662,9 +662,9 @@ export default function AdminPanel() {
                         const fileName = `hot-q-${Date.now()}.${fileExt}`;
                         
                         const { data, error } = await supabase.storage
-                          .from('biro-test-images')
+                          .from('question-images')
                           .upload(fileName, file, {
-                            cacheControl: '0', 
+                            cacheControl: '3600', 
                             upsert: true
                           });
                         
@@ -672,14 +672,11 @@ export default function AdminPanel() {
                           console.error('Upload error details:', error);
                           toast.error('Upload failed: ' + error.message);
                         } else {
-                          // Use the standard URL construction for public buckets
-                          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-                          // Use object/public route consistently
-                          const publicUrl = `${supabaseUrl}/storage/v1/object/public/biro-test-images/${fileName}`;
+                          const { data: { publicUrl } } = supabase.storage
+                            .from('question-images')
+                            .getPublicUrl(fileName);
                           
-                          // Ensure we don't have double slashes (except in https://)
-                          const sanitizedUrl = publicUrl.replace(/([^:]\/)\/+/g, "$1");
-                          setHotQuestionImageUrl(`${sanitizedUrl}?t=${Date.now()}`);
+                          setHotQuestionImageUrl(`${publicUrl}?t=${Date.now()}`);
                           toast.success('Image uploaded!');
                         }
                       }
