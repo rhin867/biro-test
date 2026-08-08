@@ -522,29 +522,32 @@ export default function DailyHotQuestion() {
                       </div>
 
                       {/* Render Replies */}
-                      <div className="ml-8 space-y-3 border-l-2 border-primary/10 pl-4">
+                      <div className="ml-10 space-y-4 border-l-2 border-primary/20 pl-6 mt-4">
                         {responses.filter(r => r.parent_id === resp.id).map(reply => (
-                          <div key={reply.id} className="p-3 rounded-xl bg-muted/40 border border-border/30">
+                          <div key={reply.id} className="p-3.5 rounded-xl bg-muted/30 border border-border/40 relative group/reply hover:border-primary/20 transition-all">
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">
                                 <User className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-xs font-bold">{reply.user_display_name}</span>
+                                <span className="text-xs font-black text-muted-foreground">{reply.user_display_name}</span>
+                                <span className="text-[10px] text-muted-foreground">• {new Date(reply.created_at).toLocaleTimeString()}</span>
                               </div>
-                              <span className="text-[10px] text-muted-foreground">
-                                {new Date(reply.created_at).toLocaleTimeString()}
-                              </span>
                             </div>
-                            <p className="text-sm px-1 mb-2">{reply.comment}</p>
+                            <p className="text-sm px-1 mb-3 leading-relaxed">{reply.comment}</p>
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className={`h-6 text-[9px] gap-1 rounded-full px-2 ${(reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
+                              className={`h-7 text-[10px] gap-2 rounded-full px-3 transition-all ${
+                                (reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') 
+                                  ? 'text-primary bg-primary/10 hover:bg-primary/20' 
+                                  : 'text-muted-foreground hover:bg-muted'
+                              }`}
                               onClick={() => handleLike(reply.id, reply.user_key)}
                             >
-                              <ThumbsUp className="h-2.5 w-2.5" />
-                              {reply.likes || 0}
+                              <ThumbsUp className={`h-3 w-3 ${
+                                (reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary' : ''
+                              }`} />
+                              <span className="font-bold">{reply.likes || 0}</span>
                             </Button>
-
                           </div>
                         ))}
                       </div>
