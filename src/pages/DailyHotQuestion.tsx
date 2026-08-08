@@ -418,7 +418,10 @@ export default function DailyHotQuestion() {
                             className="max-w-full h-auto object-contain max-h-[1200px] block rounded-lg shadow-sm" 
                             loading="eager"
                             crossOrigin="anonymous"
-                            onError={() => setImageError(true)}
+                            onError={(e) => {
+                              console.error("Hot question image failed to load");
+                              setImageError(true);
+                            }}
                           />
                         </div>
                       )}
