@@ -181,13 +181,28 @@ export default function Dashboard() {
   const results = getResults();
   const [xp, setXp] = useState(0);
   const [level, setLevel] = useState(1);
+  const [streak, setStreak] = useState(0);
 
   useEffect(() => {
-    // XP calculation: 50 per test attempt + 10 per Daily Hot Question solved
-    const solvedDaily = parseInt(localStorage.getItem('solved_daily_count') || '0');
-    const totalXp = (results.length * 50) + (solvedDaily * 10);
-    setXp(totalXp);
-    setLevel(Math.floor(totalXp / 100) + 1);
+    const syncProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase.from('profiles').select('total_xp, user_streak').eq('id', user.id).single();
+        if (profile) {
+          setXp(profile.total_xp || 0);
+          setLevel(Math.floor((profile.total_xp || 0) / 100) + 1);
+          setStreak(profile.user_streak || 0);
+          localStorage.setItem('user_streak', String(profile.user_streak || 0));
+        }
+      } else {
+        const solvedDaily = parseInt(localStorage.getItem('solved_daily_count') || '0');
+        const totalXp = (results.length * 50) + (solvedDaily * 10);
+        setXp(totalXp);
+        setLevel(Math.floor(totalXp / 100) + 1);
+        setStreak(parseInt(localStorage.getItem('user_streak') || '0'));
+      }
+    };
+    syncProfile();
   }, [results.length]);
 
   // Calculate overall stats
