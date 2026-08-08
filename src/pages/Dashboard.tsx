@@ -29,7 +29,7 @@ function DailyHotQuestionPreview() {
   const [alarmTime, setAlarmTime] = useState("");
 
   useEffect(() => {
-    supabase.from('hot_questions').select('*').order('created_at', { ascending: false }).limit(1).then(({ data }) => {
+    supabase.from('hot_questions').select('id, content, created_at, options, image_url, question_type, type').order('created_at', { ascending: false }).limit(1).then(({ data }) => {
       if (data && data.length > 0) {
         // Only show if question is less than 24 hours old
         const createdDate = new Date(data[0].created_at);
@@ -118,11 +118,12 @@ function DailyHotQuestionPreview() {
               {question.type || 'MCQ'}
             </Badge>
             <p className="text-[10px] text-muted-foreground font-medium">{new Date(question.created_at).toLocaleDateString()}</p>
-            {question.correct_option && (
+            {question.options && (
               <Badge variant="secondary" className="text-[9px] h-4 px-1 py-0 bg-correct/10 text-correct border-correct/20">
-                Answered
+                MCQ
               </Badge>
             )}
+
           </div>
         </div>
         <div className="flex items-center gap-2">
