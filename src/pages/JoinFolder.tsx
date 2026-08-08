@@ -13,6 +13,8 @@ export default function JoinFolder() {
   const navigate = useNavigate();
   const token = searchParams.get('token');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [requiresPassword, setRequiresPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [folderName, setFolderName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -26,14 +28,12 @@ export default function JoinFolder() {
 
     const fetchFolderInfo = async () => {
       try {
-        const { data, error } = await supabase
-          .from('test_folder_shares' as any)
-          .select('folder_name')
-          .eq('share_token', token)
-          .single();
-        
-        if (error || !data) throw new Error('Folder not found or link expired');
-        setFolderName((data as any).folder_name);
+        const { data, error } = await supabase.functions.invoke('folder-share', {
+          body: { action: 'info', token },
+        });
+        if (error || !data || (data as any).error) throw new Error('Folder not found or link expired');
+        setFolderName((data as any).folderName);
+        setRequiresPassword(!!(data as any).requiresPassword);
       } catch (e: any) {
         toast.error(e.message);
         navigate('/tests');
@@ -50,23 +50,19 @@ export default function JoinFolder() {
     if (!email.trim()) return;
     setIsSubmitting(true);
     try {
-      const { data: shares } = await supabase
-        .from('test_folder_shares' as any)
-        .select('id')
-        .eq('share_token', token)
-        .single();
+      // The folder password is verified server-side against a stored hash.
+      const { data, error } = await supabase.functions.invoke('folder-share', {
+        body: {
+          action: 'request_access',
+          token,
+          email: email.trim(),
+          userKey: localStorage.getItem('user_key'),
+          password: password || null,
+        },
+      });
+      if (error) throw new Error('Request failed');
+      if ((data as any)?.error) throw new Error((data as any).error);
 
-      if (!shares) throw new Error('Invalid share link');
-
-      const { error } = await supabase
-        .from('folder_access_requests' as any)
-        .insert({
-          folder_share_id: (shares as any).id,
-          requester_user_key: localStorage.getItem('user_key'),
-          requester_email: email.trim(),
-        } as any);
-
-      if (error) throw error;
       toast.success('Access request sent! The owner will be notified.');
       navigate('/tests');
     } catch (e: any) {
@@ -75,6 +71,7 @@ export default function JoinFolder() {
       setIsSubmitting(false);
     }
   };
+
 
   if (loading) {
     return (
@@ -112,6 +109,19 @@ export default function JoinFolder() {
                   required
                 />
               </div>
+              {requiresPassword && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Folder Password</label>
+                  <Input
+                    type="password"
+                    placeholder="Enter the folder password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
+
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Request Access
