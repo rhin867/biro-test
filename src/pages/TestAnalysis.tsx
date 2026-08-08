@@ -609,7 +609,26 @@ export default function TestAnalysis() {
           <AttemptHistory testId={test.id} results={allAttempts} />
         </TabsContent>
       </Tabs>
+      {/* Hidden printable sections for PDF generation */}
+      <div className="sr-only" aria-hidden="true">
+        <div id="overview"><Card><CardHeader><CardTitle>Performance Overview</CardTitle></CardHeader><CardContent><PerformanceComparison result={result} /></CardContent></Card></div>
+        <div id="score-potential"><ScorePotential result={result} positiveMarking={test.positiveMarking} negativeMarking={test.negativeMarking} /></div>
+        <div id="attempt-analysis"><AttemptAnalysis questionResults={result.questionResults} /></div>
+        <div id="time-analysis"><TimeAnalysis questionResults={result.questionResults} totalDuration={test.duration} /></div>
+        <div id="difficulty"><DifficultyAnalysis questionResults={result.questionResults} questions={test.questions.map(q => ({ id: q.id, level: q.level }))} /></div>
+        <div id="subject-movement"><SubjectMovement questionResults={result.questionResults} /></div>
+        <div id="fatigue"><FatigueHeatmap questionResults={result.questionResults} /></div>
+        <div id="ghost-replay"><GhostReplay questionResults={result.questionResults} /></div>
+        <div id="question-journey"><QuestionJourney questionResults={result.questionResults} totalDuration={test.duration} /></div>
+        <div id="painful"><PainfulQuestions questionResults={result.questionResults} onQuestionClick={() => {}} /></div>
+        <div id="missed-concepts"><MissedConcepts questionResults={result.questionResults} /></div>
+        <div id="comparison"><PerformanceComparison result={result} /></div>
+        <div id="complete-analysis"><CompleteAuditTable questionResults={result.questionResults} questions={test.questions} onViewQuestion={() => {}} /></div>
+        <div id="chapters"><ChapterWiseBreakdown chapterData={result.chapterWise} questionResults={result.questionResults} onQuestionClick={() => {}} /></div>
+        <div id="mistakes"><MistakePatternDonut mistakesByType={mistakesByType} totalMistakes={result.incorrect} /></div>
+        <div id="learnings"><TestLearnings attemptId={result.attemptId} /></div>
       </div>
+
 
       {/* Question Detail Dialog */}
       <Dialog open={!!selectedQuestion} onOpenChange={() => setSelectedQuestion(null)}>
