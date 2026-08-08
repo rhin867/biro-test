@@ -38,9 +38,12 @@ export type Database = {
           author_key: string | null
           content: string
           created_at: string | null
+          disliked_by: string[] | null
           downvotes: number | null
           id: string
+          liked_by: string[] | null
           msg_type: string | null
+          parent_id: string | null
           post_type: string | null
           upvotes: number | null
         }
@@ -49,9 +52,12 @@ export type Database = {
           author_key?: string | null
           content: string
           created_at?: string | null
+          disliked_by?: string[] | null
           downvotes?: number | null
           id?: string
+          liked_by?: string[] | null
           msg_type?: string | null
+          parent_id?: string | null
           post_type?: string | null
           upvotes?: number | null
         }
@@ -60,13 +66,24 @@ export type Database = {
           author_key?: string | null
           content?: string
           created_at?: string | null
+          disliked_by?: string[] | null
           downvotes?: number | null
           id?: string
+          liked_by?: string[] | null
           msg_type?: string | null
+          parent_id?: string | null
           post_type?: string | null
           upvotes?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "community_messages_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "community_messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       folder_access_requests: {
         Row: {
