@@ -79,10 +79,16 @@ export default function MistakeBook() {
     toast.success('Removed from Mistake Book');
   };
 
-  const handleMarkMastered = (id: string) => {
-    updateMistakeBookEntry(id, { mastered: true });
+  const handleMarkMastered = (id: string, mastered: boolean = true) => {
+    updateMistakeBookEntry(id, { mastered });
     setEntries(getMistakeBook());
-    toast.success('Marked as mastered!');
+    toast.success(mastered ? 'Marked as mastered!' : 'Marked as needs practice');
+  };
+
+  const handleUpdateMastery = (id: string, level: MistakeBookEntry['masteryLevel']) => {
+    updateMistakeBookEntry(id, { masteryLevel: level });
+    setEntries(getMistakeBook());
+    toast.success(`Mastery updated to ${level}`);
   };
 
   const handleAddQuestion = () => {
