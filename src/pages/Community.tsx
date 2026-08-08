@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { generateId } from '@/lib/storage';
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseKeyed, getUserKey } from '@/lib/supabase-keyed';
+
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import telegramQR from '@/assets/telegram-qr.png';
 import {
@@ -26,10 +28,12 @@ const REWARDS_KEY = 'user_rewards';
 interface ChatMessage {
   id: string; author: string; content: string; created_at: string; msg_type: string; post_type: string;
   upvotes: number; downvotes: number;
+  author_key?: string;
   liked_by?: string[];
   disliked_by?: string[];
   parent_id?: string;
 }
+
 
 
 function getLockedAuthor() {
@@ -117,72 +121,64 @@ export default function Community() {
   const handleSendChat = async () => {
     if (!chatMsg.trim() || !author.trim()) { toast.error('Enter name and message'); return; }
     if (!authorLocked) lockAuthor();
-    
-    await supabase.from('community_messages' as any).insert({
-      author: author.trim(), 
-      content: chatMsg.trim(), 
-      msg_type: 'chat', 
+
+    const { error } = await supabaseKeyed.from('community_messages' as any).insert({
+      author: author.trim(),
+      author_key: getUserKey(),
+      content: chatMsg.trim(),
+      msg_type: 'chat',
       post_type: 'general',
       parent_id: replyTo?.id || null
     } as any);
+    if (error) { toast.error('Could not send message'); return; }
     setChatMsg('');
     setReplyTo(null);
     addReward(2, 'Sent a chat message');
   };
 
+  const applyVoteResult = (msgId: string, isChat: boolean, result: any) => {
+    const patch = {
+      upvotes: result.upvotes,
+      downvotes: result.downvotes,
+      liked_by: result.liked_by,
+      disliked_by: result.disliked_by,
+    };
+    const setter = isChat ? setChatMessages : setPosts;
+    setter(prev => prev.map(m => m.id === msgId ? { ...m, ...patch } : m));
+  };
+
   const handleVote = async (msgId: string, voteType: 'up' | 'down') => {
-    const userKey = localStorage.getItem('user_key') || 'anonymous';
     const msg = [...chatMessages, ...posts].find(m => m.id === msgId);
     if (!msg) return;
 
-    let newUpvotes = msg.upvotes || 0;
-    let newDownvotes = msg.downvotes || 0;
-    let likedBy = [...(msg.liked_by || [])];
-    let dislikedBy = [...(msg.disliked_by || [])];
+    const { data, error } = await supabase.functions.invoke('community-vote', {
+      body: { table: 'community_messages', id: msgId, userKey: getUserKey(), direction: voteType },
+    });
 
-    if (voteType === 'up') {
-      if (likedBy.includes(userKey)) {
-        likedBy = likedBy.filter(k => k !== userKey);
-        newUpvotes--;
-      } else {
-        likedBy.push(userKey);
-        newUpvotes++;
-        if (dislikedBy.includes(userKey)) {
-          dislikedBy = dislikedBy.filter(k => k !== userKey);
-          newDownvotes--;
-        }
-      }
-    } else {
-      if (dislikedBy.includes(userKey)) {
-        dislikedBy = dislikedBy.filter(k => k !== userKey);
-        newDownvotes--;
-      } else {
-        dislikedBy.push(userKey);
-        newDownvotes++;
-        if (likedBy.includes(userKey)) {
-          likedBy = likedBy.filter(k => k !== userKey);
-          newUpvotes--;
-        }
-      }
-    }
-
-    const { error } = await supabase.from('community_messages' as any)
-      .update({ 
-        upvotes: newUpvotes, 
-        downvotes: newDownvotes,
-        liked_by: likedBy,
-        disliked_by: dislikedBy
-      } as any)
-      .eq('id', msgId);
-
-    if (!error) {
-      if (msg.msg_type === 'chat') {
-        setChatMessages(prev => prev.map(m => m.id === msgId ? { ...m, upvotes: newUpvotes, downvotes: newDownvotes, liked_by: likedBy, disliked_by: dislikedBy } : m));
-      } else {
-        setPosts(prev => prev.map(m => m.id === msgId ? { ...m, upvotes: newUpvotes, downvotes: newDownvotes, liked_by: likedBy, disliked_by: dislikedBy } : m));
-      }
-    }
+    if (error || !data) { toast.error('Vote failed'); return; }
+    applyVoteResult(msgId, msg.msg_type === 'chat', data);
   };
+
+  const handleEditMessage = async (msg: ChatMessage, isChat: boolean) => {
+    const newContent = prompt(isChat ? 'Edit message:' : 'Edit post:', msg.content);
+    if (!newContent || newContent === msg.content) return;
+    const { error } = await supabaseKeyed.from('community_messages' as any)
+      .update({ content: newContent.trim() } as any).eq('id', msg.id);
+    if (error) { toast.error('You can only edit your own messages'); return; }
+    toast.success('Updated');
+    const setter = isChat ? setChatMessages : setPosts;
+    setter(prev => prev.map(m => m.id === msg.id ? { ...m, content: newContent.trim() } : m));
+  };
+
+  const handleDeleteMessage = async (msg: ChatMessage, isChat: boolean) => {
+    if (!confirm('Delete this permanently?')) return;
+    const { error } = await supabaseKeyed.from('community_messages' as any).delete().eq('id', msg.id);
+    if (error) { toast.error('You can only delete your own messages'); return; }
+    toast.success('Deleted');
+    const setter = isChat ? setChatMessages : setPosts;
+    setter(prev => prev.filter(m => m.id !== msg.id && m.parent_id !== msg.id));
+  };
+
 
 
   const handleSubmitPost = async () => {
