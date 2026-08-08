@@ -312,11 +312,11 @@ export default function Community() {
                           )}
 
                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleVote(msg.id, 'up')}>
-                            <ThumbsUp className={`h-3 w-3 ${(msg.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary text-primary' : ''}`} />
+                            <ThumbsUp className={`h-3 w-3 ${(msg.liked_by || []).includes(getUserKey()) ? 'fill-primary text-primary' : ''}`} />
                           </Button>
                           <span className="text-[10px] font-bold">{(msg.upvotes || 0) - (msg.downvotes || 0)}</span>
                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleVote(msg.id, 'down')}>
-                            <ThumbsDown className={`h-3 w-3 ${(msg.disliked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-destructive text-destructive' : ''}`} />
+                            <ThumbsDown className={`h-3 w-3 ${(msg.disliked_by || []).includes(getUserKey()) ? 'fill-destructive text-destructive' : ''}`} />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setReplyTo(msg); setChatMsg(`@${msg.author} `); }}>
                             <Reply className="h-3 w-3" />
@@ -349,10 +349,10 @@ export default function Community() {
                               )}
 
                               <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleVote(reply.id, 'up')}>
-                                <ThumbsUp className={`h-2.5 w-2.5 ${(reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary text-primary' : ''}`} />
+                                <ThumbsUp className={`h-2.5 w-2.5 ${(reply.liked_by || []).includes(getUserKey()) ? 'fill-primary text-primary' : ''}`} />
                               </Button>
                               <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleVote(reply.id, 'down')}>
-                                <ThumbsDown className={`h-2.5 w-2.5 ${(reply.disliked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-destructive text-destructive' : ''}`} />
+                                <ThumbsDown className={`h-2.5 w-2.5 ${(reply.disliked_by || []).includes(getUserKey()) ? 'fill-destructive text-destructive' : ''}`} />
                               </Button>
                               <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => { setReplyTo(msg); setChatMsg(`@${reply.author} `); }}>
                                 <Reply className="h-2.5 w-2.5" />
@@ -426,11 +426,11 @@ export default function Community() {
                       )}
 
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleVote(post.id, 'up')}>
-                        <ThumbsUp className={`h-3.5 w-3.5 ${(post.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary text-primary' : ''}`} />
+                        <ThumbsUp className={`h-3.5 w-3.5 ${(post.liked_by || []).includes(getUserKey()) ? 'fill-primary text-primary' : ''}`} />
                       </Button>
                       <span className="text-xs font-bold">{(post.upvotes || 0) - (post.downvotes || 0)}</span>
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleVote(post.id, 'down')}>
-                        <ThumbsDown className={`h-3.5 w-3.5 ${(post.disliked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-destructive text-destructive' : ''}`} />
+                        <ThumbsDown className={`h-3.5 w-3.5 ${(post.disliked_by || []).includes(getUserKey()) ? 'fill-destructive text-destructive' : ''}`} />
                       </Button>
                     </div>
 
