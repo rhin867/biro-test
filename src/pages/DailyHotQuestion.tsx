@@ -96,8 +96,8 @@ export default function DailyHotQuestion() {
 
   const fetchNotifications = async () => {
     const userKey = localStorage.getItem('user_key') || 'anonymous';
-    const { data } = await (supabase as any)
-      .from('notifications')
+    const { data } = await supabase
+      .from('notifications' as any)
 
       .select('*')
       .eq('user_key', userKey)
