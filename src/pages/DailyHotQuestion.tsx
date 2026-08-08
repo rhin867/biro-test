@@ -192,6 +192,10 @@ export default function DailyHotQuestion() {
         localStorage.setItem(`solved_q_${question.id}`, 'true');
         localStorage.setItem(`ans_q_${question.id}`, myResponse.trim());
         setHasAnswered(true);
+        
+        // Update XP tracking
+        const currentSolved = parseInt(localStorage.getItem('solved_daily_count') || '0');
+        localStorage.setItem('solved_daily_count', String(currentSolved + 1));
       }
       
       if (replyTo && replyTo.user_key !== userKey) {
