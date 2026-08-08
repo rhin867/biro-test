@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { generateId } from '@/lib/storage';
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseKeyed, getUserKey } from '@/lib/supabase-keyed';
+
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import telegramQR from '@/assets/telegram-qr.png';
 import {
@@ -26,10 +28,12 @@ const REWARDS_KEY = 'user_rewards';
 interface ChatMessage {
   id: string; author: string; content: string; created_at: string; msg_type: string; post_type: string;
   upvotes: number; downvotes: number;
+  author_key?: string;
   liked_by?: string[];
   disliked_by?: string[];
   parent_id?: string;
 }
+
 
 
 function getLockedAuthor() {
@@ -117,81 +121,74 @@ export default function Community() {
   const handleSendChat = async () => {
     if (!chatMsg.trim() || !author.trim()) { toast.error('Enter name and message'); return; }
     if (!authorLocked) lockAuthor();
-    
-    await supabase.from('community_messages' as any).insert({
-      author: author.trim(), 
-      content: chatMsg.trim(), 
-      msg_type: 'chat', 
+
+    const { error } = await supabaseKeyed.from('community_messages' as any).insert({
+      author: author.trim(),
+      author_key: getUserKey(),
+      content: chatMsg.trim(),
+      msg_type: 'chat',
       post_type: 'general',
       parent_id: replyTo?.id || null
     } as any);
+    if (error) { toast.error('Could not send message'); return; }
     setChatMsg('');
     setReplyTo(null);
     addReward(2, 'Sent a chat message');
   };
 
+  const applyVoteResult = (msgId: string, isChat: boolean, result: any) => {
+    const patch = {
+      upvotes: result.upvotes,
+      downvotes: result.downvotes,
+      liked_by: result.liked_by,
+      disliked_by: result.disliked_by,
+    };
+    const setter = isChat ? setChatMessages : setPosts;
+    setter(prev => prev.map(m => m.id === msgId ? { ...m, ...patch } : m));
+  };
+
   const handleVote = async (msgId: string, voteType: 'up' | 'down') => {
-    const userKey = localStorage.getItem('user_key') || 'anonymous';
     const msg = [...chatMessages, ...posts].find(m => m.id === msgId);
     if (!msg) return;
 
-    let newUpvotes = msg.upvotes || 0;
-    let newDownvotes = msg.downvotes || 0;
-    let likedBy = [...(msg.liked_by || [])];
-    let dislikedBy = [...(msg.disliked_by || [])];
+    const { data, error } = await supabase.functions.invoke('community-vote', {
+      body: { table: 'community_messages', id: msgId, userKey: getUserKey(), direction: voteType },
+    });
 
-    if (voteType === 'up') {
-      if (likedBy.includes(userKey)) {
-        likedBy = likedBy.filter(k => k !== userKey);
-        newUpvotes--;
-      } else {
-        likedBy.push(userKey);
-        newUpvotes++;
-        if (dislikedBy.includes(userKey)) {
-          dislikedBy = dislikedBy.filter(k => k !== userKey);
-          newDownvotes--;
-        }
-      }
-    } else {
-      if (dislikedBy.includes(userKey)) {
-        dislikedBy = dislikedBy.filter(k => k !== userKey);
-        newDownvotes--;
-      } else {
-        dislikedBy.push(userKey);
-        newDownvotes++;
-        if (likedBy.includes(userKey)) {
-          likedBy = likedBy.filter(k => k !== userKey);
-          newUpvotes--;
-        }
-      }
-    }
-
-    const { error } = await supabase.from('community_messages' as any)
-      .update({ 
-        upvotes: newUpvotes, 
-        downvotes: newDownvotes,
-        liked_by: likedBy,
-        disliked_by: dislikedBy
-      } as any)
-      .eq('id', msgId);
-
-    if (!error) {
-      if (msg.msg_type === 'chat') {
-        setChatMessages(prev => prev.map(m => m.id === msgId ? { ...m, upvotes: newUpvotes, downvotes: newDownvotes, liked_by: likedBy, disliked_by: dislikedBy } : m));
-      } else {
-        setPosts(prev => prev.map(m => m.id === msgId ? { ...m, upvotes: newUpvotes, downvotes: newDownvotes, liked_by: likedBy, disliked_by: dislikedBy } : m));
-      }
-    }
+    if (error || !data) { toast.error('Vote failed'); return; }
+    applyVoteResult(msgId, msg.msg_type === 'chat', data);
   };
+
+  const handleEditMessage = async (msg: ChatMessage, isChat: boolean) => {
+    const newContent = prompt(isChat ? 'Edit message:' : 'Edit post:', msg.content);
+    if (!newContent || newContent === msg.content) return;
+    const { error } = await supabaseKeyed.from('community_messages' as any)
+      .update({ content: newContent.trim() } as any).eq('id', msg.id);
+    if (error) { toast.error('You can only edit your own messages'); return; }
+    toast.success('Updated');
+    const setter = isChat ? setChatMessages : setPosts;
+    setter(prev => prev.map(m => m.id === msg.id ? { ...m, content: newContent.trim() } : m));
+  };
+
+  const handleDeleteMessage = async (msg: ChatMessage, isChat: boolean) => {
+    if (!confirm('Delete this permanently?')) return;
+    const { error } = await supabaseKeyed.from('community_messages' as any).delete().eq('id', msg.id);
+    if (error) { toast.error('You can only delete your own messages'); return; }
+    toast.success('Deleted');
+    const setter = isChat ? setChatMessages : setPosts;
+    setter(prev => prev.filter(m => m.id !== msg.id && m.parent_id !== msg.id));
+  };
+
 
 
   const handleSubmitPost = async () => {
     if (!newPost.trim() || !author.trim()) { toast.error('Enter name and message'); return; }
     if (!authorLocked) lockAuthor();
     
-    await supabase.from('community_messages' as any).insert({
-      author: author.trim(), content: newPost.trim(), msg_type: 'post', post_type: postType,
+    await supabaseKeyed.from('community_messages' as any).insert({
+      author: author.trim(), author_key: getUserKey(), content: newPost.trim(), msg_type: 'post', post_type: postType,
     } as any);
+
     setNewPost('');
     addReward(10, 'Posted in community');
     toast.success('Posted! +10 XP');
@@ -199,11 +196,13 @@ export default function Community() {
 
   const handleSubmitRating = async () => {
     if (rating === 0) { toast.error('Select a rating'); return; }
-    await supabase.from('community_messages' as any).insert({
+    await supabaseKeyed.from('community_messages' as any).insert({
       author: author.trim() || 'Anonymous',
+      author_key: getUserKey(),
       content: `⭐ ${rating}/5 - ${feedback || 'No comment'}`,
       msg_type: 'post', post_type: 'rating',
     } as any);
+
     addReward(15, 'Rated the app');
     toast.success('Thanks for feedback! +15 XP');
     setRating(0); setFeedback('');
@@ -303,41 +302,23 @@ export default function Community() {
                           <span className="text-xs text-muted-foreground">{new Date(msg.created_at).toLocaleTimeString()}</span>
                         </div>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {msg.author === author && (
+                          {msg.author_key === getUserKey() && (
                             <>
-                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
-                                const newContent = prompt('Edit message:', msg.content);
-                                if (newContent && newContent !== msg.content) {
-                                  supabase.from('community_messages' as any).update({ content: newContent } as any).eq('id', msg.id).then(({ error }) => {
-                                    if (!error) {
-                                      toast.success('Message updated');
-                                      setChatMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: newContent } : m));
-                                    }
-                                  });
-                                }
-                              }}>
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditMessage(msg, true)}>
                                 <Edit2 className="h-3 w-3" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-destructive" onClick={() => {
-                                if (confirm('Delete message?')) {
-                                  supabase.from('community_messages' as any).delete().eq('id', msg.id).then(({ error }) => {
-                                    if (!error) {
-                                      toast.success('Message deleted');
-                                      setChatMessages(prev => prev.filter(m => m.id !== msg.id));
-                                    }
-                                  });
-                                }
-                              }}>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-destructive" onClick={() => handleDeleteMessage(msg, true)}>
                                 <Trash2 className="h-3 w-3" />
                               </Button>
                             </>
                           )}
+
                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleVote(msg.id, 'up')}>
-                            <ThumbsUp className={`h-3 w-3 ${(msg.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary text-primary' : ''}`} />
+                            <ThumbsUp className={`h-3 w-3 ${(msg.liked_by || []).includes(getUserKey()) ? 'fill-primary text-primary' : ''}`} />
                           </Button>
                           <span className="text-[10px] font-bold">{(msg.upvotes || 0) - (msg.downvotes || 0)}</span>
                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleVote(msg.id, 'down')}>
-                            <ThumbsDown className={`h-3 w-3 ${(msg.disliked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-destructive text-destructive' : ''}`} />
+                            <ThumbsDown className={`h-3 w-3 ${(msg.disliked_by || []).includes(getUserKey()) ? 'fill-destructive text-destructive' : ''}`} />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setReplyTo(msg); setChatMsg(`@${msg.author} `); }}>
                             <Reply className="h-3 w-3" />
@@ -358,40 +339,22 @@ export default function Community() {
                               <span className="text-[10px] text-muted-foreground">{new Date(reply.created_at).toLocaleTimeString()}</span>
                             </div>
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity scale-90">
-                              {reply.author === author && (
+                              {reply.author_key === getUserKey() && (
                                 <>
-                                  <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => {
-                                    const newContent = prompt('Edit reply:', reply.content);
-                                    if (newContent && newContent !== reply.content) {
-                                      supabase.from('community_messages' as any).update({ content: newContent } as any).eq('id', reply.id).then(({ error }) => {
-                                        if (!error) {
-                                          toast.success('Reply updated');
-                                          setChatMessages(prev => prev.map(m => m.id === reply.id ? { ...m, content: newContent } : m));
-                                        }
-                                      });
-                                    }
-                                  }}>
+                                  <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleEditMessage(reply, true)}>
                                     <Edit2 className="h-2.5 w-2.5" />
                                   </Button>
-                                  <Button variant="ghost" size="icon" className="h-5 w-5 hover:text-destructive" onClick={() => {
-                                    if (confirm('Delete reply?')) {
-                                      supabase.from('community_messages' as any).delete().eq('id', reply.id).then(({ error }) => {
-                                        if (!error) {
-                                          toast.success('Reply deleted');
-                                          setChatMessages(prev => prev.filter(m => m.id !== reply.id));
-                                        }
-                                      });
-                                    }
-                                  }}>
+                                  <Button variant="ghost" size="icon" className="h-5 w-5 hover:text-destructive" onClick={() => handleDeleteMessage(reply, true)}>
                                     <Trash2 className="h-2.5 w-2.5" />
                                   </Button>
                                 </>
                               )}
+
                               <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleVote(reply.id, 'up')}>
-                                <ThumbsUp className={`h-2.5 w-2.5 ${(reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary text-primary' : ''}`} />
+                                <ThumbsUp className={`h-2.5 w-2.5 ${(reply.liked_by || []).includes(getUserKey()) ? 'fill-primary text-primary' : ''}`} />
                               </Button>
                               <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleVote(reply.id, 'down')}>
-                                <ThumbsDown className={`h-2.5 w-2.5 ${(reply.disliked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-destructive text-destructive' : ''}`} />
+                                <ThumbsDown className={`h-2.5 w-2.5 ${(reply.disliked_by || []).includes(getUserKey()) ? 'fill-destructive text-destructive' : ''}`} />
                               </Button>
                               <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => { setReplyTo(msg); setChatMsg(`@${reply.author} `); }}>
                                 <Reply className="h-2.5 w-2.5" />
@@ -453,41 +416,23 @@ export default function Community() {
                       <span className="text-xs text-muted-foreground">{new Date(post.created_at).toLocaleDateString()}</span>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {post.author === author && (
+                      {post.author_key === getUserKey() && (
                         <>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                            const newContent = prompt('Edit post:', post.content);
-                            if (newContent && newContent !== post.content) {
-                              supabase.from('community_messages' as any).update({ content: newContent } as any).eq('id', post.id).then(({ error }) => {
-                                if (!error) {
-                                  toast.success('Post updated');
-                                  setPosts(prev => prev.map(p => p.id === post.id ? { ...p, content: newContent } : p));
-                                }
-                              });
-                            }
-                          }}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditMessage(post, false)}>
                             <Edit2 className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive" onClick={() => {
-                            if (confirm('Delete post?')) {
-                              supabase.from('community_messages' as any).delete().eq('id', post.id).then(({ error }) => {
-                                if (!error) {
-                                  toast.success('Post deleted');
-                                  setPosts(prev => prev.filter(p => p.id !== post.id));
-                                }
-                              });
-                            }
-                          }}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive" onClick={() => handleDeleteMessage(post, false)}>
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </>
                       )}
+
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleVote(post.id, 'up')}>
-                        <ThumbsUp className={`h-3.5 w-3.5 ${(post.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary text-primary' : ''}`} />
+                        <ThumbsUp className={`h-3.5 w-3.5 ${(post.liked_by || []).includes(getUserKey()) ? 'fill-primary text-primary' : ''}`} />
                       </Button>
                       <span className="text-xs font-bold">{(post.upvotes || 0) - (post.downvotes || 0)}</span>
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleVote(post.id, 'down')}>
-                        <ThumbsDown className={`h-3.5 w-3.5 ${(post.disliked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-destructive text-destructive' : ''}`} />
+                        <ThumbsDown className={`h-3.5 w-3.5 ${(post.disliked_by || []).includes(getUserKey()) ? 'fill-destructive text-destructive' : ''}`} />
                       </Button>
                     </div>
 
