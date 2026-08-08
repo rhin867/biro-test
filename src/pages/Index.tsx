@@ -17,6 +17,7 @@ const Index = () => {
       Add edit and delete controls for my community posts and replies so I can manage my content after posting.
       Saale image q visible nahi ho rha hai checkout kr real reason and fix kr ,and fir checkout kr ki abb visible ho rha hai ya nahi and agar nahi ho rha hai to dubra fix kr,tabb tkk fix kr jbb tkk sabbi panels pr direct visible na ho jaaye,
       Checkout kr image visiblity dhqmein fixed haivisible ho rha hai ya nahi and agar nahi ho rha hai to fix kr
+      Ye dekh yha pr visible nahi ho rha hai image abb ise fix kr yha pr visibke hona chahiye to fix kr saale real reason nikal plan bna and mereko de fix kr then ise
     </div>
 
   );
