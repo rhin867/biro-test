@@ -81,7 +81,10 @@ const Index = () => {
 
       Add storage health check,add admin upload diagnostic,add image retry ui,add cache busting on load,give me the links of supabase project,and give me the links of buckets so that i can see that is it build or not
       Reddit type upvoting downvoting system purely har ek comments replies mein add kro fix kro checkout keo
-      Madarchod to main kaise pta krunga kaunaa project hai and kaunsa project mein tu bucket kaunsa use kr rha hai`}
+      Madarchod to main kaise pta krunga kaunaa project hai and kaunsa project mein tu bucket kaunsa use kr rha hai
+      Implement the full CBT exam runner UI with a global timer, per-question timer, navigation, and answer submission flow.
+      `}
+
 
     </div>
 
