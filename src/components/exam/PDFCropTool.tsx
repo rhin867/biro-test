@@ -83,6 +83,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
   const [isDrawing, setIsDrawing] = useState(false);
   const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
   const [cropRegion, setCropRegion] = useState<CropRegion | null>(null);
+  const [optionRegions, setOptionRegions] = useState<CropRegion[]>([]);
   const [croppedImages, setCroppedImages] = useState<CroppedImage[]>(initialCrops || []);
   const [subject, setSubject] = useState<string>(initialCrops?.[0]?.subject || 'Maths');
   const [section, setSection] = useState<string>(initialCrops?.[0]?.section || 'Section 1');
@@ -126,7 +127,12 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
       setLastTouchDist(dist);
       return;
     }
-    const c = getRelativeCoords(e); setCropStart(c); setCropRegion(null); setIsDrawing(true);
+    const c = getRelativeCoords(e); setCropStart(c); 
+    if (!e.shiftKey) {
+      setCropRegion(null); 
+      setOptionRegions([]);
+    }
+    setIsDrawing(true);
   }, [getRelativeCoords]);
 
   const handleMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
@@ -139,16 +145,38 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
     }
     if (!isDrawing || !cropStart) return;
     const c = getRelativeCoords(e);
-    setCropRegion({
+    const region = {
       x: Math.min(cropStart.x, c.x), y: Math.min(cropStart.y, c.y),
       width: Math.abs(c.x - cropStart.x), height: Math.abs(c.y - cropStart.y),
-    });
+    };
+    
+    if ((e as any).shiftKey) {
+      // Temporarily show the current option being drawn if we wanted, 
+      // but for simplicity we just update the last one or wait for handleEnd
+    } else {
+      setCropRegion(region);
+    }
   }, [isDrawing, cropStart, getRelativeCoords, lastTouchDist]);
 
-  const handleEnd = useCallback(() => {
+  const handleEnd = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (isDrawing && cropStart) {
+      const c = getRelativeCoords(e as any);
+      const region = {
+        x: Math.min(cropStart.x, c.x), y: Math.min(cropStart.y, c.y),
+        width: Math.abs(c.x - cropStart.x), height: Math.abs(c.y - cropStart.y),
+      };
+      
+      if (region.width > 5 && region.height > 5) {
+        if ((e as any).shiftKey) {
+          setOptionRegions(prev => [...prev, region]);
+        } else {
+          setCropRegion(region);
+        }
+      }
+    }
     setIsDrawing(false);
     setLastTouchDist(null);
-  }, []);
+  }, [isDrawing, cropStart, getRelativeCoords]);
 
   const handleCrop = useCallback(() => {
     if (!cropRegion || !page || !imgRef.current) return;
@@ -162,22 +190,51 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
     const srcW = Math.min(img.naturalWidth - srcX, Math.round(cropRegion.width * scaleX));
     const srcH = Math.min(img.naturalHeight - srcY, Math.round(cropRegion.height * scaleY));
     if (srcW < 5 || srcH < 5) return;
-    const canvas = document.createElement('canvas');
-    canvas.width = srcW; canvas.height = srcH;
-    const ctx = canvas.getContext('2d')!;
-    const tmp = new Image(); tmp.crossOrigin = 'anonymous';
-    tmp.onload = () => {
+
+    const processCrop = async () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = srcW; canvas.height = srcH;
+      const ctx = canvas.getContext('2d')!;
+      
+      const tmp = new window.Image();
+      tmp.crossOrigin = 'anonymous';
+      await new Promise((resolve, reject) => {
+        tmp.onload = resolve;
+        tmp.onerror = reject;
+        tmp.src = page.imageDataUrl;
+      });
+      
       ctx.drawImage(tmp, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+      const mainDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+      const extraImages: string[] = [];
+      for (const opt of optionRegions) {
+        const oX = Math.max(0, Math.round(opt.x * scaleX));
+        const oY = Math.max(0, Math.round(opt.y * scaleY));
+        const oW = Math.min(img.naturalWidth - oX, Math.round(opt.width * scaleX));
+        const oH = Math.min(img.naturalHeight - oY, Math.round(opt.height * scaleY));
+        if (oW < 5 || oH < 5) continue;
+        
+        const oCanvas = document.createElement('canvas');
+        oCanvas.width = oW; oCanvas.height = oH;
+        const oCtx = oCanvas.getContext('2d')!;
+        oCtx.drawImage(tmp, oX, oY, oW, oH, 0, 0, oW, oH);
+        extraImages.push(oCanvas.toDataURL('image/jpeg', 0.82));
+      }
+
       setCroppedImages(prev => [...prev, {
-        dataUrl: canvas.toDataURL('image/jpeg', 0.85),
+        dataUrl: mainDataUrl,
         pageNumber: page.pageNumber,
         index: prev.length,
         subject, section, qType,
+        extraImages: extraImages.length > 0 ? extraImages : undefined,
       }]);
       setCropRegion(null);
+      setOptionRegions([]);
     };
-    tmp.src = page.imageDataUrl;
-  }, [cropRegion, page, subject, section, qType]);
+
+    processCrop().catch(console.error);
+  }, [cropRegion, optionRegions, page, subject, section, qType]);
 
   const updateCrop = (i: number, patch: Partial<CroppedImage>) =>
     setCroppedImages(prev => prev.map((c, j) => j === i ? { ...c, ...patch } : c));
@@ -306,10 +363,25 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
                     </div>
                   </div>
                 )}
+                {optionRegions.map((opt, i) => (
+                  <div
+                    key={i}
+                    className="absolute border border-orange-500 bg-orange-500/10 pointer-events-none"
+                    style={{
+                      left: opt.x, top: opt.y,
+                      width: opt.width, height: opt.height,
+                      borderStyle: 'dotted',
+                    }}
+                  >
+                    <div className="absolute -top-4 left-0 bg-orange-500 text-white text-[8px] px-1 rounded">
+                      Opt {String.fromCharCode(65 + i)}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
             <p className="text-[10px] md:text-xs text-muted-foreground bg-accent/30 p-2 rounded mt-1">
-              <span className="font-bold text-primary">Instructions:</span> 1. Use two fingers to zoom/pan. 2. Drag a rectangle to select a question area. 3. Use the "Add" button to save the crop. 4. Use "+ 🖼" to upload separate images/diagrams for any question.
+              <span className="font-bold text-primary">Instructions:</span> 1. Drag to select Question area. 2. <b>Hold SHIFT</b> and drag to select Option areas (A, B, C...). 3. Click "Add" to save all selected areas as one question.
             </p>
           </div>
 
