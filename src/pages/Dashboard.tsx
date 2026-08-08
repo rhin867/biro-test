@@ -5,7 +5,7 @@ import { StatCard } from '@/components/exam/StatCard';
 import { MultiProgressBar } from '@/components/exam/ProgressBar';
 import { supabase } from '@/integrations/supabase/client';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
-import { Star, MessageSquare, Clock, Plus, Target, TrendingUp, ChevronRight, FileText, BarChart, Loader2, HelpCircle } from 'lucide-react';
+import { Star, MessageSquare, Clock, Plus, Target, TrendingUp, ChevronRight, FileText, BarChart, Loader2, HelpCircle, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
