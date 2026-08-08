@@ -674,7 +674,6 @@ export default function AdminPanel() {
                         } else {
                           // Use the standard URL construction for public buckets
                           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-                          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
                           // Use object/public route consistently
                           const publicUrl = `${supabaseUrl}/storage/v1/object/public/biro-test-images/${fileName}`;
                           
