@@ -14,8 +14,9 @@ import { LatexRenderer } from '@/components/ui/latex-renderer';
 import telegramQR from '@/assets/telegram-qr.png';
 import {
   MessageSquare, ThumbsUp, ThumbsDown, Lightbulb, AlertTriangle, Send,
-  Edit2, X, Check, Star, Share2, MessageCircle, Trophy, ExternalLink,
+  Edit2, X, Check, Star, Share2, MessageCircle, Trophy, ExternalLink, Reply
 } from 'lucide-react';
+
 
 const AUTHOR_KEY = 'community_author';
 const AUTHOR_LOCK_KEY = 'community_author_locked_at';
