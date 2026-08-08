@@ -10,7 +10,9 @@ const Index = () => {
 
   return (
     <div className="hidden">
-      {`The storage buckets "question-images" and "biro-test-images" exist but images are failing to upload with NoSuchBucket error. 
+      {`Its manual cropping system have not any image or uploaded pdfs etc and have not any cropping areas pls fix it
+
+The storage buckets "question-images" and "biro-test-images" exist but images are failing to upload with NoSuchBucket error. 
 
 
 
