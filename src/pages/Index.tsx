@@ -10,69 +10,53 @@ const Index = () => {
 
   return (
     <div className="hidden">
-      {`Upload hi nahi ho rha hai image bol rha hai ki bucket not found, PROBLEM:
-
-      The Daily Hot Question feature shows "Diagram failed to load" because the question image URL points to a Supabase Storage bucket that returns 404 NoSuchBucket error.
+      {`Create two Supabase storage buckets in this project:
 
 
 
 
-      ROOT CAUSE:
+1. Bucket name: "question-images" — set as PUBLIC
 
-      Images are being stored as URLs/links in the database instead of being uploaded to and served directly from Supabase Storage. The bucket either doesn't exist or isn't configured as public.
-
-
-
-
-      FIX REQUIRED — do all of the following:
+2. Bucket name: "biro-test-images" — set as PUBLIC
 
 
 
 
-      1. CREATE SUPABASE STORAGE BUCKET:
+For both buckets add these RLS policies:
 
-         - Bucket name: "question-images"
+- Allow public SELECT (anyone can view)
 
-         - Set it as PUBLIC bucket (public read access)
-
-         - Enable RLS policy: allow authenticated users to INSERT, allow everyone to SELECT
+- Allow authenticated INSERT (logged in users can upload)
 
 
 
 
-      2. CHANGE IMAGE UPLOAD LOGIC:
+After creating buckets, fix the image upload in AdminPanel.tsx:
 
-         - When admin uploads a question image, upload the actual file to Supabase Storage bucket "question-images"
-
-         - Use supabase.storage.from('question-images').upload(filePath, file)
-
-         - After upload, get the PUBLIC URL using: supabase.storage.from('question-images').getPublicUrl(filePath)
-
-         - Store ONLY this public URL in the database column
+- Store clean publicUrl in DB without ?t= timestamp
 
 
 
 
-      3. CHANGE IMAGE DISPLAY LOGIC:
+And fix DailyHotQuestion.tsx:
 
-         - Render image using a standard <img> tag with the stored public URL as src
+- Use supabase.storage.from('biro-test-images').getPublicUrl(fileName) instead of manual URL construction
 
-         - Do NOT use any iframe, embed, or external diagram renderer
+- Store clean publicUrl without ?t= timestamp.                   Check if these storage buckets exist in the Supabase project:
 
-         - <img src={question.image_url} alt="Question diagram" style={{width: '100%', borderRadius: '8px'}} />
+1. "question-images"
 
-
-
-
-      4. ADMIN PANEL:
-
-         - File input to upload image
-
-         - Preview immediately after upload
-
-         - Store only the Supabase public URL, never a blob URL or external link`}
+2. "biro-test-images"
 
 
+
+
+If they don't exist, create them as PUBLIC buckets with RLS policies allowing public read and authenticated upload.
+
+
+
+
+Then show me the current bucket list.`}
     </div>
 
   );
