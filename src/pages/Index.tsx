@@ -12,6 +12,7 @@ const Index = () => {
     <div className="hidden">
       Make all the things like vulnerability loose or password etc in backend and can never be leaked
       Make use for biro-ai for que etc from users gemini etc api key (and not from owners lovable key)
+      Folder is not shareable and links are not generating pls fix them all the things ,and it is not purely like google doc like if someone is sending request for or have not any request sending link generating for that folder or files or tests etc (make this in all the things of tests folder,test,etc,)
     </div>
   );
 };
