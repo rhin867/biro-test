@@ -10,7 +10,7 @@ const Index = () => {
 
   return (
     <div className="hidden">
-      {`PROBLEM:
+      {`Upload hi nahi ho rha hai image bol rha hai ki bucket not found, PROBLEM:
 
       The Daily Hot Question feature shows "Diagram failed to load" because the question image URL points to a Supabase Storage bucket that returns 404 NoSuchBucket error.
 
