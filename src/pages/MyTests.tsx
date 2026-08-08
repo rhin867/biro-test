@@ -147,22 +147,23 @@ export default function MyTests() {
     if (!shareFolderName) return;
     setIsSharing(true);
     try {
-      const { data, error } = await supabase
-        .from('test_folder_shares' as any)
-        .insert({
-          folder_name: shareFolderName,
-          owner_user_key: localStorage.getItem('user_key'),
-          shared_with_email: shareEmail.trim() || null,
-          password_hash: sharePassword.trim() || null,
-        } as any)
-        .select()
-        .single();
+      // Password is hashed and stored server-side; it never reaches the database in plain text.
+      const { data, error } = await supabase.functions.invoke('folder-share', {
+        body: {
+          action: 'create',
+          folderName: shareFolderName,
+          ownerUserKey: localStorage.getItem('user_key'),
+          sharedWithEmail: shareEmail.trim() || null,
+          password: sharePassword.trim() || null,
+        },
+      });
 
       if (error) throw error;
-      
-      const shareLink = `${window.location.origin}/join-folder?token=${(data as any).share_token}`;
+      if ((data as any)?.error) throw new Error((data as any).error);
+
+      const shareLink = `${window.location.origin}/join-folder?token=${(data as any).shareToken}`;
       await navigator.clipboard.writeText(shareLink);
-      
+
       toast.success('Share link generated and copied to clipboard! Anyone with the link can now request access.');
       setShowShareFolderDialog(false);
     } catch (e: any) {
@@ -171,6 +172,7 @@ export default function MyTests() {
       setIsSharing(false);
     }
   };
+
 
   return (
     <MainLayout>
