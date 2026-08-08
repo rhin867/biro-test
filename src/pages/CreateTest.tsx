@@ -181,12 +181,13 @@ function CreateTestInner() {
       const bufferForImages = arrayBuffer.slice(0);
       const pdf = await pdfjsLib.getDocument({ data: bufferForText }).promise;
       let fullText = '';
+      setParseStatus('Reading document text...');
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
         const pageText = textContent.items.map((item: any) => item.str).join(' ');
         fullText += `[Page ${i}]\n${pageText}\n\n`;
-        setParseProgress(Math.round((i / pdf.numPages) * 50));
+        setParseProgress(Math.round((i / pdf.numPages) * 40));
       }
       setPdfText(fullText);
       setTestName(file.name.replace('.pdf', ''));
