@@ -179,6 +179,16 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const tests = getTests();
   const results = getResults();
+  const [xp, setXp] = useState(0);
+  const [level, setLevel] = useState(1);
+
+  useEffect(() => {
+    // XP calculation: 50 per test attempt + 10 per Daily Hot Question solved
+    const solvedDaily = parseInt(localStorage.getItem('solved_daily_count') || '0');
+    const totalXp = (results.length * 50) + (solvedDaily * 10);
+    setXp(totalXp);
+    setLevel(Math.floor(totalXp / 100) + 1);
+  }, [results.length]);
 
   // Calculate overall stats
   const totalTests = tests.length;
