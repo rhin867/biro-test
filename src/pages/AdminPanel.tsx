@@ -676,8 +676,8 @@ export default function AdminPanel() {
                           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
                           const publicUrl = `${supabaseUrl}/storage/v1/object/public/biro-test-images/${fileName}`;
                           
-                          // Force cache busting on the URL
-                          const freshUrl = `${publicUrl}?t=${Date.now()}`;
+                          // Force cache busting on the URL and ensure it's absolute
+                          const freshUrl = publicUrl.startsWith('http') ? `${publicUrl}?t=${Date.now()}` : `${window.location.origin}${publicUrl}?t=${Date.now()}`;
                           setHotQuestionImageUrl(freshUrl);
                           toast.success('Image uploaded!');
                         }
