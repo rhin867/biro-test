@@ -19,6 +19,7 @@ const Index = () => {
       Checkout kr image visiblity dhqmein fixed haivisible ho rha hai ya nahi and agar nahi ho rha hai to fix kr
       Ye dekh yha pr visible nahi ho rha hai image abb ise fix kr yha pr visibke hona chahiye to fix kr saale real reason nikal plan bna and mereko de fix kr then ise
       Add image visiblity check,log missing image causes,enable visual regression test,improve image upload test
+      Plan bna ki kaise tu image visiblity ke issue joki abhi tkk hai use theek krega,and sabb de plan joki reality mein fix ho jaayega and sabhi bugs ko findout kr ,and mereko de and jb next bolu tb start kr fix krna
     </div>
 
   );
