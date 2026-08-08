@@ -193,9 +193,26 @@ export default function DailyHotQuestion() {
         localStorage.setItem(`ans_q_${question.id}`, myResponse.trim());
         setHasAnswered(true);
         
-        // Update XP tracking
+        // Update XP and Streak tracking
         const currentSolved = parseInt(localStorage.getItem('solved_daily_count') || '0');
         localStorage.setItem('solved_daily_count', String(currentSolved + 1));
+        
+        // Simple daily streak logic
+        const lastSolved = localStorage.getItem('last_solved_date');
+        const today = new Date().toDateString();
+        if (lastSolved !== today) {
+          const currentStreak = parseInt(localStorage.getItem('user_streak') || '0');
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          
+          if (lastSolved === yesterday.toDateString()) {
+            localStorage.setItem('user_streak', String(currentStreak + 1));
+          } else {
+            localStorage.setItem('user_streak', '1');
+          }
+          localStorage.setItem('last_solved_date', today);
+        }
+
       }
       
       if (replyTo && replyTo.user_key !== userKey) {

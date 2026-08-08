@@ -310,11 +310,16 @@ export default function Dashboard() {
             </div>
 
             <div className="flex gap-2">
-              <div className="text-center px-4 py-2 rounded-xl bg-background border border-border/50 shadow-sm">
-                <p className="text-[10px] font-black text-muted-foreground uppercase">Streak</p>
-                <p className="text-lg font-black text-primary">0 Days</p>
+              <div className="text-center px-4 py-2 rounded-xl bg-background border border-border/50 shadow-sm hover:border-primary/50 transition-colors group/streak">
+                <p className="text-[10px] font-black text-muted-foreground uppercase flex items-center justify-center gap-1">
+                  <TrendingUp className="h-3 w-3 text-orange-500" /> Streak
+                </p>
+                <p className="text-lg font-black text-primary group-hover/streak:scale-110 transition-transform">
+                  {localStorage.getItem('user_streak') || '0'} Days
+                </p>
               </div>
             </div>
+
           </div>
         </CardContent>
       </Card>
