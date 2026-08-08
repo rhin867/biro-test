@@ -105,6 +105,9 @@ export type Database = {
           comment: string | null
           created_at: string | null
           id: string
+          liked_by: string[] | null
+          likes: number | null
+          parent_id: string | null
           question_id: string
           selected_option: string | null
           user_display_name: string
@@ -114,6 +117,9 @@ export type Database = {
           comment?: string | null
           created_at?: string | null
           id?: string
+          liked_by?: string[] | null
+          likes?: number | null
+          parent_id?: string | null
           question_id: string
           selected_option?: string | null
           user_display_name: string
@@ -123,12 +129,22 @@ export type Database = {
           comment?: string | null
           created_at?: string | null
           id?: string
+          liked_by?: string[] | null
+          likes?: number | null
+          parent_id?: string | null
           question_id?: string
           selected_option?: string | null
           user_display_name?: string
           user_key?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "hot_question_responses_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "hot_question_responses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "hot_question_responses_question_id_fkey"
             columns: ["question_id"]
@@ -235,6 +251,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean | null
+          link: string | null
+          message: string
+          title: string
+          user_key: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          link?: string | null
+          message: string
+          title: string
+          user_key: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          link?: string | null
+          message?: string
+          title?: string
+          user_key?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
