@@ -35,6 +35,7 @@ export type Database = {
       community_messages: {
         Row: {
           author: string
+          author_key: string | null
           content: string
           created_at: string | null
           downvotes: number | null
@@ -45,6 +46,7 @@ export type Database = {
         }
         Insert: {
           author: string
+          author_key?: string | null
           content: string
           created_at?: string | null
           downvotes?: number | null
@@ -55,6 +57,7 @@ export type Database = {
         }
         Update: {
           author?: string
+          author_key?: string | null
           content?: string
           created_at?: string | null
           downvotes?: number | null
