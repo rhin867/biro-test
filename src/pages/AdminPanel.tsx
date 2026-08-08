@@ -664,7 +664,7 @@ export default function AdminPanel() {
                         const { data, error } = await supabase.storage
                           .from('biro-test-images')
                           .upload(fileName, file, {
-                            cacheControl: '3600',
+                            cacheControl: '0', // No cache for fresh uploads
                             upsert: true
                           });
                         
