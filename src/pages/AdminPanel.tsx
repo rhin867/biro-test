@@ -641,7 +641,7 @@ export default function AdminPanel() {
                         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
                         
                         const { data, error } = await supabase.storage
-                          .from('biro-images-private') // Keeping original but we'll check why it's failing
+                          .from('biro-test-images') // Changed from biro-images-private for testing
                           .upload(fileName, file, {
                             cacheControl: '3600',
                             upsert: false
