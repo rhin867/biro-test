@@ -234,7 +234,10 @@ export interface MistakeBookEntry {
   reattemptCount: number;
   lastReattemptAt?: string;
   mastered: boolean;
+  masteryLevel?: 'Unfamiliar' | 'Novice' | 'Proficient' | 'Mastered';
+  aiRemediationSuggested?: string;
 }
+
 
 export interface PracticeQuestion {
   id: string;
