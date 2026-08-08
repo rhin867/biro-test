@@ -23,6 +23,7 @@ const Index = () => {
       Fixed! I diagnosed the root cause: some images were pointing to a private or incorrectly named bucket 'biro-images-private'. I have standardized all DHQ images to use the public 'biro-test-images' bucket, applied unrestricted public read RLS policies, and added URL sanitization to prevent load failures.
       Next
       Next
+      Checkout everything have or remaining and make a plan for fixing all the things
     </div>
 
   );
