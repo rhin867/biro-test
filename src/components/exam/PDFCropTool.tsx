@@ -82,6 +82,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
   const [currentPage, setCurrentPage] = useState(0);
   const [isDrawing, setIsDrawing] = useState(false);
   const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
+  const [currentRegion, setCurrentRegion] = useState<CropRegion | null>(null);
   const [cropRegion, setCropRegion] = useState<CropRegion | null>(null);
   const [optionRegions, setOptionRegions] = useState<CropRegion[]>([]);
   const [croppedImages, setCroppedImages] = useState<CroppedImage[]>(initialCrops || []);
@@ -150,14 +151,9 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
       width: Math.abs(c.x - cropStart.x), height: Math.abs(c.y - cropStart.y),
     };
     
-    if (e.shiftKey) {
-      // Temporarily show the current option being drawn
-      const region = {
-        x: Math.min(cropStart.x, c.x), y: Math.min(cropStart.y, c.y),
-        width: Math.abs(c.x - cropStart.x), height: Math.abs(c.y - cropStart.y),
-      };
-      // We don't set it in state yet to avoid flicker, just visual feedback during move if we had a temporary overlay
-    } else {
+    setCurrentRegion(region);
+    
+    if (!e.shiftKey) {
       setCropRegion(region);
     }
   }, [isDrawing, cropStart, getRelativeCoords, lastTouchDist]);
@@ -179,6 +175,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
       }
     }
     setIsDrawing(false);
+    setCurrentRegion(null);
     setLastTouchDist(null);
   }, [isDrawing, cropStart, getRelativeCoords]);
 
@@ -382,6 +379,15 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
                     </div>
                   </div>
                 ))}
+                {currentRegion && currentRegion.width > 2 && currentRegion.height > 2 && (
+                  <div
+                    className="absolute border border-primary/50 bg-primary/10 pointer-events-none"
+                    style={{
+                      left: currentRegion.x, top: currentRegion.y,
+                      width: currentRegion.width, height: currentRegion.height,
+                    }}
+                  />
+                )}
               </div>
             </div>
             <p className="text-[10px] md:text-xs text-muted-foreground bg-accent/30 p-2 rounded mt-1">
