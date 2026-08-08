@@ -27,6 +27,7 @@ import BiroBrain from "./pages/BiroBrain";
 import PublicTests from "./pages/PublicTests";
 import Auth from "./pages/Auth";
 import DailyHotQuestion from "./pages/DailyHotQuestion";
+import JoinFolder from "./pages/JoinFolder";
 
 const queryClient = new QueryClient();
 
