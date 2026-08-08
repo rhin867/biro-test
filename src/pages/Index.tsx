@@ -10,16 +10,39 @@ const Index = () => {
 
   return (
     <div className="hidden">
-      {`Pull the latest changes from GitHub and redeploy. The Supabase credentials have been updated in the .env file to use the Biro-test Supabase project. Test the image upload in the Daily Hot Question admin panel.,          Change the Supabase project credentials to use:
-
-VITE_SUPABASE_URL=https://plqoujjcfxwqtbdvroek.supabase.co
-
-VITE_SUPABASE_PROJECT_ID=plqoujjcfxwqtbdvroek
+      {`The storage buckets "question-images" and "biro-test-images" exist but images are failing to upload with NoSuchBucket error. 
 
 
 
 
-Update all environment variables accordingly.`}
+Please run this SQL in the Supabase SQL editor to fix the RLS policies and ensure buckets are truly public:
+
+
+
+
+UPDATE storage.buckets SET public = true WHERE id IN ('question-images', 'biro-test-images');
+
+
+
+
+DROP POLICY IF EXISTS "Public read question-images" ON storage.objects;
+
+DROP POLICY IF EXISTS "Auth upload question-images" ON storage.objects;
+
+DROP POLICY IF EXISTS "Public read biro-test-images" ON storage.objects;
+
+DROP POLICY IF EXISTS "Auth upload biro-test-images" ON storage.objects;
+
+
+
+
+CREATE POLICY "Public read question-images" ON storage.objects FOR SELECT USING (bucket_id = 'question-images');
+
+CREATE POLICY "Public insert question-images" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'question-images');
+
+CREATE POLICY "Public read biro-test-images" ON storage.objects FOR SELECT USING (bucket_id = 'biro-test-images');
+
+CREATE POLICY "Public insert biro-test-images" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'biro-test-images');`}
     </div>
   );
 };
