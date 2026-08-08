@@ -153,7 +153,8 @@ export default function DailyHotQuestion() {
   const fetchHistory = async () => {
     const { data } = await supabase
       .from('hot_questions')
-      .select('*')
+      .select(HOT_Q_COLUMNS)
+
       .order('created_at', { ascending: false })
       .limit(20);
     if (data) setHistory(data);
@@ -343,9 +344,10 @@ export default function DailyHotQuestion() {
       setMyResponse('');
       setMyComment('');
       setReplyTo(null);
-      if (question?.correct_option && !replyTo) {
-        setIsCorrect(myResponse.trim().toLowerCase() === question.correct_option.trim().toLowerCase());
+      if (!replyTo) {
+        await revealResult(question.id);
       }
+
       fetchResponses(question.id);
     }
   };
