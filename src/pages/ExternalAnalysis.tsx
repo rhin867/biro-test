@@ -184,7 +184,12 @@ export default function ExternalAnalysis() {
 
   return (
     <MainLayout>
-      <PageHeader title="External Test Analysis" description="Analyze tests from any platform with AI-powered insights" />
+      <PageHeader title="External Test Analysis" description="Analyze tests from any platform with AI-powered insights">
+        <Button variant="outline" size="sm" onClick={() => navigate('/guide#external-test-analysis')} className="gap-2 text-xs">
+          <HelpCircle className="h-4 w-4" /> How it works
+        </Button>
+      </PageHeader>
+
 
       {/* Screen Monitor Banner */}
       {isRecording && (
