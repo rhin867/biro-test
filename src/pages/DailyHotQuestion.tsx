@@ -434,12 +434,12 @@ export default function DailyHotQuestion() {
                             </Button>
                           </div>
                         </>
-                      ) : !replyTo && (
-                        <div className="py-4 text-center bg-secondary/20 rounded-xl border border-dashed">
-                          <p className="text-sm font-medium text-muted-foreground">You have already submitted your response for this challenge.</p>
+                      ) : !replyTo ? (
+                        <div className="py-4 text-center bg-secondary/10 rounded-xl border border-dashed border-primary/30">
+                          <p className="text-sm font-bold text-primary mb-1">Response Submitted!</p>
+                          <p className="text-[11px] text-muted-foreground">You can still discuss and reply to others below.</p>
                         </div>
-                      )}
-
+                      ) : null}
                     </div>
 
                     {hasAnswered && question.correct_option && (
