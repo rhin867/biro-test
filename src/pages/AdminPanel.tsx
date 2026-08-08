@@ -665,7 +665,7 @@ export default function AdminPanel() {
                           .from('biro-test-images')
                           .upload(fileName, file, {
                             cacheControl: '3600',
-                            upsert: false
+                            upsert: true
                           });
                         
                         if (error) {
