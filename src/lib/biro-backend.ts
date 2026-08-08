@@ -72,7 +72,16 @@ async function callBackend(pdfBase64: string, mimeType: string): Promise<Extract
       body: JSON.stringify({ pdfBase64, mimeType }),
       signal: controller.signal,
     });
-    if (!res.ok) throw new Error(`backend ${res.status}`);
+    if (!res.ok) {
+      let detail = `Error ${res.status}`;
+      try {
+        const errJson = await res.json();
+        if (errJson.detail) detail = errJson.detail;
+      } catch {
+        detail = `Server returned ${res.status} ${res.statusText}`;
+      }
+      throw new Error(`Biro Backend: ${detail}`);
+    }
     const data = await res.json();
     return { ...data, source: "python-backend" as const };
   } finally {

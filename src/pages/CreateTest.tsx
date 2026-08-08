@@ -48,6 +48,7 @@ function CreateTestInner() {
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
   const [parseProgress, setParseProgress] = useState(0);
+  const [parseStatus, setParseStatus] = useState<string>('');
   const [pdfText, setPdfText] = useState('');
   const [testName, setTestName] = useState('');
   const [duration, setDuration] = useState(180);
@@ -166,6 +167,7 @@ function CreateTestInner() {
     }
     setIsProcessing(true);
     toast.info('Processing PDF...');
+    setParseStatus('Initializing worker...');
     setParseProgress(0);
     setPdfFile(file);
     try {
@@ -188,9 +190,10 @@ function CreateTestInner() {
       }
       setPdfText(fullText);
       setTestName(file.name.replace('.pdf', ''));
-      toast.info('Rendering pages for preview & cropping...');
+      setParseStatus('Rendering high-res previews...');
       const pageImages = await renderPDFPagesToImages(bufferForImages, 1.5);
       setParseProgress(100);
+      setParseStatus('PDF Ready!');
       setPdfPageImages(pageImages);
       toast.success(`PDF processed: ${pdf.numPages} pages`);
       setStep('configure');
@@ -451,7 +454,7 @@ function CreateTestInner() {
                 {isProcessing ? (
                   <div className="flex flex-col items-center gap-2">
                     <Loader2 className="h-8 md:h-10 w-8 md:w-10 text-primary animate-spin" />
-                    <p className="text-sm text-muted-foreground font-medium">Processing PDF... {parseProgress}%</p>
+                    <p className="text-sm text-muted-foreground font-medium">{parseStatus} {parseProgress}%</p>
                     <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden mt-1">
                       <div 
                         className="h-full bg-primary transition-all duration-300" 

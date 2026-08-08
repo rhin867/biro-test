@@ -79,6 +79,34 @@ function ComboInput({
 }
 
 export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, initialCrops }: PDFCropToolProps) {
+  const [activePreset, setActivePreset] = useState<string | null>(null);
+  const [presets, setPresets] = useState<Record<string, { subject: string; section: string; qType: CropQType }>>(() => {
+    try {
+      const saved = localStorage.getItem('biro_crop_presets');
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+
+  const saveCurrentAsPreset = () => {
+    const name = window.prompt("Enter preset name:");
+    if (!name) return;
+    const newPresets = { ...presets, [name]: { subject, section, qType } };
+    setPresets(newPresets);
+    localStorage.setItem('biro_crop_presets', JSON.stringify(newPresets));
+    setActivePreset(name);
+    toast.success(`Preset "${name}" saved!`);
+  };
+
+  const applyPreset = (name: string) => {
+    const p = presets[name];
+    if (p) {
+      setSubject(p.subject);
+      setSection(p.section);
+      setQType(p.qType);
+      setActivePreset(name);
+    }
+  };
+
   const [currentPage, setCurrentPage] = useState(0);
   const [isDrawing, setIsDrawing] = useState(false);
   const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
@@ -306,7 +334,26 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
         </DialogHeader>
 
         {/* Compact single-row control bar */}
-        <div className="grid grid-cols-3 gap-1.5 p-1.5 rounded-md bg-muted/40 border text-[10px]">
+        <div className="flex flex-col gap-2 p-2 rounded-md bg-muted/40 border mb-2">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Settings & Presets</span>
+            <div className="flex gap-1">
+              {Object.keys(presets).length > 0 && (
+                <Select value={activePreset || ''} onValueChange={applyPreset}>
+                  <SelectTrigger className="h-6 w-32 text-[10px] bg-background"><SelectValue placeholder="Load Preset" /></SelectTrigger>
+                  <SelectContent>
+                    {Object.keys(presets).map(name => (
+                      <SelectItem key={name} value={name} className="text-[10px]">{name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button variant="outline" size="sm" className="h-6 px-2 text-[10px]" onClick={saveCurrentAsPreset}>
+                <Plus className="h-3 w-3 mr-1" /> Save Preset
+              </Button>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5 text-[10px]">
           <div>
             <label className="text-[9px] font-medium text-muted-foreground uppercase block mb-0.5">Subject</label>
             <ComboInput value={subject} onChange={setSubject} presets={CANONICAL_SUBJECTS} placeholder="Subject" />
