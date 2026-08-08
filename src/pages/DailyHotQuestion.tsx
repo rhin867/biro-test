@@ -553,43 +553,36 @@ export default function DailyHotQuestion() {
                           </div>
                         ))}
                       </div>
+                      
+                      {/* Render Replies */}
+                      <div className="ml-10 space-y-4 border-l-2 border-primary/20 pl-6 mt-4">
+                        {responses.filter(r => r.parent_id === resp.id).map(reply => (
+                          <div key={reply.id} className="p-3.5 rounded-xl bg-muted/30 border border-border/40 relative group/reply hover:border-primary/20 transition-all">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <User className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-xs font-black text-muted-foreground">{reply.user_display_name}</span>
+                                <span className="text-[10px] text-muted-foreground">• {new Date(reply.created_at).toLocaleTimeString()}</span>
+                              </div>
+                            </div>
+                            <p className="text-sm px-1 mb-3 leading-relaxed whitespace-pre-wrap">{reply.comment}</p>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className={`h-7 text-[10px] gap-2 rounded-full px-3 transition-all ${
+                                (reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') 
+                                  ? 'text-primary bg-primary/10 hover:bg-primary/20' 
+                                  : 'text-muted-foreground hover:bg-muted'
+                              }`}
+                              onClick={() => handleLike(reply.id, reply.user_key)}
+                            >
+                              <ThumbsUp className={`h-3 w-3 ${
+                                (reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary' : ''
+                              }`} />
+                              <span className="font-bold">{reply.likes || 0}</span>
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ))
-                )}
-              </CardContent>
-
-            </Card>
-          </div>
-
-          <div className="space-y-6">
-            <Card className="sticky top-20 border-primary/20 bg-primary/5">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                  <Star className="h-4 w-4 text-primary" />
-                  Your Stats
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="p-3 rounded-lg bg-background border text-center">
-                    <p className="text-[10px] uppercase text-muted-foreground font-bold">Solved</p>
-                    <p className="text-lg font-black">{hasAnswered ? 1 : 0}</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-background border text-center">
-                    <p className="text-[10px] uppercase text-muted-foreground font-bold">Status</p>
-                    <p className="text-lg font-black">{hasAnswered ? (isCorrect ? 'Correct' : 'Incorrect') : 'Pending'}</p>
-                  </div>
-                </div>
-                {!hasAnswered && (
-                  <p className="text-[11px] text-muted-foreground text-center italic">
-                    Answer today's challenge to see your name in the discussion!
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
-    </MainLayout>
-  );
-}
