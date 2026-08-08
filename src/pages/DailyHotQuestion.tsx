@@ -227,12 +227,24 @@ export default function DailyHotQuestion() {
 
   const handleSubmit = async (imageUrl?: string) => {
     if (!question && !replyTo) return;
-    if (!myResponse.trim() && !replyTo && !myComment.trim()) return toast.error('Enter an answer or comment');
     
     const userKey = localStorage.getItem('user_key') || 'anonymous';
     const bannedKeys = JSON.parse(localStorage.getItem('admin_banned_users') || '[]');
     if (bannedKeys.includes(userKey)) return toast.error('You are restricted from posting');
     
+    // For top-level response (not a reply), we need an answer selected
+    if (!replyTo && !hasAnswered && !myResponse.trim()) {
+      toast.error('Please select or type an answer first');
+      document.getElementById('solve-area')?.scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
+
+    // Must have a comment for a reply, or an explanation for an answer if desired
+    if (!myComment.trim() && !imageUrl) {
+      toast.error('Enter a comment or attach an image');
+      return;
+    }
+
     setIsSubmitting(true);
     const author = localStorage.getItem('community_author') || 'Anonymous';
     
@@ -592,15 +604,20 @@ export default function DailyHotQuestion() {
                                 </Button>
                               </div>
                             </div>
-                            <Button className="w-full h-12 text-lg gap-2 glow-primary" onClick={() => handleSubmit()} disabled={isSubmitting || !myResponse.trim()}>
-                              <Send className="h-5 w-5" /> {isSubmitting ? 'Submitting...' : 'Submit Final Answer'}
+                            <Button 
+                              className="w-full h-12 text-lg gap-2 glow-primary" 
+                              onClick={() => handleSubmit()} 
+                              disabled={isSubmitting || (!replyTo && !hasAnswered && !myResponse.trim()) || (!myComment.trim() && !isSubmitting)}
+                            >
+                              <Send className="h-5 w-5" /> 
+                              {isSubmitting ? 'Submitting...' : replyTo ? 'Post Reply' : 'Submit Final Answer'}
                             </Button>
                           </div>
                         </>
                       ) : !replyTo ? (
                         <div className="py-4 text-center bg-secondary/10 rounded-xl border border-dashed border-primary/30">
-                          <p className="text-sm font-bold text-primary mb-1">Response Submitted!</p>
-                          <p className="text-[11px] text-muted-foreground">You can still discuss and reply to others below.</p>
+                          <p className="text-sm font-bold text-primary mb-1">Challenge Completed!</p>
+                          <p className="text-[11px] text-muted-foreground">You can now discuss or reply to others below.</p>
                           <div className="flex justify-center gap-2 mt-2">
                             <Button 
                               variant="outline" 
@@ -646,6 +663,38 @@ export default function DailyHotQuestion() {
                         </div>
 
                       ) : null}
+                      
+                      {hasAnswered && !replyTo && (
+                        <div className="mt-4 pt-4 border-t border-dashed">
+                          <label className="text-[10px] uppercase font-bold text-muted-foreground">Add to the Discussion</label>
+                          <div className="mt-2 space-y-3">
+                            <Textarea 
+                              value={myComment} 
+                              onChange={e => setMyComment(e.target.value)} 
+                              placeholder="Share your explanation or doubt..."
+                              rows={2}
+                              className="text-sm"
+                            />
+                            <div className="flex items-center gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-8 gap-2 text-[10px]" 
+                                onClick={() => document.getElementById('response-image-upload')?.click()}
+                              >
+                                <Plus className="h-3 w-3" /> Attach Image
+                              </Button>
+                              <Button 
+                                className="h-8 text-xs gap-2 ml-auto" 
+                                onClick={() => handleSubmit()} 
+                                disabled={isSubmitting || !myComment.trim()}
+                              >
+                                <Send className="h-3 w-3" /> Post Comment
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {hasAnswered && question.correct_option && (
@@ -780,6 +829,19 @@ export default function DailyHotQuestion() {
                                 <span className="text-[10px] text-muted-foreground">• {new Date(reply.created_at).toLocaleTimeString()}</span>
                               </div>
                               <div className="flex items-center gap-1 opacity-0 group-hover/reply:opacity-100 transition-opacity">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-6 text-[10px] gap-1 px-2"
+                                  onClick={() => {
+                                    setReplyTo(resp);
+                                    setMyComment(`@${reply.user_display_name} `);
+                                    document.getElementById('solve-area')?.scrollIntoView({ behavior: 'smooth' });
+                                  }}
+                                >
+                                  <Reply className="h-3 w-3" />
+                                  Reply
+                                </Button>
                                 {reply.user_key === (localStorage.getItem('user_key') || 'anonymous') && (
                                   <>
                                     <Button 
@@ -819,19 +881,6 @@ export default function DailyHotQuestion() {
                                     </Button>
                                   </>
                                 )}
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="h-6 text-[10px] gap-1 px-2"
-                                  onClick={() => {
-                                    setReplyTo(resp);
-                                    setMyComment(`@${reply.user_display_name} `);
-                                    document.getElementById('solve-area')?.scrollIntoView({ behavior: 'smooth' });
-                                  }}
-                                >
-                                  <Reply className="h-3 w-3" />
-                                  Reply
-                                </Button>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
