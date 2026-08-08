@@ -471,38 +471,39 @@ export default function DailyHotQuestion() {
                 ) : (
                   responses.filter(r => !r.parent_id).map(resp => (
                     <div key={resp.id} className="space-y-4 border-b pb-6 last:border-0">
-                      <div className="p-3 rounded-xl bg-secondary/20 border border-border/50 shadow-sm relative overflow-hidden">
-                        <div className="flex items-center justify-between mb-2">
+                      <div className="p-4 rounded-xl bg-card border border-border/60 shadow-md relative group hover:border-primary/30 transition-all">
+                        <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-                              <User className="h-3 w-3 text-primary" />
+                            <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center shadow-inner">
+                              <User className="h-4 w-4 text-primary" />
                             </div>
-                            <span className="text-xs font-bold text-primary">{resp.user_display_name}</span>
-                            <Badge variant="secondary" className="text-[9px] h-4">Ans: {resp.selected_option}</Badge>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-black text-primary leading-tight">{resp.user_display_name}</span>
+                              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <Clock className="h-2.5 w-2.5" /> {new Date(resp.created_at).toLocaleTimeString()}
+                              </span>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] font-bold border-primary/20 bg-primary/5 ml-2">Ans: {resp.selected_option}</Badge>
                           </div>
-                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                            <Clock className="h-2 w-2" /> {new Date(resp.created_at).toLocaleTimeString()}
-                          </span>
                         </div>
                         
-                        {/* Nested Diagram in Discussion if exists (inherited from question for clarity) */}
-                        {question.image_url && resp.comment && (
-                          <div className="mb-3 rounded-lg border border-border/30 overflow-hidden bg-white/50 w-fit max-w-[150px]">
-                            <img src={question.image_url} alt="Reference" className="w-full h-auto object-contain max-h-[100px]" />
-                          </div>
-                        )}
-
-                        <p className="text-sm px-1 mb-3">{resp.comment || 'No comment provided.'}</p>
-                        <div className="flex items-center gap-4 border-t border-border/30 pt-2">
+                        <div className="text-sm px-1 mb-4 leading-relaxed whitespace-pre-wrap">{resp.comment || 'No explanation provided.'}</div>
+                        
+                        <div className="flex items-center gap-3 border-t border-border/30 pt-3">
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            className={`h-7 text-[10px] gap-1.5 rounded-full px-3 ${(resp.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
+                            className={`h-8 text-[11px] gap-2 rounded-full px-4 transition-all ${
+                              (resp.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') 
+                                ? 'text-primary bg-primary/10 hover:bg-primary/20 shadow-sm' 
+                                : 'text-muted-foreground hover:bg-muted'
+                            }`}
                             onClick={() => handleLike(resp.id, resp.user_key)}
                           >
-
-                            <ThumbsUp className={`h-3 w-3 ${(resp.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary' : ''}`} />
-                            {resp.likes || 0}
+                            <ThumbsUp className={`h-3.5 w-3.5 ${
+                              (resp.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary' : ''
+                            }`} />
+                            <span className="font-bold">{resp.likes || 0}</span>
                           </Button>
                           <Button 
                             variant="ghost" 
