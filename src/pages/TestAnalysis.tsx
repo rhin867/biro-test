@@ -609,7 +609,7 @@ export default function TestAnalysis() {
         </TabsContent>
       </Tabs>
       {/* Hidden printable sections for PDF generation */}
-      <div className="sr-only" aria-hidden="true">
+      <div className="absolute -left-[9999px] top-0 w-[1200px]" aria-hidden="true">
         <div id="overview"><Card><CardHeader><CardTitle>Performance Overview</CardTitle></CardHeader><CardContent><PerformanceComparison result={result} /></CardContent></Card></div>
         <div id="score-potential"><ScorePotential result={result} positiveMarking={test.positiveMarking} negativeMarking={test.negativeMarking} /></div>
         <div id="attempt-analysis"><AttemptAnalysis questionResults={result.questionResults} /></div>
