@@ -164,7 +164,7 @@ export default function DailyHotQuestion() {
     if (!error) {
       fetchResponses(question.id);
       if (userKey !== authorKey) {
-        await (supabase as any).from('notifications').insert({
+        await supabase.from('notifications' as any).insert({
           user_key: authorKey,
           title: 'New Like!',
           message: `${localStorage.getItem('community_author') || 'Someone'} liked your comment.`,
@@ -201,7 +201,7 @@ export default function DailyHotQuestion() {
       }
       
       if (replyTo && replyTo.user_key !== userKey) {
-        await (supabase as any).from('notifications').insert({
+        await supabase.from('notifications' as any).insert({
           user_key: replyTo.user_key,
           title: 'New Reply!',
           message: `${author} replied to your comment.`,
