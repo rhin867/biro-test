@@ -187,22 +187,27 @@ export default function DailyHotQuestion() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!question || (!myResponse.trim() && !replyTo)) return toast.error('Enter an answer/option');
+  const handleSubmit = async (imageUrl?: string) => {
+    if (!question && !replyTo) return;
+    if (!myResponse.trim() && !replyTo && !myComment.trim()) return toast.error('Enter an answer or comment');
+    
     setIsSubmitting(true);
     const userKey = localStorage.getItem('user_key') || 'anonymous';
     const author = localStorage.getItem('community_author') || 'Anonymous';
     
-    const { data, error } = await supabase.from('hot_question_responses').insert({
+    const responseData: any = {
       question_id: question.id,
       user_key: userKey,
       user_display_name: author,
-      selected_option: myResponse.trim(),
+      selected_option: myResponse.trim() || (replyTo?.selected_option || ''),
       comment: myComment.trim(),
       parent_id: replyTo?.id || null,
       likes: 0,
-      liked_by: []
-    } as any).select();
+      liked_by: [],
+      image_url: imageUrl || null
+    };
+
+    const { data, error } = await supabase.from('hot_question_responses').insert(responseData).select();
 
     setIsSubmitting(false);
     if (error) toast.error('Failed to submit');
@@ -521,8 +526,8 @@ export default function DailyHotQuestion() {
                                       if (error) toast.error('Upload failed');
                                       else {
                                         const { data: { publicUrl } } = supabase.storage.from('biro-test-images').getPublicUrl(fileName);
-                                        setMyComment(prev => prev + (prev ? '\n' : '') + `[Image: ${publicUrl}]`);
-                                        toast.success('Image attached to comment!');
+                                        toast.success('Image uploaded! Submitting...');
+                                        handleSubmit(publicUrl);
                                       }
                                     }
                                   }}
