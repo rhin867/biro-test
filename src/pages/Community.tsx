@@ -196,11 +196,13 @@ export default function Community() {
 
   const handleSubmitRating = async () => {
     if (rating === 0) { toast.error('Select a rating'); return; }
-    await supabase.from('community_messages' as any).insert({
+    await supabaseKeyed.from('community_messages' as any).insert({
       author: author.trim() || 'Anonymous',
+      author_key: getUserKey(),
       content: `⭐ ${rating}/5 - ${feedback || 'No comment'}`,
       msg_type: 'post', post_type: 'rating',
     } as any);
+
     addReward(15, 'Rated the app');
     toast.success('Thanks for feedback! +15 XP');
     setRating(0); setFeedback('');
