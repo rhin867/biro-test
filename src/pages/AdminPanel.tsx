@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Shield, Lock, Trash2, Activity, Ban, KeyRound, Loader2, FolderOpen, Share2, Mail, CheckCircle, XCircle, Star, History as HistoryIcon, ZoomIn, User } from 'lucide-react';
+import { Shield, Lock, Trash2, Activity, Ban, KeyRound, Loader2, FolderOpen, Share2, Mail, CheckCircle, XCircle, Star, History as HistoryIcon, ZoomIn, User, Image as ImageIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { FolderAccessManager } from '@/components/exam/FolderAccessManager';
 import {
@@ -633,7 +633,7 @@ export default function AdminPanel() {
                     onChange={e => setHotQuestionImageUrl(e.target.value || null)} 
                     placeholder="https://example.com/question.png"
                   />
-                  <Button variant="outline" type="button" onClick={() => {
+                  <Button variant="outline" type="button" className="flex-1 gap-2" onClick={() => {
                     const input = document.createElement('input');
                     input.type = 'file';
                     input.accept = 'image/*';
@@ -642,10 +642,10 @@ export default function AdminPanel() {
                       if (file) {
                         toast.info('Uploading image...');
                         const fileExt = file.name.split('.').pop();
-                        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+                        const fileName = `hot-q-${Date.now()}.${fileExt}`;
                         
                         const { data, error } = await supabase.storage
-                          .from('biro-test-images') // Changed from biro-images-private for testing
+                          .from('biro-test-images')
                           .upload(fileName, file, {
                             cacheControl: '3600',
                             upsert: false
@@ -659,15 +659,16 @@ export default function AdminPanel() {
                             .from('biro-test-images')
                             .getPublicUrl(fileName);
                           
-                          // Ensure we use the correct public URL format
-                          // Append a timestamp to avoid cache issues if the same filename is reused
                           setHotQuestionImageUrl(publicUrl);
                           toast.success('Image uploaded!');
                         }
                       }
                     };
                     input.click();
-                  }}>Upload</Button>
+                  }}>
+                    <ImageIcon className="h-4 w-4" />
+                    {hotQuestionImageUrl ? 'Change Image' : 'Upload Image'}
+                  </Button>
                 </div>
                 {hot_question_image_preview}
               </div>
