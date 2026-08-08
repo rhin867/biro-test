@@ -115,7 +115,7 @@ export default function DailyHotQuestion() {
   const fetchNotifications = async () => {
     const userKey = localStorage.getItem('user_key') || 'anonymous';
     const { data } = await supabase
-      .from('notifications' as any)
+      .from('notifications')
       .select('*')
       .eq('user_key', userKey)
       .eq('is_read', false)
@@ -296,11 +296,12 @@ export default function DailyHotQuestion() {
       }
       
       if (replyTo && replyTo.user_key !== userKey) {
-        await supabase.from('notifications' as any).insert({
+        await supabase.from('notifications').insert({
           user_key: replyTo.user_key,
           title: 'New Reply!',
           message: `${author} replied to your comment on the Daily Challenge.`,
-          link: '/daily-hot-question'
+          link: '/daily-hot-question',
+          is_read: false
         });
       }
 
