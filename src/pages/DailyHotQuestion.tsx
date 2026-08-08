@@ -496,8 +496,14 @@ export default function DailyHotQuestion() {
 
                           <div className="mt-6 space-y-4">
                             <div className="space-y-2">
-                              <label className="text-[10px] uppercase font-bold text-muted-foreground">Explanation / Thought (Optional)</label>
-                              <div className="flex items-center gap-2">
+                               <label className="text-[10px] uppercase font-bold text-muted-foreground">Explanation / Thought (Optional)</label>
+                               <Textarea 
+                                 value={myComment} 
+                                 onChange={e => setMyComment(e.target.value)} 
+                                 placeholder="Why this answer?"
+                                 rows={3}
+                               />
+                               <div className="flex items-center gap-2">
                                 <Input 
                                   type="file" 
                                   accept="image/*" 
