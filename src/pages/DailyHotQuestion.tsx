@@ -641,7 +641,7 @@ export default function DailyHotQuestion() {
                             className="h-8 text-[11px] gap-2 rounded-full px-4 text-muted-foreground hover:bg-muted"
                             onClick={() => {
                               setReplyTo(resp);
-                              setMyResponse(resp.selected_option);
+                              setMyComment(`@${resp.user_display_name} `);
                               document.getElementById('solve-area')?.scrollIntoView({ behavior: 'smooth' });
                             }}
                           >
