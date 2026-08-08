@@ -202,10 +202,11 @@ export default function DailyHotQuestion() {
         await supabase.from('notifications' as any).insert({
           user_key: replyTo.user_key,
           title: 'New Reply!',
-          message: `${author} replied to your comment.`,
+          message: `${author} replied to your comment on the Daily Challenge.`,
           link: '/daily-hot-question'
         });
       }
+
 
       setMyResponse('');
       setMyComment('');
