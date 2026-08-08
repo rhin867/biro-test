@@ -65,6 +65,7 @@ const App = () => {
             <Route path="/public-tests" element={<PublicTests />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/hot-question" element={<DailyHotQuestion />} />
+            <Route path="/join-folder" element={<JoinFolder />} />
             <Route path="/analysis" element={<History />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

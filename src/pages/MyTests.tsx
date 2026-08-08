@@ -186,9 +186,11 @@ export default function MyTests() {
             <FolderLock className="h-4 w-4" /> Share Folder
           </Button>
           <Button variant="ghost" className="gap-2" onClick={() => {
-            const token = prompt('Enter share token/link:');
-            const email = prompt('Enter your email for access request:');
-            if (token && email) handleRequestAccess(token, email);
+            const token = prompt('Enter share token or link:');
+            if (token) {
+              const url = token.includes('token=') ? token : `${window.location.origin}/join-folder?token=${token}`;
+              window.location.href = url;
+            }
           }}>
             <MailPlus className="h-4 w-4" /> Join Shared Folder
           </Button>
