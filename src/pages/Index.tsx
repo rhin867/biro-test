@@ -15,7 +15,7 @@ const Index = () => {
       Folder is not shareable and links are not generating pls fix them all the things ,and it is not purely like google doc like if someone is sending request for or have not any request sending link generating for that folder or files or tests etc (make this in all the things of tests folder,test,etc,)
       Madarchod reddit vaala system tune lgayahi nahi,fix kr all the things,and tune to upvotes downvotes ye sabb kuchh bhi newline kra means reddit ke chatting system ko kuchh bhi implement nahi kra,sabb kuchh implement kr step by step plan bna and use fix kr
       Add edit and delete controls for my community posts and replies so I can manage my content after posting.
-      Saale tune to sahi se na kiya ye replies vaala koi buttons hi nahi hai send krne vaala and saala send krne ke liye ans dena od rha hai...,so fix kr ise,like agar user ne reply karna chaah rha hai to kr sake,and tune to sabhi user ke liye reply vaala option nahi diya ,tu dekh skta hai hai photo mein 2nd user ko reply dene ke arrow hi nahi hai so fix kr ise bhi
+      Edit my ans and delete etc buttons are nkt working fix that all ,and replying are not editied and deleted fix that akl the things
     </div>
 
   );
