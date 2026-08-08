@@ -433,7 +433,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
                   alt={`Page ${currentPage + 1}`}
                   className="pointer-events-none"
                   draggable={false}
-                  style={{ display: 'block', width: `${zoom * 100}%`, maxWidth: 'none' }}
+                  style={{ display: 'block', width: `${zoom * 100}%`, maxWidth: 'none', pointerEvents: 'auto' }}
                 />
                 {cropRegion && cropRegion.width > 0 && cropRegion.height > 0 && (
                   <div
