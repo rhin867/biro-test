@@ -497,12 +497,39 @@ export default function DailyHotQuestion() {
                           <div className="mt-6 space-y-4">
                             <div className="space-y-2">
                               <label className="text-[10px] uppercase font-bold text-muted-foreground">Explanation / Thought (Optional)</label>
-                              <Textarea 
-                                value={myComment} 
-                                onChange={e => setMyComment(e.target.value)} 
-                                placeholder="Why this answer?"
-                                rows={3}
-                              />
+                              <div className="flex items-center gap-2">
+                                <Input 
+                                  type="file" 
+                                  accept="image/*" 
+                                  className="hidden" 
+                                  id="response-image-upload" 
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      toast.info('Uploading image...');
+                                      const fileExt = file.name.split('.').pop();
+                                      const fileName = `resp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+                                      const { data, error } = await supabase.storage
+                                        .from('biro-test-images')
+                                        .upload(fileName, file);
+                                      if (error) toast.error('Upload failed');
+                                      else {
+                                        const { data: { publicUrl } } = supabase.storage.from('biro-test-images').getPublicUrl(fileName);
+                                        setMyComment(prev => prev + (prev ? '\n' : '') + `[Image: ${publicUrl}]`);
+                                        toast.success('Image attached to comment!');
+                                      }
+                                    }
+                                  }}
+                                />
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="h-8 gap-2 text-[10px]" 
+                                  onClick={() => document.getElementById('response-image-upload')?.click()}
+                                >
+                                  <Plus className="h-3 w-3" /> Attach Image
+                                </Button>
+                              </div>
                             </div>
                             <Button className="w-full h-12 text-lg gap-2 glow-primary" onClick={handleSubmit} disabled={isSubmitting || !myResponse.trim()}>
                               <Send className="h-5 w-5" /> {isSubmitting ? 'Submitting...' : 'Submit Final Answer'}
@@ -558,7 +585,29 @@ export default function DailyHotQuestion() {
                                 <Clock className="h-2.5 w-2.5" /> {new Date(resp.created_at).toLocaleTimeString()}
                               </span>
                             </div>
-                            <Badge variant="outline" className="text-[10px] font-bold border-primary/20 bg-primary/5 ml-2">Ans: {resp.selected_option}</Badge>
+                            <div className="flex items-center gap-2 ml-2">
+                              <Badge variant="outline" className="text-[10px] font-bold border-primary/20 bg-primary/5">Ans: {resp.selected_option}</Badge>
+                              {resp.image_url && (
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-primary hover:bg-primary/10">
+                                      <ImageIcon className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-2xl">
+                                    <DialogHeader>
+                                      <DialogTitle>{resp.user_display_name}'s Shared Image</DialogTitle>
+                                    </DialogHeader>
+                                    <img 
+                                      src={resp.image_url} 
+                                      alt="User attachment" 
+                                      className="w-full h-auto rounded-lg border shadow-lg"
+                                      crossOrigin="anonymous"
+                                    />
+                                  </DialogContent>
+                                </Dialog>
+                              )}
+                            </div>
                           </div>
                         </div>
                         
