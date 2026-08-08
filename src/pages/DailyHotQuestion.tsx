@@ -30,6 +30,26 @@ export default function DailyHotQuestion() {
   const [imageError, setImageError] = useState(false);
 
 
+  const [isGateOpen, setIsGateOpen] = useState(false);
+  const [gatePassword, setGatePassword] = useState('');
+  const [isUnlocked, setIsUnlocked] = useState(false);
+
+  useEffect(() => {
+    const unlocked = localStorage.getItem('biro_gate_unlocked') === 'true';
+    if (unlocked) setIsUnlocked(true);
+  }, []);
+
+  const handleGateUnlock = () => {
+    if (gatePassword.toUpperCase() === 'I LOVE YOU BIRO') {
+      localStorage.setItem('biro_gate_unlocked', 'true');
+      setIsUnlocked(true);
+      setIsGateOpen(false);
+      toast.success('Access Granted');
+    } else {
+      toast.error('Incorrect Secret Key');
+    }
+  };
+
   const fetchQuestion = async () => {
     const { data, error } = await supabase
       .from('hot_questions')

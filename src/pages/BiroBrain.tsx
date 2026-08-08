@@ -123,7 +123,7 @@ export default function BiroBrain() {
                 <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
                   <Bot className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="text-lg font-semibold">Hi! I'm Biro-Brain 🧠</h3>
+                <h3 className="text-lg font-semibold">Hi! I'm Owner's AI 🧠</h3>
                 <p className="text-sm text-muted-foreground text-center max-w-md">
                   Ask me anything about JEE/NEET — solve problems, explain concepts, analyze your performance, or create study plans.
                 </p>
@@ -178,7 +178,7 @@ export default function BiroBrain() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && sendMessage(input)}
-              placeholder="Ask Biro-Brain anything..."
+              placeholder="Ask Owner's AI anything..."
               disabled={isLoading}
               className="flex-1"
             />
