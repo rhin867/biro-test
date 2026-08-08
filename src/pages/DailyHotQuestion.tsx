@@ -186,8 +186,10 @@ export default function DailyHotQuestion() {
       user_display_name: author,
       selected_option: myResponse.trim(),
       comment: myComment.trim(),
-      parent_id: replyTo?.id || null
-    }).select();
+      parent_id: replyTo?.id || null,
+      likes: 0,
+      liked_by: []
+    } as any).select();
 
     setIsSubmitting(false);
     if (error) toast.error('Failed to submit');
