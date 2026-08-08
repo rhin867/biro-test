@@ -664,21 +664,44 @@ function CreateTestInner() {
               </div>
             )}
             {pdfPageImages.length > 0 && (
-              <div className="space-y-3 p-4 rounded-xl border-2 border-primary/20 bg-primary/5">
-                <div className="flex items-center gap-2 text-primary font-semibold mb-1">
-                  <Crop className="h-5 w-5" />
-                  <span className="text-sm">Manual Selection Mode</span>
+              <div className="space-y-4 p-5 rounded-2xl border-2 border-primary/30 bg-primary/5 shadow-inner">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-primary font-black uppercase tracking-tighter">
+                    <Crop className="h-6 w-6" />
+                    <span className="text-base">Advanced Manual Selection Mode</span>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] font-black uppercase tracking-tight text-primary border-primary/20 bg-primary/10">0 Credits</Badge>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Building a test without AI? Use the manual crop tool to select questions directly from the PDF.
+                
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Best for <span className="text-foreground font-bold">scanned PDFs</span>. Select question areas and option areas (A, B, C, D) manually for perfect accuracy.
                 </p>
-                <Button variant="default" onClick={() => setShowCropTool(true)} className="gap-2 w-full h-11 text-base shadow-lg hover:shadow-primary/20 transition-all">
-                  <Crop className="h-5 w-5" /> Open Manual Crop Tool
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 py-1">
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-background/50 border border-border/50">
+                    <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">1</div>
+                    <p className="text-xs text-muted-foreground">Select the <b>Question</b> area first by dragging.</p>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-background/50 border border-border/50">
+                    <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">2</div>
+                    <p className="text-xs text-muted-foreground">Hold <b>SHIFT</b> + Drag to select <b>Option areas</b>.</p>
+                  </div>
+                </div>
+
+                <Button variant="default" onClick={() => setShowCropTool(true)} className="gap-2 w-full h-14 text-lg font-black uppercase tracking-widest shadow-xl hover:shadow-primary/30 transition-all group">
+                  <Crop className="h-6 w-6 group-hover:rotate-12 transition-transform" /> 
+                  Open Manual Selection Tool
                 </Button>
-                <p className="text-[10px] text-muted-foreground text-center font-medium">
-                  0 AI CREDITS REQUIRED • UNLIMITED USE
-                </p>
+                
+                <div className="flex items-center justify-center gap-4 text-[10px] text-muted-foreground font-black uppercase tracking-widest pt-1">
+                  <span>UNLIMITED USE</span>
+                  <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                  <span>NO PASSWORD</span>
+                  <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                  <span>100% ACCURATE</span>
+                </div>
               </div>
+
             )}
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setStep('upload')}>Back</Button>
