@@ -12,7 +12,7 @@ import { Test, Question, TestAttempt, QuestionAttempt, Subject } from '@/types/e
 import { calculateTestResult } from '@/lib/exam-utils';
 import { supabase } from '@/integrations/supabase/client';
 import { fileToBase64 } from '@/lib/pdf-cropper';
-import { Upload, FileText, Loader2, BarChart, Clock, Send, Image, Monitor, RefreshCw } from 'lucide-react';
+import { Upload, FileText, Loader2, BarChart, Clock, Send, Image, Monitor, RefreshCw, HelpCircle } from 'lucide-react';
 
 export default function ExternalAnalysis() {
   const navigate = useNavigate();
