@@ -192,8 +192,11 @@ export default function DailyHotQuestion() {
     if (!question && !replyTo) return;
     if (!myResponse.trim() && !replyTo && !myComment.trim()) return toast.error('Enter an answer or comment');
     
-    setIsSubmitting(true);
     const userKey = localStorage.getItem('user_key') || 'anonymous';
+    const bannedKeys = JSON.parse(localStorage.getItem('admin_banned_users') || '[]');
+    if (bannedKeys.includes(userKey)) return toast.error('You are restricted from posting');
+    
+    setIsSubmitting(true);
     const author = localStorage.getItem('community_author') || 'Anonymous';
     
     const responseData: any = {
