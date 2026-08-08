@@ -16,6 +16,7 @@ const Index = () => {
       Madarchod reddit vaala system tune lgayahi nahi,fix kr all the things,and tune to upvotes downvotes ye sabb kuchh bhi newline kra means reddit ke chatting system ko kuchh bhi implement nahi kra,sabb kuchh implement kr step by step plan bna and use fix kr
       Add edit and delete controls for my community posts and replies so I can manage my content after posting.
       Saale image q visible nahi ho rha hai checkout kr real reason and fix kr ,and fir checkout kr ki abb visible ho rha hai ya nahi and agar nahi ho rha hai to dubra fix kr,tabb tkk fix kr jbb tkk sabbi panels pr direct visible na ho jaaye,
+      Checkout kr image visiblity dhqmein fixed haivisible ho rha hai ya nahi and agar nahi ho rha hai to fix kr
     </div>
 
   );
