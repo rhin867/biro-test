@@ -66,6 +66,17 @@ function ModerationDashboard({ ownerPassword }: { ownerPassword: string }) {
     }
   };
 
+  const handleBanUser = async (userKey: string) => {
+    if (!confirm('Ban this user key from interacting?')) return;
+    // We add to our local banned list and also mark in profile if exists
+    const banned = JSON.parse(localStorage.getItem(BANNED_KEY) || '[]');
+    if (!banned.includes(userKey)) {
+      banned.push(userKey);
+      localStorage.setItem(BANNED_KEY, JSON.stringify(banned));
+    }
+    toast.success('User key added to ban list');
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -90,9 +101,14 @@ function ModerationDashboard({ ownerPassword }: { ownerPassword: string }) {
                     <Badge variant="outline" className="text-[10px]">{new Date(r.created_at).toLocaleDateString()}</Badge>
                     {r.parent_id && <Badge className="text-[9px] bg-muted text-muted-foreground">Reply</Badge>}
                   </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100" onClick={() => handleDelete(r.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(r.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-500" onClick={() => handleBanUser(r.user_key)}>
+                      <Ban className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
                 <p className="text-sm mb-2">{r.comment || <span className="italic text-muted-foreground">No comment</span>}</p>
                 <div className="flex gap-4 text-[10px] text-muted-foreground">
@@ -399,8 +415,9 @@ export default function AdminPanel() {
     <div className="mt-4 relative group w-full flex justify-center">
       <div className="relative rounded-2xl overflow-hidden border-2 border-primary/20 shadow-neon bg-white p-3 flex justify-center items-center min-h-[200px] w-full max-w-2xl transition-all hover:border-primary/40">
         <img 
-          src={hotQuestionImageUrl.includes('supabase.co') && !hotQuestionImageUrl.includes('?') ? `${hotQuestionImageUrl}?t=${Date.now()}` : hotQuestionImageUrl} 
+          src={hotQuestionImageUrl.includes('supabase.co') && !hotQuestionImageUrl.includes('t=') ? `${hotQuestionImageUrl}?t=${Date.now()}` : hotQuestionImageUrl} 
           alt="Admin Preview" 
+          key={hotQuestionImageUrl}
           className="max-h-[500px] w-full object-contain block rounded-lg" 
           crossOrigin="anonymous"
           onError={(e) => {

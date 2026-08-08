@@ -177,32 +177,41 @@ export default function DailyHotQuestion() {
     if (!error) {
       fetchResponses(question.id);
       if (userKey !== authorKey) {
-        await supabase.from('notifications' as any).insert({
+        await supabase.from('notifications').insert({
           user_key: authorKey,
           title: 'New Like!',
           message: `${localStorage.getItem('community_author') || 'Someone'} liked your comment.`,
-          link: '/daily-hot-question'
+          link: '/daily-hot-question',
+          is_read: false
         });
       }
     }
   };
 
-  const handleSubmit = async () => {
-    if (!question || (!myResponse.trim() && !replyTo)) return toast.error('Enter an answer/option');
-    setIsSubmitting(true);
+  const handleSubmit = async (imageUrl?: string) => {
+    if (!question && !replyTo) return;
+    if (!myResponse.trim() && !replyTo && !myComment.trim()) return toast.error('Enter an answer or comment');
+    
     const userKey = localStorage.getItem('user_key') || 'anonymous';
+    const bannedKeys = JSON.parse(localStorage.getItem('admin_banned_users') || '[]');
+    if (bannedKeys.includes(userKey)) return toast.error('You are restricted from posting');
+    
+    setIsSubmitting(true);
     const author = localStorage.getItem('community_author') || 'Anonymous';
     
-    const { data, error } = await supabase.from('hot_question_responses').insert({
+    const responseData: any = {
       question_id: question.id,
       user_key: userKey,
       user_display_name: author,
-      selected_option: myResponse.trim(),
+      selected_option: myResponse.trim() || (replyTo?.selected_option || ''),
       comment: myComment.trim(),
       parent_id: replyTo?.id || null,
       likes: 0,
-      liked_by: []
-    } as any).select();
+      liked_by: [],
+      image_url: imageUrl || null
+    };
+
+    const { data, error } = await supabase.from('hot_question_responses').insert(responseData).select();
 
     setIsSubmitting(false);
     if (error) toast.error('Failed to submit');
@@ -321,7 +330,10 @@ export default function DailyHotQuestion() {
     <MainLayout>
       <PageHeader title="Daily Hot Question" description="Challenge yourself every day & discuss with others.">
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowNotifications(!showNotifications)} className="relative">
+          <Button variant="outline" size="sm" onClick={() => {
+            setShowNotifications(!showNotifications);
+            if (!showNotifications) fetchNotifications();
+          }} className="relative">
             {notifications.length > 0 ? <Bell className="h-4 w-4 text-primary animate-bounce" /> : <BellOff className="h-4 w-4" />}
             {notifications.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] px-1 rounded-full">{notifications.length}</span>}
           </Button>
@@ -521,8 +533,8 @@ export default function DailyHotQuestion() {
                                       if (error) toast.error('Upload failed');
                                       else {
                                         const { data: { publicUrl } } = supabase.storage.from('biro-test-images').getPublicUrl(fileName);
-                                        setMyComment(prev => prev + (prev ? '\n' : '') + `[Image: ${publicUrl}]`);
-                                        toast.success('Image attached to comment!');
+                                        toast.success('Image uploaded! Submitting...');
+                                        handleSubmit(publicUrl);
                                       }
                                     }
                                   }}
@@ -537,7 +549,7 @@ export default function DailyHotQuestion() {
                                 </Button>
                               </div>
                             </div>
-                            <Button className="w-full h-12 text-lg gap-2 glow-primary" onClick={handleSubmit} disabled={isSubmitting || !myResponse.trim()}>
+                            <Button className="w-full h-12 text-lg gap-2 glow-primary" onClick={() => handleSubmit()} disabled={isSubmitting || !myResponse.trim()}>
                               <Send className="h-5 w-5" /> {isSubmitting ? 'Submitting...' : 'Submit Final Answer'}
                             </Button>
                           </div>
@@ -661,7 +673,29 @@ export default function DailyHotQuestion() {
                                 <span className="text-[10px] text-muted-foreground">• {new Date(reply.created_at).toLocaleTimeString()}</span>
                               </div>
                             </div>
-                            <p className="text-sm px-1 mb-3 leading-relaxed whitespace-pre-wrap">{reply.comment}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm px-1 mb-3 leading-relaxed whitespace-pre-wrap">{reply.comment}</p>
+                              {reply.image_url && (
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-primary hover:bg-primary/10">
+                                      <ImageIcon className="h-3 w-3" />
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-2xl">
+                                    <DialogHeader>
+                                      <DialogTitle>{reply.user_display_name}'s Shared Image</DialogTitle>
+                                    </DialogHeader>
+                                    <img 
+                                      src={reply.image_url} 
+                                      alt="User attachment" 
+                                      className="w-full h-auto rounded-lg border shadow-lg"
+                                      crossOrigin="anonymous"
+                                    />
+                                  </DialogContent>
+                                </Dialog>
+                              )}
+                            </div>
                             <Button 
                               variant="ghost" 
                               size="sm" 
