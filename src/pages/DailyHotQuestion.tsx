@@ -465,12 +465,12 @@ export default function DailyHotQuestion() {
                   Discussions ({responses.length})
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 max-h-[600px] overflow-y-auto custom-scrollbar">
+              <CardContent className="space-y-4 max-h-[800px] overflow-y-auto custom-scrollbar p-6">
                 {responses.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">Be the first to respond!</p>
                 ) : (
                   responses.filter(r => !r.parent_id).map(resp => (
-                    <div key={resp.id} className="space-y-3">
+                    <div key={resp.id} className="space-y-4 border-b pb-6 last:border-0">
                       <div className="p-3 rounded-xl bg-secondary/20 border border-border/50 shadow-sm relative overflow-hidden">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
