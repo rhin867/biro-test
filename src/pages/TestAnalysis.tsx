@@ -272,23 +272,14 @@ export default function TestAnalysis() {
         <div className="flex gap-2 flex-wrap">
           <Button
             variant="outline"
-            onClick={() => {
-              const el = document.getElementById('analysis-content');
-              if (el) {
-                import('html2canvas').then(({ default: html2canvas }) => {
-                  html2canvas(el, { backgroundColor: '#1a1f2e', scale: 1 }).then(canvas => {
-                    const link = document.createElement('a');
-                    link.download = `${result.testName}-analysis.png`;
-                    link.href = canvas.toDataURL();
-                    link.click();
-                    toast.success('Analysis downloaded!');
-                  });
-                });
-              }
+            onClick={async () => {
+              toast.info('Generating 25-page comprehensive report...');
+              await generateAnalysisPDF(result);
+              toast.success('Report downloaded!');
             }}
           >
             <Download className="h-4 w-4 mr-2" />
-            Download
+            Download PDF
           </Button>
           <Button variant="outline" onClick={() => setShowAnswerKeyDialog(true)}>
             <Key className="h-4 w-4 mr-2" />
