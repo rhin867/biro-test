@@ -674,11 +674,12 @@ export default function AdminPanel() {
                         } else {
                           // Use the standard URL construction for public buckets
                           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+                          // Use object/public route consistently
                           const publicUrl = `${supabaseUrl}/storage/v1/object/public/biro-test-images/${fileName}`;
                           
-                          // Force cache busting on the URL and ensure it's absolute
-                          const freshUrl = publicUrl.startsWith('http') ? `${publicUrl}?t=${Date.now()}` : `${window.location.origin}${publicUrl}?t=${Date.now()}`;
-                          setHotQuestionImageUrl(freshUrl);
+                          // Ensure we don't have double slashes (except in https://)
+                          const sanitizedUrl = publicUrl.replace(/([^:]\/)\/+/g, "$1");
+                          setHotQuestionImageUrl(`${sanitizedUrl}?t=${Date.now()}`);
                           toast.success('Image uploaded!');
                         }
                       }
