@@ -290,10 +290,10 @@ export type Database = {
           email: string | null
           id: string
           last_engagement_at: string | null
-          streak: number | null
           total_xp: number | null
           updated_at: string
           user_id: string
+          user_streak: number | null
         }
         Insert: {
           avatar_url?: string | null
@@ -302,10 +302,10 @@ export type Database = {
           email?: string | null
           id?: string
           last_engagement_at?: string | null
-          streak?: number | null
           total_xp?: number | null
           updated_at?: string
           user_id: string
+          user_streak?: number | null
         }
         Update: {
           avatar_url?: string | null
@@ -314,10 +314,10 @@ export type Database = {
           email?: string | null
           id?: string
           last_engagement_at?: string | null
-          streak?: number | null
           total_xp?: number | null
           updated_at?: string
           user_id?: string
+          user_streak?: number | null
         }
         Relationships: []
       }
