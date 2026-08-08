@@ -399,10 +399,14 @@ export default function AdminPanel() {
     <div className="mt-4 relative group w-full flex justify-center">
       <div className="relative rounded-2xl overflow-hidden border-2 border-primary/20 shadow-neon bg-white p-3 flex justify-center items-center min-h-[200px] w-full max-w-2xl transition-all hover:border-primary/40">
         <img 
-          src={hotQuestionImageUrl} 
+          src={hotQuestionImageUrl.includes('supabase.co') && !hotQuestionImageUrl.includes('?') ? `${hotQuestionImageUrl}?t=${Date.now()}` : hotQuestionImageUrl} 
           alt="Admin Preview" 
           className="max-h-[500px] w-full object-contain block rounded-lg" 
           crossOrigin="anonymous"
+          onError={(e) => {
+            console.error("Admin preview image failed to load");
+            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x200?text=Image+Load+Error';
+          }}
         />
         <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button 

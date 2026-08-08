@@ -139,22 +139,35 @@ export function NTAQuestionPalette({
               const isCurrent = questionNum === currentQuestion;
               const q = testQuestions ? testQuestions[questionNum - 1] : null;
               const hasImage = q && (q.croppedImageUrl || q.imageUrl);
+              const imageUrl = q?.croppedImageUrl || q?.imageUrl;
 
               return (
                 <button
                   key={questionNum}
                   onClick={() => onQuestionClick(questionNum)}
                   className={cn(
-                    'h-10 w-10 rounded flex flex-col items-center justify-center text-sm font-medium transition-all relative',
+                    'h-12 w-12 rounded flex flex-col items-center justify-center text-xs font-medium transition-all relative overflow-hidden border border-border',
                     statusStyles[status],
-                    isCurrent && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+                    isCurrent && 'ring-2 ring-primary ring-offset-2 ring-offset-background z-10'
                   )}
                 >
-                  <span className={cn(hasImage && "mt-1")}>{questionNum}</span>
-                  {hasImage && (
-                    <div className="absolute top-0.5 right-0.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400 border border-white" title="Contains Image" />
+                  {hasImage ? (
+                    <div className="w-full h-full relative group">
+                      <img 
+                        src={imageUrl} 
+                        alt={String(questionNum)} 
+                        className="w-full h-full object-cover opacity-60 hover:opacity-100 transition-opacity"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-transparent transition-colors">
+                        <span className="text-white drop-shadow-md font-bold">{questionNum}</span>
+                      </div>
+                      <div className="absolute top-0 right-0 p-0.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-sm border border-white" />
+                      </div>
                     </div>
+                  ) : (
+                    <span>{questionNum}</span>
                   )}
                 </button>
               );
