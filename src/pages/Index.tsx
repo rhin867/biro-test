@@ -10,17 +10,16 @@ const Index = () => {
 
   return (
     <div className="hidden">
-      {`Update the Supabase configuration to use these credentials:
+      {`Pull the latest changes from GitHub and redeploy. The Supabase credentials have been updated in the .env file to use the Biro-test Supabase project. Test the image upload in the Daily Hot Question admin panel.,          Change the Supabase project credentials to use:
 
 VITE_SUPABASE_URL=https://plqoujjcfxwqtbdvroek.supabase.co
 
 VITE_SUPABASE_PROJECT_ID=plqoujjcfxwqtbdvroek
 
-VITE_SUPABASE_PUBLISHABLE_KEY=<yahan apni key paste kar>
 
-sb_publishable_wbxShL9Phssj5A7EjH7-RQ_vy4e8G2_
 
-Update src/integrations/supabase/client.ts and .env with these new values.`}
+
+Update all environment variables accordingly.`}
     </div>
   );
 };
