@@ -153,13 +153,17 @@ export default function MyTests() {
           folder_name: shareFolderName,
           owner_user_key: localStorage.getItem('user_key'),
           shared_with_email: shareEmail.trim() || null,
-          password_hash: sharePassword.trim() || null, // Hash this in production
+          password_hash: sharePassword.trim() || null,
         } as any)
         .select()
         .single();
 
       if (error) throw error;
-      toast.success('Folder share link generated! Users can now request access.');
+      
+      const shareLink = `${window.location.origin}/join-folder?token=${(data as any).share_token}`;
+      await navigator.clipboard.writeText(shareLink);
+      
+      toast.success('Share link generated and copied to clipboard! Anyone with the link can now request access.');
       setShowShareFolderDialog(false);
     } catch (e: any) {
       toast.error('Failed to share: ' + e.message);
@@ -182,9 +186,11 @@ export default function MyTests() {
             <FolderLock className="h-4 w-4" /> Share Folder
           </Button>
           <Button variant="ghost" className="gap-2" onClick={() => {
-            const token = prompt('Enter share token/link:');
-            const email = prompt('Enter your email for access request:');
-            if (token && email) handleRequestAccess(token, email);
+            const token = prompt('Enter share token or link:');
+            if (token) {
+              const url = token.includes('token=') ? token : `${window.location.origin}/join-folder?token=${token}`;
+              window.location.href = url;
+            }
           }}>
             <MailPlus className="h-4 w-4" /> Join Shared Folder
           </Button>

@@ -27,6 +27,7 @@ import BiroBrain from "./pages/BiroBrain";
 import PublicTests from "./pages/PublicTests";
 import Auth from "./pages/Auth";
 import DailyHotQuestion from "./pages/DailyHotQuestion";
+import JoinFolder from "./pages/JoinFolder";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,7 @@ const App = () => {
             <Route path="/public-tests" element={<PublicTests />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/hot-question" element={<DailyHotQuestion />} />
+            <Route path="/join-folder" element={<JoinFolder />} />
             <Route path="/analysis" element={<History />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
