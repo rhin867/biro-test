@@ -586,8 +586,9 @@ export default function DailyHotQuestion() {
                                         console.error('Upload error:', error);
                                         toast.error('Upload failed: ' + error.message);
                                       } else {
-                                        const { data: { publicUrl } } = supabase.storage.from('biro-test-images').getPublicUrl(fileName);
-                                        const freshUrl = publicUrl.includes('?') ? `${publicUrl}&t=${Date.now()}` : `${publicUrl}?t=${Date.now()}`;
+                                        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+                                        const publicUrl = `${supabaseUrl}/storage/v1/object/public/biro-test-images/${fileName}`;
+                                        const freshUrl = `${publicUrl}?t=${Date.now()}`;
                                         toast.success('Image uploaded! Submitting...');
                                         handleSubmit(freshUrl);
                                       }
