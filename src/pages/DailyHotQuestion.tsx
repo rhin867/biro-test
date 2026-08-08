@@ -404,7 +404,7 @@ export default function DailyHotQuestion() {
                             onClick={() => {
                               setImageError(false);
                               const currentUrl = question.image_url;
-                              setQuestion({...question, image_url: currentUrl + (currentUrl.includes('?') ? '&' : '?') + 'retry=' + Date.now()});
+                              setQuestion({...question, image_url: currentUrl + (currentUrl.includes('?') ? '&' : '?') + 't=' + Date.now()});
                             }}
                           >
                             Retry Loading
