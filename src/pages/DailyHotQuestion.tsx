@@ -529,7 +529,9 @@ export default function DailyHotQuestion() {
                                       const fileName = `resp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
                                       const { data, error } = await supabase.storage
                                         .from('biro-test-images')
-                                        .upload(fileName, file);
+                                        .upload(fileName, file, {
+                                          upsert: true
+                                        });
                                       if (error) toast.error('Upload failed');
                                       else {
                                         const { data: { publicUrl } } = supabase.storage.from('biro-test-images').getPublicUrl(fileName);
