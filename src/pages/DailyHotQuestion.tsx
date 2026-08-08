@@ -736,21 +736,63 @@ export default function DailyHotQuestion() {
                                 <span className="text-xs font-black text-muted-foreground">{reply.user_display_name}</span>
                                 <span className="text-[10px] text-muted-foreground">• {new Date(reply.created_at).toLocaleTimeString()}</span>
                               </div>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-6 text-[10px] gap-1 px-2 opacity-0 group-hover/reply:opacity-100"
-                                onClick={() => {
-                                  setReplyTo(resp);
-                                  setMyComment(`@${reply.user_display_name} `);
-                                  document.getElementById('solve-area')?.scrollIntoView({ behavior: 'smooth' });
-                                }}
-                              >
-                                <Reply className="h-3 w-3" />
-                                Reply
-                              </Button>
+                              <div className="flex items-center gap-1 opacity-0 group-hover/reply:opacity-100 transition-opacity">
+                                {reply.user_key === (localStorage.getItem('user_key') || 'anonymous') && (
+                                  <>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-6 w-6 text-muted-foreground hover:text-primary"
+                                      onClick={() => {
+                                        const newComment = prompt('Edit your reply:', reply.comment);
+                                        if (newComment && newComment !== reply.comment) {
+                                          supabase.from('hot_question_responses').update({ comment: newComment }).eq('id', reply.id).then(({ error }) => {
+                                            if (!error) {
+                                              toast.success('Reply updated');
+                                              setResponses(prev => prev.map(r => r.id === reply.id ? { ...r, comment: newComment } : r));
+                                            }
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <Edit2 className="h-3 w-3" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                      onClick={() => {
+                                        if (confirm('Delete this reply?')) {
+                                          supabase.from('hot_question_responses').delete().eq('id', reply.id).then(({ error }) => {
+                                            if (!error) {
+                                              toast.success('Reply deleted');
+                                              setResponses(prev => prev.filter(r => r.id !== reply.id));
+                                            }
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </>
+                                )}
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-6 text-[10px] gap-1 px-2"
+                                  onClick={() => {
+                                    setReplyTo(resp);
+                                    setMyComment(`@${reply.user_display_name} `);
+                                    document.getElementById('solve-area')?.scrollIntoView({ behavior: 'smooth' });
+                                  }}
+                                >
+                                  <Reply className="h-3 w-3" />
+                                  Reply
+                                </Button>
+                              </div>
                             </div>
                             <div className="flex items-center gap-2">
+
                               <p className="text-sm px-1 mb-3 leading-relaxed whitespace-pre-wrap">{reply.comment}</p>
 
                               {reply.image_url && (

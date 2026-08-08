@@ -14,8 +14,9 @@ import { LatexRenderer } from '@/components/ui/latex-renderer';
 import telegramQR from '@/assets/telegram-qr.png';
 import {
   MessageSquare, ThumbsUp, ThumbsDown, Lightbulb, AlertTriangle, Send,
-  Edit2, X, Check, Star, Share2, MessageCircle, Trophy, ExternalLink, Reply
+  Edit2, X, Check, Star, Share2, MessageCircle, Trophy, ExternalLink, Reply, Trash2
 } from 'lucide-react';
+
 
 
 const AUTHOR_KEY = 'community_author';
@@ -302,6 +303,35 @@ export default function Community() {
                           <span className="text-xs text-muted-foreground">{new Date(msg.created_at).toLocaleTimeString()}</span>
                         </div>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {msg.author === author && (
+                            <>
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+                                const newContent = prompt('Edit message:', msg.content);
+                                if (newContent && newContent !== msg.content) {
+                                  supabase.from('community_messages' as any).update({ content: newContent } as any).eq('id', msg.id).then(({ error }) => {
+                                    if (!error) {
+                                      toast.success('Message updated');
+                                      setChatMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: newContent } : m));
+                                    }
+                                  });
+                                }
+                              }}>
+                                <Edit2 className="h-3 w-3" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-destructive" onClick={() => {
+                                if (confirm('Delete message?')) {
+                                  supabase.from('community_messages' as any).delete().eq('id', msg.id).then(({ error }) => {
+                                    if (!error) {
+                                      toast.success('Message deleted');
+                                      setChatMessages(prev => prev.filter(m => m.id !== msg.id));
+                                    }
+                                  });
+                                }
+                              }}>
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </>
+                          )}
                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleVote(msg.id, 'up')}>
                             <ThumbsUp className={`h-3 w-3 ${(msg.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary text-primary' : ''}`} />
                           </Button>
@@ -313,6 +343,7 @@ export default function Community() {
                             <Reply className="h-3 w-3" />
                           </Button>
                         </div>
+
                       </div>
                       <p className="text-sm">{msg.content}</p>
                     </div>
@@ -327,6 +358,35 @@ export default function Community() {
                               <span className="text-[10px] text-muted-foreground">{new Date(reply.created_at).toLocaleTimeString()}</span>
                             </div>
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity scale-90">
+                              {reply.author === author && (
+                                <>
+                                  <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => {
+                                    const newContent = prompt('Edit reply:', reply.content);
+                                    if (newContent && newContent !== reply.content) {
+                                      supabase.from('community_messages' as any).update({ content: newContent } as any).eq('id', reply.id).then(({ error }) => {
+                                        if (!error) {
+                                          toast.success('Reply updated');
+                                          setChatMessages(prev => prev.map(m => m.id === reply.id ? { ...m, content: newContent } : m));
+                                        }
+                                      });
+                                    }
+                                  }}>
+                                    <Edit2 className="h-2.5 w-2.5" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-5 w-5 hover:text-destructive" onClick={() => {
+                                    if (confirm('Delete reply?')) {
+                                      supabase.from('community_messages' as any).delete().eq('id', reply.id).then(({ error }) => {
+                                        if (!error) {
+                                          toast.success('Reply deleted');
+                                          setChatMessages(prev => prev.filter(m => m.id !== reply.id));
+                                        }
+                                      });
+                                    }
+                                  }}>
+                                    <Trash2 className="h-2.5 w-2.5" />
+                                  </Button>
+                                </>
+                              )}
                               <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleVote(reply.id, 'up')}>
                                 <ThumbsUp className={`h-2.5 w-2.5 ${(reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary text-primary' : ''}`} />
                               </Button>
@@ -337,6 +397,7 @@ export default function Community() {
                                 <Reply className="h-2.5 w-2.5" />
                               </Button>
                             </div>
+
                           </div>
                           <p className="text-xs">{reply.content}</p>
                         </div>
