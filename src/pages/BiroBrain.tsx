@@ -109,7 +109,7 @@ export default function BiroBrain() {
 
   return (
     <MainLayout>
-      <PageHeader title="Biro-Brain (BB)" description="Your AI study assistant for JEE/NEET prep">
+      <PageHeader title="Owner's AI (BB)" description="Your personal AI study assistant for JEE/NEET prep">
         <Button variant="outline" size="sm" onClick={() => setMessages([])} disabled={messages.length === 0}>
           <Trash2 className="h-4 w-4 mr-1" /> Clear
         </Button>
