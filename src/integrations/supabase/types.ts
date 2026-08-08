@@ -105,6 +105,7 @@ export type Database = {
           comment: string | null
           created_at: string | null
           id: string
+          image_url: string | null
           liked_by: string[] | null
           likes: number | null
           parent_id: string | null
@@ -117,6 +118,7 @@ export type Database = {
           comment?: string | null
           created_at?: string | null
           id?: string
+          image_url?: string | null
           liked_by?: string[] | null
           likes?: number | null
           parent_id?: string | null
@@ -129,6 +131,7 @@ export type Database = {
           comment?: string | null
           created_at?: string | null
           id?: string
+          image_url?: string | null
           liked_by?: string[] | null
           likes?: number | null
           parent_id?: string | null
@@ -289,6 +292,7 @@ export type Database = {
           display_name: string | null
           email: string | null
           id: string
+          is_banned: boolean | null
           last_engagement_at: string | null
           total_xp: number | null
           updated_at: string
@@ -301,6 +305,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          is_banned?: boolean | null
           last_engagement_at?: string | null
           total_xp?: number | null
           updated_at?: string
@@ -313,6 +318,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          is_banned?: boolean | null
           last_engagement_at?: string | null
           total_xp?: number | null
           updated_at?: string
