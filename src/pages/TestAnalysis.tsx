@@ -354,7 +354,7 @@ export default function TestAnalysis() {
         </CardContent>
       </Card>
 
-      {/* Tabbed Analysis - Scrollable tabs like Mathongo/PW */}
+      {/* Tabbed Analysis - Scrollable tabs like AspirantAI/PW */}
       <Tabs defaultValue="overview" className="space-y-6">
         <ScrollArea className="w-full">
           <TabsList className="inline-flex w-auto min-w-full">

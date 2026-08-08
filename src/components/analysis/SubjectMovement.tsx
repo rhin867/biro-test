@@ -101,7 +101,7 @@ export function SubjectMovement({ questionResults }: SubjectMovementProps) {
 
   return (
     <div className="space-y-6">
-      {/* Visual Flow Path - like Quizrr/Mathongo */}
+      {/* Visual Flow Path - like Quizrr/AspirantAI */}
       <Card>
         <CardHeader>
           <CardTitle>Subject Movement</CardTitle>
