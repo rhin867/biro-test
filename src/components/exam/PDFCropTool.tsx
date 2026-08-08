@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { PDFPageImage } from '@/lib/pdf-cropper';
 import { Crop, Download, RotateCcw, ChevronLeft, ChevronRight, Trash2, ZoomIn, ZoomOut, Plus, Image as ImageIcon, Pencil, Eye } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface CropRegion { x: number; y: number; width: number; height: number; }
 
