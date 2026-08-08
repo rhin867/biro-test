@@ -10,7 +10,7 @@ const Index = () => {
 
   return (
     <div className="hidden">
-      {`PROBLEM:
+      {`Abb firse image upload nahi hor ha hai and bucket not found bta rh ahai and checkout kro ki supabase ke kaunse prinect mein hamara bucket hai and vo sahi hai ya nahi and bucket hai bhi ya nahi and mereko supabase ke project ka link do and agar project bna hi nahi hai tto bnao aur agar nahi bna pa rhe hai to mere ko step by step btao kaise kaise bnana hai prohect and bucket all the things and main apne supabase prihect ko kaise connect kr sakta hu apne is websight se and apne biro-test.vercela.pp ko bhi kaise connect kr paaunga and qki usmein bhi bucket not found bta rha hai image seen nahi ho rha hai and image upload bhi nahi ho rha hai and sabb kuchh bta ,PROBLEM:
 
       The Daily Hot Question feature shows "Diagram failed to load" because the question image URL points to a Supabase Storage bucket that returns 404 NoSuchBucket error.
 
@@ -78,6 +78,7 @@ const Index = () => {
 
 
       GOAL: Question images should display inline — exactly like WhatsApp/Telegram image previews — both on the student-facing daily question card AND in the admin edit panel, without any external links or diagram renderers.`}
+
     </div>
 
   );
