@@ -52,10 +52,13 @@ export default function DailyHotQuestion() {
     }
   };
 
+  // The answer key (correct_option) is never sent to the browser with the question.
+  const HOT_Q_COLUMNS = 'id, content, created_at, options, image_url, question_type, type';
+
   const fetchQuestion = async () => {
     const { data, error } = await supabase
       .from('hot_questions')
-      .select('*')
+      .select(HOT_Q_COLUMNS)
       .order('created_at', { ascending: false })
       .limit(1);
 
@@ -68,6 +71,8 @@ export default function DailyHotQuestion() {
       const q = data[0];
       setQuestion(q);
       setImageError(false);
+      setRevealedAnswer(null);
+      setIsCorrect(null);
       fetchResponses(q.id);
       checkIfAlreadyAnswered(q.id, q);
     } else {
@@ -75,16 +80,32 @@ export default function DailyHotQuestion() {
     }
   };
 
-  const checkIfAlreadyAnswered = async (qId: string, currentQuestion: any) => {
+  // Grades the user's answer server-side; the answer key is only returned
+  // after a response has been submitted.
+  const revealResult = async (qId: string) => {
     const userKey = localStorage.getItem('user_key') || 'anonymous';
-    const hasAlreadyAttempted = localStorage.getItem(`solved_q_${qId}`);
-    
-    if (hasAlreadyAttempted) {
-      setHasAnswered(true);
-      const savedAns = localStorage.getItem(`ans_q_${qId}`);
-      if (savedAns && currentQuestion?.correct_option) {
-        setIsCorrect(savedAns.trim().toLowerCase() === currentQuestion.correct_option.trim().toLowerCase());
+    try {
+      const { data } = await supabase.functions.invoke('hot-question-answer', {
+        body: { action: 'check', questionId: qId, userKey },
+      });
+      const res = data as any;
+      if (res?.answered) {
+        setHasAnswered(true);
+        setRevealedAnswer(res.correctOption ?? null);
+        setIsCorrect(typeof res.isCorrect === 'boolean' ? res.isCorrect : null);
+        localStorage.setItem(`solved_q_${qId}`, 'true');
+        if (res.selectedOption) localStorage.setItem(`ans_q_${qId}`, res.selectedOption);
       }
+    } catch (e) {
+      console.error('Failed to verify answer', e);
+    }
+  };
+
+  const checkIfAlreadyAnswered = async (qId: string, _currentQuestion: any) => {
+    const userKey = localStorage.getItem('user_key') || 'anonymous';
+    if (localStorage.getItem(`solved_q_${qId}`)) {
+      setHasAnswered(true);
+      await revealResult(qId);
       return;
     }
 
@@ -98,12 +119,11 @@ export default function DailyHotQuestion() {
     if (data && data.length > 0) {
       setHasAnswered(true);
       localStorage.setItem(`solved_q_${qId}`, 'true');
-      localStorage.setItem(`ans_q_${qId}`, data[0].selected_option);
-      if (currentQuestion?.correct_option) {
-        setIsCorrect(data[0].selected_option.trim().toLowerCase() === currentQuestion.correct_option.trim().toLowerCase());
-      }
+      if (data[0].selected_option) localStorage.setItem(`ans_q_${qId}`, data[0].selected_option);
+      await revealResult(qId);
     }
   };
+
 
   const fetchResponses = async (qId: string) => {
     const { data } = await supabase
