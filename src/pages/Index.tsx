@@ -79,7 +79,8 @@ const Index = () => {
 
       GOAL: Question images should display inline — exactly like WhatsApp/Telegram image previews — both on the student-facing daily question card AND in the admin edit panel, without any external links or diagram renderers.
 
-      Add storage health check,add admin upload diagnostic,add image retry ui,add cache busting on load,give me the links of supabase project,and give me the links of buckets so that i can see that is it build or not`}
+      Add storage health check,add admin upload diagnostic,add image retry ui,add cache busting on load,give me the links of supabase project,and give me the links of buckets so that i can see that is it build or not
+      Reddit type upvoting downvoting system purely har ek comments replies mein add kro fix kro checkout keo`}
     </div>
 
   );
