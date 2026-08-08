@@ -249,12 +249,15 @@ export default function AdminPanel() {
     }
   };
 
+  const HOT_Q_COLUMNS = 'id, content, created_at, options, image_url, question_type, type';
+
   const fetchHotQuestionsHistory = async () => {
     setLoadingHistory(true);
-    const { data } = await supabase.from('hot_questions').select('*').order('created_at', { ascending: false });
+    const { data } = await supabase.from('hot_questions').select(HOT_Q_COLUMNS).order('created_at', { ascending: false });
     if (data) setHistory(data);
     setLoadingHistory(false);
   };
+
 
   useEffect(() => {
     if (step === 'authenticated') {
