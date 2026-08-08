@@ -601,7 +601,50 @@ export default function DailyHotQuestion() {
                         <div className="py-4 text-center bg-secondary/10 rounded-xl border border-dashed border-primary/30">
                           <p className="text-sm font-bold text-primary mb-1">Response Submitted!</p>
                           <p className="text-[11px] text-muted-foreground">You can still discuss and reply to others below.</p>
+                          <div className="flex justify-center gap-2 mt-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-7 text-[10px] gap-1"
+                              onClick={() => {
+                                const myResp = responses.find(r => r.user_key === (localStorage.getItem('user_key') || 'anonymous') && !r.parent_id);
+                                if (myResp) {
+                                  const newComment = prompt('Edit your response:', myResp.comment);
+                                  if (newComment && newComment !== myResp.comment) {
+                                    supabase.from('hot_question_responses').update({ comment: newComment }).eq('id', myResp.id).then(({ error }) => {
+                                      if (!error) {
+                                        toast.success('Response updated');
+                                        setResponses(prev => prev.map(r => r.id === myResp.id ? { ...r, comment: newComment } : r));
+                                      }
+                                    });
+                                  }
+                                }
+                              }}
+                            >
+                              <Edit2 className="h-3 w-3" /> Edit My Answer
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-7 text-[10px] gap-1 text-destructive hover:text-destructive"
+                              onClick={() => {
+                                const myResp = responses.find(r => r.user_key === (localStorage.getItem('user_key') || 'anonymous') && !r.parent_id);
+                                if (myResp && confirm('Delete your response? This will also remove any replies to it.')) {
+                                  supabase.from('hot_question_responses').delete().eq('id', myResp.id).then(({ error }) => {
+                                    if (!error) {
+                                      toast.success('Response deleted');
+                                      setResponses(prev => prev.filter(r => r.id !== myResp.id && r.parent_id !== myResp.id));
+                                      setHasAnswered(false);
+                                    }
+                                  });
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" /> Delete
+                            </Button>
+                          </div>
                         </div>
+
                       ) : null}
                     </div>
 
