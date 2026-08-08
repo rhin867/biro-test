@@ -330,7 +330,7 @@ export default function Dashboard() {
                   <TrendingUp className="h-3 w-3 text-orange-500" /> Streak
                 </p>
                 <p className="text-lg font-black text-primary group-hover/streak:scale-110 transition-transform">
-                  {localStorage.getItem('user_streak') || '0'} Days
+                  {streak} Days
                 </p>
               </div>
             </div>
