@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { toast } from 'sonner';
-import { MessageSquare, Send, User, Clock, Star, History as HistoryIcon, ArrowLeft, CheckCircle, XCircle, Target, Plus, ThumbsUp, Bell, BellOff, Reply, ZoomIn, RefreshCw, Lock, Image as ImageIcon } from 'lucide-react';
+import { MessageSquare, Send, User, Clock, Star, History as HistoryIcon, ArrowLeft, CheckCircle, XCircle, Target, Plus, ThumbsUp, ThumbsDown, Bell, BellOff, Reply, ZoomIn, RefreshCw, Lock, Image as ImageIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function DailyHotQuestion() {
@@ -115,7 +115,7 @@ export default function DailyHotQuestion() {
   const fetchNotifications = async () => {
     const userKey = localStorage.getItem('user_key') || 'anonymous';
     const { data } = await supabase
-      .from('notifications' as any)
+      .from('notifications')
       .select('*')
       .eq('user_key', userKey)
       .eq('is_read', false)
@@ -159,28 +159,65 @@ export default function DailyHotQuestion() {
     };
   }, []);
 
-  const handleLike = async (respId: string, authorKey: string) => {
+  const handleVote = async (respId: string, authorKey: string, voteType: 'up' | 'down') => {
     const userKey = localStorage.getItem('user_key') || 'anonymous';
     const resp = responses.find(r => r.id === respId);
     if (!resp) return;
     
     const likedBy = resp.liked_by || [];
-    if (likedBy.includes(userKey)) return toast.info('Already liked');
+    const dislikedBy = resp.disliked_by || [];
+    
+    let newLikes = resp.likes || 0;
+    let newDownvotes = resp.downvotes || 0;
+    let newLikedBy = [...likedBy];
+    let newDislikedBy = [...dislikedBy];
+
+    if (voteType === 'up') {
+      if (newLikedBy.includes(userKey)) {
+        // Remove upvote
+        newLikedBy = newLikedBy.filter(k => k !== userKey);
+        newLikes--;
+      } else {
+        // Add upvote, remove downvote if exists
+        newLikedBy.push(userKey);
+        newLikes++;
+        if (newDislikedBy.includes(userKey)) {
+          newDislikedBy = newDislikedBy.filter(k => k !== userKey);
+          newDownvotes--;
+        }
+      }
+    } else {
+      if (newDislikedBy.includes(userKey)) {
+        // Remove downvote
+        newDislikedBy = newDislikedBy.filter(k => k !== userKey);
+        newDownvotes--;
+      } else {
+        // Add downvote, remove upvote if exists
+        newDislikedBy.push(userKey);
+        newDownvotes++;
+        if (newLikedBy.includes(userKey)) {
+          newLikedBy = newLikedBy.filter(k => k !== userKey);
+          newLikes--;
+        }
+      }
+    }
 
     const { error } = await supabase.from('hot_question_responses' as any)
       .update({ 
-        likes: (resp.likes || 0) + 1,
-        liked_by: [...likedBy, userKey]
+        likes: newLikes,
+        downvotes: newDownvotes,
+        liked_by: newLikedBy,
+        disliked_by: newDislikedBy
       })
       .eq('id', respId);
 
     if (!error) {
       fetchResponses(question.id);
-      if (userKey !== authorKey) {
+      if (voteType === 'up' && !likedBy.includes(userKey) && userKey !== authorKey) {
         await supabase.from('notifications').insert({
           user_key: authorKey,
-          title: 'New Like!',
-          message: `${localStorage.getItem('community_author') || 'Someone'} liked your comment.`,
+          title: 'New Upvote!',
+          message: `${localStorage.getItem('community_author') || 'Someone'} upvoted your comment.`,
           link: '/daily-hot-question',
           is_read: false
         });
@@ -259,11 +296,12 @@ export default function DailyHotQuestion() {
       }
       
       if (replyTo && replyTo.user_key !== userKey) {
-        await supabase.from('notifications' as any).insert({
+        await supabase.from('notifications').insert({
           user_key: replyTo.user_key,
           title: 'New Reply!',
           message: `${author} replied to your comment on the Daily Challenge.`,
-          link: '/daily-hot-question'
+          link: '/daily-hot-question',
+          is_read: false
         });
       }
 
@@ -634,21 +672,42 @@ export default function DailyHotQuestion() {
                         <div className="text-sm px-1 mb-4 leading-relaxed whitespace-pre-wrap"><LatexRenderer content={resp.comment || 'No explanation provided.'} /></div>
                         
                         <div className="flex items-center gap-3 border-t border-border/30 pt-3">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className={`h-8 text-[11px] gap-2 rounded-full px-4 transition-all ${
-                              (resp.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') 
-                                ? 'text-primary bg-primary/10 hover:bg-primary/20 shadow-sm' 
-                                : 'text-muted-foreground hover:bg-muted'
-                            }`}
-                            onClick={() => handleLike(resp.id, resp.user_key)}
-                          >
-                            <ThumbsUp className={`h-3.5 w-3.5 ${
-                              (resp.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary' : ''
-                            }`} />
-                            <span className="font-bold">{resp.likes || 0}</span>
-                          </Button>
+                          <div className="flex items-center bg-muted/30 rounded-full px-1 py-0.5 border border-border/40">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className={`h-7 w-7 p-0 rounded-full transition-all ${
+                                (resp.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') 
+                                  ? 'text-primary' 
+                                  : 'text-muted-foreground hover:text-primary'
+                              }`}
+                              onClick={() => handleVote(resp.id, resp.user_key, 'up')}
+                            >
+                              <ThumbsUp className={`h-3.5 w-3.5 ${
+                                (resp.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary' : ''
+                              }`} />
+                            </Button>
+                            
+                            <span className="text-[11px] font-black px-1 min-w-[20px] text-center">
+                              {(resp.likes || 0) - (resp.downvotes || 0)}
+                            </span>
+                            
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className={`h-7 w-7 p-0 rounded-full transition-all ${
+                                (resp.disliked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') 
+                                  ? 'text-incorrect' 
+                                  : 'text-muted-foreground hover:text-incorrect'
+                              }`}
+                              onClick={() => handleVote(resp.id, resp.user_key, 'down')}
+                            >
+                              <ThumbsDown className={`h-3.5 w-3.5 ${
+                                (resp.disliked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-incorrect' : ''
+                              }`} />
+                            </Button>
+                          </div>
+                          
                           <Button 
                             variant="ghost" 
                             size="sm" 
@@ -698,21 +757,41 @@ export default function DailyHotQuestion() {
                                 </Dialog>
                               )}
                             </div>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className={`h-7 text-[10px] gap-2 rounded-full px-3 transition-all ${
-                                (reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') 
-                                  ? 'text-primary bg-primary/10 hover:bg-primary/20' 
-                                  : 'text-muted-foreground hover:bg-muted'
-                              }`}
-                              onClick={() => handleLike(reply.id, reply.user_key)}
-                            >
-                              <ThumbsUp className={`h-3 w-3 ${
-                                (reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary' : ''
-                              }`} />
-                              <span className="font-bold">{reply.likes || 0}</span>
-                            </Button>
+                            <div className="flex items-center bg-muted/50 rounded-full px-1 py-0.5 border border-border/20 scale-90 origin-left">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className={`h-6 w-6 p-0 rounded-full transition-all ${
+                                  (reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') 
+                                    ? 'text-primary' 
+                                    : 'text-muted-foreground hover:text-primary'
+                                }`}
+                                onClick={() => handleVote(reply.id, reply.user_key, 'up')}
+                              >
+                                <ThumbsUp className={`h-3 w-3 ${
+                                  (reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary' : ''
+                                }`} />
+                              </Button>
+                              
+                              <span className="text-[10px] font-black px-1 min-w-[16px] text-center">
+                                {(reply.likes || 0) - (reply.downvotes || 0)}
+                              </span>
+                              
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className={`h-6 w-6 p-0 rounded-full transition-all ${
+                                  (reply.disliked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') 
+                                    ? 'text-incorrect' 
+                                    : 'text-muted-foreground hover:text-incorrect'
+                                }`}
+                                onClick={() => handleVote(reply.id, reply.user_key, 'down')}
+                              >
+                                <ThumbsDown className={`h-3 w-3 ${
+                                  (reply.disliked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-incorrect' : ''
+                                }`} />
+                              </Button>
+                            </div>
                           </div>
                         ))}
                       </div>

@@ -104,6 +104,8 @@ export type Database = {
         Row: {
           comment: string | null
           created_at: string | null
+          disliked_by: string[] | null
+          downvotes: number | null
           id: string
           image_url: string | null
           liked_by: string[] | null
@@ -117,6 +119,8 @@ export type Database = {
         Insert: {
           comment?: string | null
           created_at?: string | null
+          disliked_by?: string[] | null
+          downvotes?: number | null
           id?: string
           image_url?: string | null
           liked_by?: string[] | null
@@ -130,6 +134,8 @@ export type Database = {
         Update: {
           comment?: string | null
           created_at?: string | null
+          disliked_by?: string[] | null
+          downvotes?: number | null
           id?: string
           image_url?: string | null
           liked_by?: string[] | null
