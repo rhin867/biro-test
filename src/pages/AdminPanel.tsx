@@ -252,6 +252,9 @@ export default function AdminPanel() {
 
     setSavingHot(true);
     
+    // Check if hot_questions table has a column for image_url
+    // If not, we should probably handle it or ensure schema is updated.
+    
     const questionData = {
       content: newHotQuestion.trim(),
       image_url: hotQuestionImageUrl,
