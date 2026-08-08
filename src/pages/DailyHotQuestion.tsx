@@ -193,25 +193,39 @@ export default function DailyHotQuestion() {
         localStorage.setItem(`ans_q_${question.id}`, myResponse.trim());
         setHasAnswered(true);
         
-        // Update XP and Streak tracking
-        const currentSolved = parseInt(localStorage.getItem('solved_daily_count') || '0');
-        localStorage.setItem('solved_daily_count', String(currentSolved + 1));
-        
-        // Simple daily streak logic
-        const lastSolved = localStorage.getItem('last_solved_date');
-        const today = new Date().toDateString();
-        if (lastSolved !== today) {
+        // Update XP and Streak tracking in DB
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
           const currentStreak = parseInt(localStorage.getItem('user_streak') || '0');
+          const lastSolved = localStorage.getItem('last_solved_date');
+          const today = new Date().toDateString();
           const yesterday = new Date();
           yesterday.setDate(yesterday.getDate() - 1);
-          
-          if (lastSolved === yesterday.toDateString()) {
-            localStorage.setItem('user_streak', String(currentStreak + 1));
-          } else {
-            localStorage.setItem('user_streak', '1');
+
+          let newStreak = currentStreak;
+          if (lastSolved !== today) {
+            if (lastSolved === yesterday.toDateString()) {
+              newStreak = currentStreak + 1;
+            } else {
+              newStreak = 1;
+            }
           }
+
+          const { data: profile } = await supabase.from('profiles').select('total_xp').eq('id', user.id).single();
+          const newXP = (profile?.total_xp || 0) + 10; // 10 XP per daily question
+
+          await supabase.from('profiles').update({
+            user_streak: newStreak,
+            total_xp: newXP,
+            last_engagement_at: new Date().toISOString()
+          }).eq('id', user.id);
+
+          localStorage.setItem('user_streak', String(newStreak));
           localStorage.setItem('last_solved_date', today);
         }
+
+        const currentSolved = parseInt(localStorage.getItem('solved_daily_count') || '0');
+        localStorage.setItem('solved_daily_count', String(currentSolved + 1));
 
       }
       
