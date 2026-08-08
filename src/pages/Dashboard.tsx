@@ -369,8 +369,54 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Quick Actions & Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center justify-between">
+              Dream College
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = async (e: any) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                      localStorage.setItem('goal_college_image', e.target?.result as string);
+                      window.location.reload();
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                };
+                input.click();
+              }}>
+                <Plus className="h-3 w-3" />
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="relative aspect-[16/10] rounded-xl bg-muted/50 overflow-hidden group border border-border/50">
+              {localStorage.getItem('goal_college_image') ? (
+                <img 
+                  src={localStorage.getItem('goal_college_image')!} 
+                  alt="Goal College" 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-xs p-4 text-center">
+                  <Target className="h-8 w-8 mb-2 opacity-20" />
+                  Upload your dream college image to stay motivated!
+                </div>
+              )}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                <p className="text-white text-xs font-bold uppercase tracking-tighter">Stay Focused</p>
+                <Badge className="bg-primary">GOAL 2026</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Quick Actions */}
         <Card className="lg:col-span-1">
           <CardHeader>
