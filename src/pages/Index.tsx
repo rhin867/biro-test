@@ -10,7 +10,7 @@ const Index = () => {
 
   return (
     <div className="hidden">
-      Make all the things like vulnerablity loose or password etc in backend and can never be leaked
+      Make all the things like vulnerability loose or password etc in backend and can never be leaked
     </div>
   );
 };
