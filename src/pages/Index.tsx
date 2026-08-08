@@ -10,7 +10,7 @@ const Index = () => {
 
   return (
     <div className="hidden">
-      PROBLEM:
+      {`PROBLEM:
 
       The Daily Hot Question feature shows "Diagram failed to load" because the question image URL points to a Supabase Storage bucket that returns 404 NoSuchBucket error.
 
@@ -55,11 +55,11 @@ const Index = () => {
 
       3. CHANGE IMAGE DISPLAY LOGIC:
 
-         - In the Daily Hot Question component (and anywhere question images are shown), render the image using a standard &lt;img&gt; tag with the stored public URL as src
+         - In the Daily Hot Question component (and anywhere question images are shown), render the image using a standard <img> tag with the stored public URL as src
 
          - Do NOT use any iframe, embed, or external diagram renderer
 
-         - Show the image directly like: &lt;img src={question.image_url} alt="Question diagram" style={{width: '100%', borderRadius: '8px'}} /&gt;
+         - Show the image directly like: <img src={question.image_url} alt="Question diagram" style={{width: '100%', borderRadius: '8px'}} />
 
          - Handle loading and error states gracefully
 
@@ -77,7 +77,7 @@ const Index = () => {
 
 
 
-      GOAL: Question images should display inline — exactly like WhatsApp/Telegram image previews — both on the student-facing daily question card AND in the admin edit panel, without any external links or diagram renderers.
+      GOAL: Question images should display inline — exactly like WhatsApp/Telegram image previews — both on the student-facing daily question card AND in the admin edit panel, without any external links or diagram renderers.`}
     </div>
 
   );
