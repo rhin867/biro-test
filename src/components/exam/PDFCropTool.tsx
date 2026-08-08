@@ -354,27 +354,27 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
             </div>
           </div>
           <div className="grid grid-cols-3 gap-1.5 text-[10px]">
-          <div>
-            <label className="text-[9px] font-medium text-muted-foreground uppercase block mb-0.5">Subject</label>
-            <ComboInput value={subject} onChange={setSubject} presets={CANONICAL_SUBJECTS} placeholder="Subject" />
+            <div>
+              <label className="text-[9px] font-medium text-muted-foreground uppercase block mb-0.5">Subject</label>
+              <ComboInput value={subject} onChange={setSubject} presets={CANONICAL_SUBJECTS} placeholder="Subject" />
+            </div>
+            <div>
+              <label className="text-[9px] font-medium text-muted-foreground uppercase block mb-0.5">Section</label>
+              <ComboInput value={section} onChange={setSection} presets={SECTION_PRESETS} placeholder="Section" />
+            </div>
+            <div>
+              <label className="text-[9px] font-medium text-muted-foreground uppercase block mb-0.5">Type</label>
+              <Select value={qType} onValueChange={(v) => setQType(v as CropQType)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MCQ">MCQ (single)</SelectItem>
+                  <SelectItem value="MSQ">MSQ (multiple)</SelectItem>
+                  <SelectItem value="Numerical">Numerical</SelectItem>
+                  <SelectItem value="Integer">Integer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div>
-            <label className="text-[9px] font-medium text-muted-foreground uppercase block mb-0.5">Section</label>
-            <ComboInput value={section} onChange={setSection} presets={SECTION_PRESETS} placeholder="Section" />
-          </div>
-          <div>
-            <label className="text-[9px] font-medium text-muted-foreground uppercase block mb-0.5">Type</label>
-            <Select value={qType} onValueChange={(v) => setQType(v as CropQType)}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="MCQ">MCQ (single)</SelectItem>
-                <SelectItem value="MSQ">MSQ (multiple)</SelectItem>
-                <SelectItem value="Numerical">Numerical</SelectItem>
-                <SelectItem value="Integer">Integer</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
 
         <div className="flex flex-col lg:flex-row gap-2 flex-1 min-h-0 mt-1.5 overflow-hidden">
           {/* PDF viewer — takes most of the space */}
