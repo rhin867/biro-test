@@ -363,10 +363,25 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
                     </div>
                   </div>
                 )}
+                {optionRegions.map((opt, i) => (
+                  <div
+                    key={i}
+                    className="absolute border border-orange-500 bg-orange-500/10 pointer-events-none"
+                    style={{
+                      left: opt.x, top: opt.y,
+                      width: opt.width, height: opt.height,
+                      borderStyle: 'dotted',
+                    }}
+                  >
+                    <div className="absolute -top-4 left-0 bg-orange-500 text-white text-[8px] px-1 rounded">
+                      Opt {String.fromCharCode(65 + i)}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
             <p className="text-[10px] md:text-xs text-muted-foreground bg-accent/30 p-2 rounded mt-1">
-              <span className="font-bold text-primary">Instructions:</span> 1. Use two fingers to zoom/pan. 2. Drag a rectangle to select a question area. 3. Use the "Add" button to save the crop. 4. Use "+ 🖼" to upload separate images/diagrams for any question.
+              <span className="font-bold text-primary">Instructions:</span> 1. Drag to select Question area. 2. <b>Hold SHIFT</b> and drag to select Option areas (A, B, C...). 3. Click "Add" to save all selected areas as one question.
             </p>
           </div>
 
