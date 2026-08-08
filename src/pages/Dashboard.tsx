@@ -279,6 +279,46 @@ export default function Dashboard() {
         </Card>
       </div>
 
+      {/* XP Reward Card */}
+      <Card className="mb-8 border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5 overflow-hidden">
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center shadow-inner group transition-all hover:scale-110">
+                <Trophy className="h-8 w-8 text-primary animate-pulse" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xl font-black text-primary">Level {level}</h3>
+                  <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px]">Aspirant</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground font-bold">{xp} XP Earned</p>
+              </div>
+            </div>
+            
+            <div className="flex-1 max-w-md w-full">
+              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">
+                <span>XP Progress</span>
+                <span>{xp % 100} / 100 XP to Level {level + 1}</span>
+              </div>
+              <div className="h-3 w-full bg-muted rounded-full overflow-hidden border border-border/50">
+                <div 
+                  className="h-full bg-primary shadow-neon transition-all duration-1000" 
+                  style={{ width: `${xp % 100}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <div className="text-center px-4 py-2 rounded-xl bg-background border border-border/50 shadow-sm">
+                <p className="text-[10px] font-black text-muted-foreground uppercase">Streak</p>
+                <p className="text-lg font-black text-primary">0 Days</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard
