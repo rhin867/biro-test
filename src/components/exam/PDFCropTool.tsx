@@ -150,9 +150,13 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
       width: Math.abs(c.x - cropStart.x), height: Math.abs(c.y - cropStart.y),
     };
     
-    if ((e as any).shiftKey) {
-      // Temporarily show the current option being drawn if we wanted, 
-      // but for simplicity we just update the last one or wait for handleEnd
+    if (e.shiftKey) {
+      // Temporarily show the current option being drawn
+      const region = {
+        x: Math.min(cropStart.x, c.x), y: Math.min(cropStart.y, c.y),
+        width: Math.abs(c.x - cropStart.x), height: Math.abs(c.y - cropStart.y),
+      };
+      // We don't set it in state yet to avoid flicker, just visual feedback during move if we had a temporary overlay
     } else {
       setCropRegion(region);
     }
@@ -167,7 +171,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
       };
       
       if (region.width > 5 && region.height > 5) {
-        if ((e as any).shiftKey) {
+        if (e.shiftKey) {
           setOptionRegions(prev => [...prev, region]);
         } else {
           setCropRegion(region);
@@ -335,7 +339,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
             <div className="relative border rounded-md overflow-auto flex-1 bg-muted/30 overscroll-none min-h-[300px] touch-pan-x touch-pan-y">
               <div
                 className="relative inline-block cursor-crosshair select-none"
-                style={{ touchAction: isDrawing ? 'none' : 'auto', transformOrigin: '0 0' }}
+                style={{ touchAction: 'none', transformOrigin: '0 0' }}
 
                 onMouseDown={handleStart} onMouseMove={handleMove}
                 onMouseUp={handleEnd} onMouseLeave={handleEnd}
