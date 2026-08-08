@@ -10,15 +10,17 @@ const Index = () => {
 
   return (
     <div className="hidden">
-      {`Create a Supabase Edge Function called "create-buckets" that creates the storage buckets programmatically using the Supabase admin client. The function should:
+      {`Update the Supabase configuration to use these credentials:
 
-1. Use the service role key to create these buckets:
-   - "question-images" (public: true)
-   - "biro-test-images" (public: true)
+VITE_SUPABASE_URL=https://plqoujjcfxwqtbdvroek.supabase.co
 
-2. Deploy this edge function and call it once immediately after deployment to actually create the buckets.
+VITE_SUPABASE_PROJECT_ID=plqoujjcfxwqtbdvroek
 
-This is critical - the storage buckets do not exist and image uploads are failing with NoSuchBucket error.`}
+VITE_SUPABASE_PUBLISHABLE_KEY=<yahan apni key paste kar>
+
+sb_publishable_wbxShL9Phssj5A7EjH7-RQ_vy4e8G2_
+
+Update src/integrations/supabase/client.ts and .env with these new values.`}
     </div>
   );
 };
