@@ -49,6 +49,11 @@ self.addEventListener('fetch', (event) => {
         });
       })
     );
+  } else if (event.request.mode === 'navigate') {
+    // Basic offline support for the dashboard
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/index.html') || new Response('Offline', { status: 503 }))
+    );
   } else {
     event.respondWith(fetch(event.request));
   }
