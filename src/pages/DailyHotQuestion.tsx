@@ -736,9 +736,23 @@ export default function DailyHotQuestion() {
                                 <span className="text-xs font-black text-muted-foreground">{reply.user_display_name}</span>
                                 <span className="text-[10px] text-muted-foreground">• {new Date(reply.created_at).toLocaleTimeString()}</span>
                               </div>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-6 text-[10px] gap-1 px-2 opacity-0 group-hover/reply:opacity-100"
+                                onClick={() => {
+                                  setReplyTo(resp);
+                                  setMyComment(`@${reply.user_display_name} `);
+                                  document.getElementById('solve-area')?.scrollIntoView({ behavior: 'smooth' });
+                                }}
+                              >
+                                <Reply className="h-3 w-3" />
+                                Reply
+                              </Button>
                             </div>
                             <div className="flex items-center gap-2">
                               <p className="text-sm px-1 mb-3 leading-relaxed whitespace-pre-wrap">{reply.comment}</p>
+
                               {reply.image_url && (
                                 <Dialog>
                                   <DialogTrigger asChild>

@@ -14,8 +14,9 @@ import { LatexRenderer } from '@/components/ui/latex-renderer';
 import telegramQR from '@/assets/telegram-qr.png';
 import {
   MessageSquare, ThumbsUp, ThumbsDown, Lightbulb, AlertTriangle, Send,
-  Edit2, X, Check, Star, Share2, MessageCircle, Trophy, ExternalLink,
+  Edit2, X, Check, Star, Share2, MessageCircle, Trophy, ExternalLink, Reply
 } from 'lucide-react';
+
 
 const AUTHOR_KEY = 'community_author';
 const AUTHOR_LOCK_KEY = 'community_author_locked_at';
@@ -24,7 +25,11 @@ const REWARDS_KEY = 'user_rewards';
 interface ChatMessage {
   id: string; author: string; content: string; created_at: string; msg_type: string; post_type: string;
   upvotes: number; downvotes: number;
+  liked_by?: string[];
+  disliked_by?: string[];
+  parent_id?: string;
 }
+
 
 function getLockedAuthor() {
   const name = localStorage.getItem(AUTHOR_KEY) || '';
@@ -50,11 +55,13 @@ export default function Community() {
   const [newPost, setNewPost] = useState('');
   const [postType, setPostType] = useState<string>('general');
   const [chatMsg, setChatMsg] = useState('');
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState('');
   const [activeTab, setActiveTab] = useState('chat');
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [hotQuestion, setHotQuestion] = useState<string | null>(null);
+
 
   useEffect(() => {
     supabase.functions.invoke('get-public-settings').then(({ data }) => {
@@ -111,11 +118,71 @@ export default function Community() {
     if (!authorLocked) lockAuthor();
     
     await supabase.from('community_messages' as any).insert({
-      author: author.trim(), content: chatMsg.trim(), msg_type: 'chat', post_type: 'general',
+      author: author.trim(), 
+      content: chatMsg.trim(), 
+      msg_type: 'chat', 
+      post_type: 'general',
+      parent_id: replyTo?.id || null
     } as any);
     setChatMsg('');
+    setReplyTo(null);
     addReward(2, 'Sent a chat message');
   };
+
+  const handleVote = async (msgId: string, voteType: 'up' | 'down') => {
+    const userKey = localStorage.getItem('user_key') || 'anonymous';
+    const msg = [...chatMessages, ...posts].find(m => m.id === msgId);
+    if (!msg) return;
+
+    let newUpvotes = msg.upvotes || 0;
+    let newDownvotes = msg.downvotes || 0;
+    let likedBy = [...(msg.liked_by || [])];
+    let dislikedBy = [...(msg.disliked_by || [])];
+
+    if (voteType === 'up') {
+      if (likedBy.includes(userKey)) {
+        likedBy = likedBy.filter(k => k !== userKey);
+        newUpvotes--;
+      } else {
+        likedBy.push(userKey);
+        newUpvotes++;
+        if (dislikedBy.includes(userKey)) {
+          dislikedBy = dislikedBy.filter(k => k !== userKey);
+          newDownvotes--;
+        }
+      }
+    } else {
+      if (dislikedBy.includes(userKey)) {
+        dislikedBy = dislikedBy.filter(k => k !== userKey);
+        newDownvotes--;
+      } else {
+        dislikedBy.push(userKey);
+        newDownvotes++;
+        if (likedBy.includes(userKey)) {
+          likedBy = likedBy.filter(k => k !== userKey);
+          newUpvotes--;
+        }
+      }
+    }
+
+    const { error } = await supabase.from('community_messages' as any)
+      .update({ 
+        upvotes: newUpvotes, 
+        downvotes: newDownvotes,
+        liked_by: likedBy,
+        disliked_by: dislikedBy
+      } as any)
+      .eq('id', msgId);
+
+    if (!error) {
+      if (msg.msg_type === 'chat') {
+        setChatMessages(prev => prev.map(m => m.id === msgId ? { ...m, upvotes: newUpvotes, downvotes: newDownvotes, liked_by: likedBy, disliked_by: dislikedBy } : m));
+      } else {
+        setPosts(prev => prev.map(m => m.id === msgId ? { ...m, upvotes: newUpvotes, downvotes: newDownvotes, liked_by: likedBy, disliked_by: dislikedBy } : m));
+      }
+    }
+  };
+
 
   const handleSubmitPost = async () => {
     if (!newPost.trim() || !author.trim()) { toast.error('Enter name and message'); return; }
@@ -224,24 +291,75 @@ export default function Community() {
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><MessageCircle className="h-5 w-5 text-primary" />Live Chat</CardTitle></CardHeader>
             <CardContent>
-              <div className="h-[400px] overflow-y-auto border border-border rounded-lg p-3 mb-3 space-y-2 bg-secondary/20">
+              <div className="h-[400px] overflow-y-auto border border-border rounded-lg p-3 mb-3 space-y-4 bg-secondary/20">
                 {chatMessages.length === 0 && <p className="text-center text-muted-foreground py-8">No messages yet. Start chatting!</p>}
-                {chatMessages.map(msg => (
-                  <div key={msg.id} className="p-2 rounded-lg bg-card border border-border/50">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-xs text-primary">{msg.author}</span>
-                      <span className="text-xs text-muted-foreground">{new Date(msg.created_at).toLocaleTimeString()}</span>
+                {chatMessages.filter(m => !m.parent_id).map(msg => (
+                  <div key={msg.id} className="space-y-2">
+                    <div className="p-2 rounded-lg bg-card border border-border/50 group relative">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-xs text-primary">{msg.author}</span>
+                          <span className="text-xs text-muted-foreground">{new Date(msg.created_at).toLocaleTimeString()}</span>
+                        </div>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleVote(msg.id, 'up')}>
+                            <ThumbsUp className={`h-3 w-3 ${(msg.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary text-primary' : ''}`} />
+                          </Button>
+                          <span className="text-[10px] font-bold">{(msg.upvotes || 0) - (msg.downvotes || 0)}</span>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleVote(msg.id, 'down')}>
+                            <ThumbsDown className={`h-3 w-3 ${(msg.disliked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-destructive text-destructive' : ''}`} />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setReplyTo(msg); setChatMsg(`@${msg.author} `); }}>
+                            <Reply className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-sm">{msg.content}</p>
                     </div>
-                    <p className="text-sm">{msg.content}</p>
+                    
+                    {/* Nested Replies */}
+                    <div className="ml-6 space-y-2 border-l-2 border-primary/20 pl-4">
+                      {chatMessages.filter(r => r.parent_id === msg.id).map(reply => (
+                        <div key={reply.id} className="p-2 rounded-lg bg-card/60 border border-border/30 group relative">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-[10px] text-primary">{reply.author}</span>
+                              <span className="text-[10px] text-muted-foreground">{new Date(reply.created_at).toLocaleTimeString()}</span>
+                            </div>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity scale-90">
+                              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleVote(reply.id, 'up')}>
+                                <ThumbsUp className={`h-2.5 w-2.5 ${(reply.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary text-primary' : ''}`} />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleVote(reply.id, 'down')}>
+                                <ThumbsDown className={`h-2.5 w-2.5 ${(reply.disliked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-destructive text-destructive' : ''}`} />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => { setReplyTo(msg); setChatMsg(`@${reply.author} `); }}>
+                                <Reply className="h-2.5 w-2.5" />
+                              </Button>
+                            </div>
+                          </div>
+                          <p className="text-xs">{reply.content}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))}
                 <div ref={chatEndRef} />
               </div>
-              <div className="flex gap-2">
-                <Input placeholder="Type a message..." value={chatMsg} onChange={e => setChatMsg(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSendChat()} className="flex-1" />
-                <Button onClick={handleSendChat} size="icon"><Send className="h-4 w-4" /></Button>
+              <div className="flex flex-col gap-2">
+                {replyTo && (
+                  <div className="flex items-center justify-between px-2 py-1 bg-primary/10 rounded-md text-[10px]">
+                    <span>Replying to <strong>{replyTo.author}</strong></span>
+                    <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => setReplyTo(null)}><X className="h-3 w-3" /></Button>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Input placeholder="Type a message..." value={chatMsg} onChange={e => setChatMsg(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSendChat()} className="flex-1" />
+                  <Button onClick={handleSendChat} size="icon"><Send className="h-4 w-4" /></Button>
+                </div>
               </div>
+
             </CardContent>
           </Card>
         </TabsContent>
@@ -265,15 +383,27 @@ export default function Community() {
           {posts.length === 0 ? <p className="text-center text-muted-foreground py-8">No posts yet</p> :
             posts.map(post => (
               <Card key={post.id}>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    {getTypeIcon(post.post_type)}
-                    <span className="font-medium text-sm">{post.author}</span>
-                    <Badge variant="outline" className="text-xs">{post.post_type}</Badge>
-                    <span className="text-xs text-muted-foreground">{new Date(post.created_at).toLocaleDateString()}</span>
+                <CardContent className="pt-4 group relative">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {getTypeIcon(post.post_type)}
+                      <span className="font-medium text-sm">{post.author}</span>
+                      <Badge variant="outline" className="text-xs">{post.post_type}</Badge>
+                      <span className="text-xs text-muted-foreground">{new Date(post.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleVote(post.id, 'up')}>
+                        <ThumbsUp className={`h-3.5 w-3.5 ${(post.liked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-primary text-primary' : ''}`} />
+                      </Button>
+                      <span className="text-xs font-bold">{(post.upvotes || 0) - (post.downvotes || 0)}</span>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleVote(post.id, 'down')}>
+                        <ThumbsDown className={`h-3.5 w-3.5 ${(post.disliked_by || []).includes(localStorage.getItem('user_key') || 'anonymous') ? 'fill-destructive text-destructive' : ''}`} />
+                      </Button>
+                    </div>
                   </div>
                   <p className="text-sm">{post.content}</p>
                 </CardContent>
+
               </Card>
             ))}
         </TabsContent>
