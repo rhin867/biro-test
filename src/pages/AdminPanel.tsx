@@ -249,12 +249,15 @@ export default function AdminPanel() {
     }
   };
 
+  const HOT_Q_COLUMNS = 'id, content, created_at, options, image_url, question_type, type';
+
   const fetchHotQuestionsHistory = async () => {
     setLoadingHistory(true);
-    const { data } = await supabase.from('hot_questions').select('*').order('created_at', { ascending: false });
+    const { data } = await supabase.from('hot_questions').select(HOT_Q_COLUMNS).order('created_at', { ascending: false });
     if (data) setHistory(data);
     setLoadingHistory(false);
   };
+
 
   useEffect(() => {
     if (step === 'authenticated') {
@@ -310,16 +313,27 @@ export default function AdminPanel() {
     }
   };
 
-  const handleEditQuestion = (q: any) => {
+  const handleEditQuestion = async (q: any) => {
     setEditingQuestionId(q.id);
     setNewHotQuestion(q.content || '');
     setHotQuestionType(q.type || 'mcq');
     setHotQuestionOptions(q.options || ['', '', '', '']);
-    setHotQuestionCorrect(q.correct_option || '');
     setHotQuestionImageUrl(q.image_url || null);
+    // The answer key is not readable from the client; fetch it server-side with the owner password.
+    setHotQuestionCorrect('');
+    try {
+      const { data } = await supabase.functions.invoke('hot-question-answer', {
+        body: { action: 'admin_get', password: ownerPassword, id: q.id },
+      });
+      const answer = (data as any)?.answers?.[0]?.correct_option;
+      if (answer) setHotQuestionCorrect(answer);
+    } catch {
+      // Leave blank; owner can re-enter the answer.
+    }
     // Scroll to the management section
     document.getElementById('daily-hot-question')?.scrollIntoView({ behavior: 'smooth' });
   };
+
 
   const handleDeleteQuestion = async (id: string) => {
     if (!confirm('Are you sure you want to delete this question?')) return;
