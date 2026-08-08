@@ -189,13 +189,27 @@ export default function ExternalAnalysis() {
       {/* Screen Monitor Banner */}
       {isRecording && (
         <Card className="mb-6 border-primary">
-          <CardContent className="pt-6 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-3 w-3 rounded-full bg-red-500 animate-pulse" />
-              <span className="font-medium">{screenMode ? 'Screen monitoring' : 'Timer'} active</span>
-              <span className="text-lg font-mono font-bold text-primary">{elapsedDisplay}</span>
+          <CardContent className="pt-6 flex items-center justify-between bg-primary/5">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="h-4 w-4 rounded-full bg-red-500 animate-pulse absolute -top-1 -right-1" />
+                <Monitor className={`h-8 w-8 ${screenMode ? 'text-primary' : 'text-muted-foreground'}`} />
+              </div>
+              <div>
+                <span className="text-xs uppercase font-black text-primary tracking-widest block">
+                  {screenMode ? 'Screen monitoring' : 'Test timer'} active
+                </span>
+                <span className="text-3xl font-mono font-black text-foreground drop-shadow-sm">{elapsedDisplay}</span>
+              </div>
             </div>
-            <Button variant="destructive" onClick={handleStopRecording}>Stop & Save Time</Button>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" size="sm" onClick={() => setRecordStartTime(Date.now())} className="h-10 px-4 gap-2">
+                <RefreshCw className="h-4 w-4" /> Reset
+              </Button>
+              <Button variant="destructive" size="sm" onClick={handleStopRecording} className="h-10 px-6 font-bold shadow-lg shadow-destructive/20">
+                Stop & Save Time
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
