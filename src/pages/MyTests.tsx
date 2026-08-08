@@ -11,7 +11,7 @@ import { formatTimeMinutes } from '@/lib/exam-utils';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentDisplayName, getCurrentUserKey } from '@/lib/app-settings';
 import {
-  Plus, Play, BarChart3, Trash2, Clock, FileText, Target, MoreVertical, Share2, Key, CheckCircle2, Pencil, Globe, FolderLock, MailPlus
+  Plus, Play, BarChart3, Trash2, Clock, FileText, Target, MoreVertical, Share2, Key, CheckCircle2, Pencil, Globe, FolderLock, MailPlus, History as HistoryIcon
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
