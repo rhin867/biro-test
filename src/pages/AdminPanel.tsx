@@ -664,7 +664,7 @@ export default function AdminPanel() {
                         const { data, error } = await supabase.storage
                           .from('question-images')
                           .upload(fileName, file, {
-                            cacheControl: '3600', 
+                            cacheControl: '0', 
                             upsert: true
                           });
                         
@@ -679,6 +679,7 @@ export default function AdminPanel() {
                           setHotQuestionImageUrl(`${publicUrl}?t=${Date.now()}`);
                           toast.success('Image uploaded!');
                         }
+
                       }
                     };
                     input.click();
