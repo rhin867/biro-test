@@ -10,20 +10,15 @@ const Index = () => {
 
   return (
     <div className="hidden">
-      {`Go to the Supabase dashboard for this project and navigate to Storage. Create these two public buckets manually:
+      {`Create a Supabase Edge Function called "create-buckets" that creates the storage buckets programmatically using the Supabase admin client. The function should:
 
-1. question-images (public)
+1. Use the service role key to create these buckets:
+   - "question-images" (public: true)
+   - "biro-test-images" (public: true)
 
-2. biro-test-images (public)
+2. Deploy this edge function and call it once immediately after deployment to actually create the buckets.
 
-
-
-
-Also run this in the SQL editor:
-
-INSERT INTO storage.buckets (id, name, public) VALUES ('question-images', 'question-images', true) ON CONFLICT (id) DO UPDATE SET public = true;
-
-INSERT INTO storage.buckets (id, name, public) VALUES ('biro-test-images', 'biro-test-images', true) ON CONFLICT (id) DO UPDATE SET public = true;`}
+This is critical - the storage buckets do not exist and image uploads are failing with NoSuchBucket error.`}
     </div>
   );
 };
