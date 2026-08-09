@@ -700,41 +700,51 @@ export default function AdminPanel() {
                     onChange={e => setHotQuestionImageUrl(e.target.value || null)} 
                     placeholder="https://example.com/question.png"
                   />
-                  <Button variant="outline" type="button" className="flex-1 gap-2" onClick={() => {
+                  <Button variant="outline" type="button" className="flex-1 gap-2" disabled={isUploading} onClick={() => {
                     const input = document.createElement('input');
                     input.type = 'file';
                     input.accept = 'image/*';
                     input.onchange = async (e) => {
                       const file = (e.target as HTMLInputElement).files?.[0];
                       if (file) {
+                        if (file.size > 2 * 1024 * 1024) {
+                          toast.error("Image too large (max 2MB)");
+                          return;
+                        }
+                        
+                        setIsUploading(true);
                         toast.info('Uploading image...');
-                        const fileExt = file.name.split('.').pop();
-                        const fileName = `hot-q-${Date.now()}.${fileExt}`;
-                        
-                        const { data, error } = await supabase.storage
-                          .from('question-images')
-                          .upload(fileName, file, {
-                            cacheControl: '0', 
-                            upsert: true
-                          });
-                        
-                        if (error) {
-                          console.error('Upload error details:', error);
-                          toast.error('Upload failed: ' + error.message);
-                        } else {
+                        try {
+                          const fileExt = file.name.split('.').pop();
+                          const fileName = `hot-q-${Date.now()}.${fileExt}`;
+                          const filePath = `hot-questions/${fileName}`;
+                          
+                          const { data, error } = await supabase.storage
+                            .from('biro-test-images')
+                            .upload(filePath, file, {
+                              cacheControl: '0', 
+                              upsert: true
+                            });
+                          
+                          if (error) throw error;
+                          
                           const { data: { publicUrl } } = supabase.storage
-                            .from('question-images')
-                            .getPublicUrl(fileName);
+                            .from('biro-test-images')
+                            .getPublicUrl(filePath);
                           
                           setHotQuestionImageUrl(`${publicUrl}?t=${Date.now()}`);
                           toast.success('Image uploaded!');
+                        } catch (err: any) {
+                          console.error('Upload error details:', err);
+                          toast.error('Upload failed: ' + err.message);
+                        } finally {
+                          setIsUploading(false);
                         }
-
                       }
                     };
                     input.click();
                   }}>
-                    <ImageIcon className="h-4 w-4" />
+                    {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
                     {hotQuestionImageUrl ? 'Change Image' : 'Upload Image'}
                   </Button>
                 </div>
