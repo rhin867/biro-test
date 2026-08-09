@@ -10,7 +10,7 @@ const buildLog = [
   "2026-08-09T04:34:05Z ==> Fetching repository metadata...",
   "2026-08-09T04:34:10Z ==> Resolving dependencies...",
   "2026-08-09T04:34:15Z ==> Starting build pipeline...",
-  "Next(remaining ka btana fir next bolunga tb krna)",
+  "Next(remaining features wnd not completed ke liye bta na next bpl dunga)",
 ].join("\n");
 
 const Index = () => {
