@@ -605,29 +605,7 @@ export default function DailyHotQuestion() {
                                   accept="image/*" 
                                   className="hidden" 
                                   id="response-image-upload" 
-                                  onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                      toast.info('Uploading image...');
-                                      const fileExt = file.name.split('.').pop();
-                                      const fileName = `resp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
-                                      const { data, error } = await supabase.storage
-                                        .from('biro-test-images')
-                                        .upload(fileName, file, {
-                                          upsert: true
-                                        });
-                                      if (error) {
-                                        console.error('Upload error:', error);
-                                        toast.error('Upload failed: ' + error.message);
-                                      } else {
-                                        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-                                        const publicUrl = `${supabaseUrl}/storage/v1/object/public/biro-test-images/${fileName}`;
-                                        const freshUrl = `${publicUrl}?t=${Date.now()}`;
-                                        toast.success('Image uploaded! Submitting...');
-                                        handleSubmit(freshUrl);
-                                      }
-                                    }
-                                  }}
+                                  onChange={handleImageUpload}
                                 />
                                 <Button 
                                   variant="outline" 
