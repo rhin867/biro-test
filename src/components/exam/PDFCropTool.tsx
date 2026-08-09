@@ -509,10 +509,10 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
                   <div
                     className="absolute border-2 border-primary bg-primary/20 pointer-events-none"
                     style={{
-                      left: `${(cropRegion.x / imgRef.current!.naturalWidth) * 100}%`, 
-                      top: `${(cropRegion.y / imgRef.current!.naturalHeight) * 100}%`,
-                      width: `${(cropRegion.width / imgRef.current!.naturalWidth) * 100}%`, 
-                      height: `${(cropRegion.height / imgRef.current!.naturalHeight) * 100}%`,
+                      left: `${(cropRegion.x / (imgRef.current?.naturalWidth || 1)) * 100}%`, 
+                      top: `${(cropRegion.y / (imgRef.current?.naturalHeight || 1)) * 100}%`,
+                      width: `${(cropRegion.width / (imgRef.current?.naturalWidth || 1)) * 100}%`, 
+                      height: `${(cropRegion.height / (imgRef.current?.naturalHeight || 1)) * 100}%`,
                       borderStyle: 'dashed',
                     }}
                   >
@@ -526,10 +526,10 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
                     key={i}
                     className="absolute border border-orange-500 bg-orange-500/10 pointer-events-none"
                     style={{
-                      left: `${(opt.x / imgRef.current!.naturalWidth) * 100}%`, 
-                      top: `${(opt.y / imgRef.current!.naturalHeight) * 100}%`,
-                      width: `${(opt.width / imgRef.current!.naturalWidth) * 100}%`, 
-                      height: `${(opt.height / imgRef.current!.naturalHeight) * 100}%`,
+                      left: `${(opt.x / (imgRef.current?.naturalWidth || 1)) * 100}%`, 
+                      top: `${(opt.y / (imgRef.current?.naturalHeight || 1)) * 100}%`,
+                      width: `${(opt.width / (imgRef.current?.naturalWidth || 1)) * 100}%`, 
+                      height: `${(opt.height / (imgRef.current?.naturalHeight || 1)) * 100}%`,
                       borderStyle: 'dotted',
                     }}
                   >
@@ -542,10 +542,10 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
                   <div
                     className="absolute border border-primary/50 bg-primary/10 pointer-events-none"
                     style={{
-                      left: `${(currentRegion.x / imgRef.current!.naturalWidth) * 100}%`, 
-                      top: `${(currentRegion.y / imgRef.current!.naturalHeight) * 100}%`,
-                      width: `${(currentRegion.width / imgRef.current!.naturalWidth) * 100}%`, 
-                      height: `${(currentRegion.height / imgRef.current!.naturalHeight) * 100}%`,
+                      left: `${(currentRegion.x / (imgRef.current?.naturalWidth || 1)) * 100}%`, 
+                      top: `${(currentRegion.y / (imgRef.current?.naturalHeight || 1)) * 100}%`,
+                      width: `${(currentRegion.width / (imgRef.current?.naturalWidth || 1)) * 100}%`, 
+                      height: `${(currentRegion.height / (imgRef.current?.naturalHeight || 1)) * 100}%`,
                       zIndex: 20
                     }}
                   />
