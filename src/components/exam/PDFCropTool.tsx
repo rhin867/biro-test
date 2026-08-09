@@ -322,7 +322,29 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
 
   const handleDone = () => { onCroppedQuestions(croppedImages); onOpenChange(false); };
 
-  if (!page) return null;
+  if (!pages || pages.length === 0) {
+326:     return (
+327:       <Dialog open={open} onOpenChange={onOpenChange}>
+328:         <DialogContent className="max-w-md p-6">
+329:           <div className="flex flex-col items-center justify-center py-8 text-center gap-4">
+330:             <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+331:               <ImageIcon className="h-6 w-6 text-destructive" />
+332:             </div>
+333:             <div className="space-y-2">
+334:               <h3 className="font-bold text-lg">No PDF Content Loaded</h3>
+335:               <p className="text-sm text-muted-foreground">
+336:                 The PDF pages have not been processed yet. Please wait a moment or try re-uploading the PDF.
+337:               </p>
+338:             </div>
+339:             <Button onClick={() => onOpenChange(false)}>Close Tool</Button>
+340:           </div>
+341:         </DialogContent>
+342:       </Dialog>
+343:     );
+344:   }
+345: 
+346:   const page = pages[currentPage];
+347:   if (!page) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
