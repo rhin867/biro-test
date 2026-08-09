@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { saveTest, generateId, saveTestPdfPageImages, saveTestQuestionImages, saveTestPdfFile } from '@/lib/storage';
 import { Test, Question, Subject, QuestionType } from '@/types/exam';
 import { supabase } from '@/integrations/supabase/client';
-import { renderPDFPagesToImages, fileToBase64, PDFPageImage } from '@/lib/pdf-cropper';
+import { renderPDFPagesMetadata, renderSinglePage, fileToBase64, PDFPageImage } from '@/lib/pdf-cropper';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { PDFCropTool } from '@/components/exam/PDFCropTool';
 import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Crop, RefreshCw, Download, FileUp, Lock, Eye, EyeOff, Pencil, Trash2, ImageIcon } from 'lucide-react';
