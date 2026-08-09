@@ -136,9 +136,33 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
   const [currentPageImage, setCurrentPageImage] = useState<string>('');
 
   useEffect(() => {
-    if (!open || !pages[currentPage]) return;
-    setCurrentPageImage(pages[currentPage].imageDataUrl);
-  }, [open, currentPage, pages]);
+    async function loadPage() {
+      if (!open || !pages[currentPage]) return;
+      
+      // If we have an existing imageDataUrl, use it as fallback
+      if (pages[currentPage].imageDataUrl) {
+        setCurrentPageImage(pages[currentPage].imageDataUrl);
+      }
+
+      // If we have the raw pdfBuffer, re-render the page at high resolution to ensure visibility
+      if (pdfBuffer) {
+        try {
+          setIsImgLoaded(false);
+          const highResDataUrl = await renderSinglePage(pdfBuffer, currentPage + 1, 2.0);
+          setCurrentPageImage(highResDataUrl);
+          setIsImgLoaded(true);
+        } catch (error) {
+          console.error("Failed to render PDF page:", error);
+          toast.error("Failed to render PDF page. Showing lower quality preview.");
+          setIsImgLoaded(true);
+        }
+      } else {
+        setIsImgLoaded(true);
+      }
+    }
+    
+    loadPage();
+  }, [open, currentPage, pages, pdfBuffer]);
 
   const page = pages[currentPage] ? { 
     ...pages[currentPage], 
@@ -563,7 +587,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                 </div>
               )}
               <div
-                className="relative inline-block cursor-crosshair select-none outline-none focus-within:ring-2 ring-primary/20"
+                className="relative inline-block cursor-crosshair select-none outline-none focus-within:ring-2 ring-primary/20 bg-white"
                 tabIndex={0}
                 onKeyDown={handleKeyDown}
                 style={{ 
@@ -571,24 +595,39 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                   transformOrigin: 'center center',
                   transform: `translate(${offset.x}px, ${offset.y}px)`,
                   zIndex: 10,
-                  opacity: isImgLoaded ? 1 : 0,
-                  transition: 'opacity 0.2s ease-in-out'
+                  opacity: isImgLoaded ? 1 : 0.5,
+                  transition: 'opacity 0.2s ease-in-out',
+                  minWidth: '100px',
+                  minHeight: '100px'
                 }}
                 onMouseDown={handleStart} onMouseMove={handleMove}
                 onMouseUp={handleEnd} onMouseLeave={handleEnd}
                 onTouchStart={handleStart} onTouchMove={handleMove} onTouchEnd={handleEnd}
               >
-                <img
-                  ref={imgRef}
-                  src={page.imageDataUrl}
-                  alt={`Page ${currentPage + 1}`}
-                  className="pointer-events-none shadow-2xl border"
-                  draggable={false}
-                  onLoad={() => {
-                    setIsImgLoaded(true);
-                  }}
-                  style={{ display: 'block', width: `${zoom * 100}%`, maxWidth: 'none', pointerEvents: 'auto', zIndex: 1, boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.25)' }}
-                />
+                {page?.imageDataUrl ? (
+                  <img
+                    ref={imgRef}
+                    src={page.imageDataUrl}
+                    alt={`Page ${currentPage + 1}`}
+                    className="pointer-events-none shadow-2xl border"
+                    draggable={false}
+                    onLoad={() => {
+                      setIsImgLoaded(true);
+                    }}
+                    style={{ 
+                      display: 'block', 
+                      width: `${zoom * 100}%`, 
+                      maxWidth: 'none', 
+                      pointerEvents: 'auto', 
+                      zIndex: 1, 
+                      boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.25)' 
+                    }}
+                  />
+                ) : (
+                  <div className="w-[500px] h-[700px] flex items-center justify-center bg-white text-muted-foreground text-xs">
+                    No page data available
+                  </div>
+                )}
                 {cropRegion && cropRegion.width > 0 && cropRegion.height > 0 && (
                   <div
                     className="absolute border-2 border-primary bg-primary/20 pointer-events-none"
