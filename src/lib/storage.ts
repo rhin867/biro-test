@@ -258,11 +258,21 @@ export function generateId(): string {
 function openPdfImageDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(PDF_IMAGE_DB, 1);
-    request.onupgradeneeded = () => request.result.createObjectStore(PDF_IMAGE_STORE);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(PDF_IMAGE_STORE)) {
+        db.createObjectStore(PDF_IMAGE_STORE);
+      }
+      if (!db.objectStoreNames.contains('pdf_chunks')) {
+        db.createObjectStore('pdf_chunks');
+      }
+    };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
 }
+
+const MAX_CHUNK_SIZE = 1024 * 1024; // 1MB chunks
 
 export async function saveTestPdfPageImages(testId: string, pages: NonNullable<Test['pdfPageImages']>): Promise<void> {
   if (!pages.length || typeof indexedDB === 'undefined') return;
@@ -312,13 +322,32 @@ export async function loadTestQuestionImages(testId: string): Promise<Record<str
   return images;
 }
 
-/** Save the original PDF binary so users can view the real PDF during the exam. */
+/** Save the original PDF binary in chunks to avoid browser/IDB memory limits on large files. */
 export async function saveTestPdfFile(testId: string, data: ArrayBuffer): Promise<void> {
   if (typeof indexedDB === 'undefined') return;
   const db = await openPdfImageDb();
+  
+  const uint8Array = new Uint8Array(data);
+  const numChunks = Math.ceil(uint8Array.length / MAX_CHUNK_SIZE);
+  
   await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(PDF_IMAGE_STORE, 'readwrite');
-    tx.objectStore(PDF_IMAGE_STORE).put(data, `${testId}:pdf_file`);
+    const tx = db.transaction(['pdf_chunks', PDF_IMAGE_STORE], 'readwrite');
+    const chunkStore = tx.objectStore('pdf_chunks');
+    const metaStore = tx.objectStore(PDF_IMAGE_STORE);
+    
+    // Save chunks
+    for (let i = 0; i < numChunks; i++) {
+      const chunk = uint8Array.slice(i * MAX_CHUNK_SIZE, (i + 1) * MAX_CHUNK_SIZE);
+      chunkStore.put(chunk, `${testId}:chunk:${i}`);
+    }
+    
+    // Save metadata
+    metaStore.put({
+      numChunks,
+      totalSize: uint8Array.length,
+      timestamp: Date.now()
+    }, `${testId}:pdf_meta`);
+    
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
@@ -328,12 +357,46 @@ export async function saveTestPdfFile(testId: string, data: ArrayBuffer): Promis
 export async function loadTestPdfFile(testId: string): Promise<ArrayBuffer | null> {
   if (typeof indexedDB === 'undefined') return null;
   const db = await openPdfImageDb();
-  const data = await new Promise<ArrayBuffer | null>((resolve, reject) => {
-    const request = db.transaction(PDF_IMAGE_STORE, 'readonly').objectStore(PDF_IMAGE_STORE).get(`${testId}:pdf_file`);
-    request.onsuccess = () => resolve(request.result || null);
-    request.onerror = () => reject(request.error);
-  });
-  db.close();
-  return data;
+  
+  try {
+    const meta = await new Promise<any>((resolve, reject) => {
+      const request = db.transaction(PDF_IMAGE_STORE, 'readonly').objectStore(PDF_IMAGE_STORE).get(`${testId}:pdf_meta`);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+
+    if (!meta || !meta.numChunks) {
+      // Fallback for old single-blob storage if it exists
+      const oldData = await new Promise<ArrayBuffer | null>((resolve, reject) => {
+        const request = db.transaction(PDF_IMAGE_STORE, 'readonly').objectStore(PDF_IMAGE_STORE).get(`${testId}:pdf_file`);
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error);
+      });
+      db.close();
+      return oldData;
+    }
+
+    const result = new Uint8Array(meta.totalSize);
+    const tx = db.transaction('pdf_chunks', 'readonly');
+    const chunkStore = tx.objectStore('pdf_chunks');
+
+    for (let i = 0; i < meta.numChunks; i++) {
+      const chunk = await new Promise<Uint8Array>((resolve, reject) => {
+        const request = chunkStore.get(`${testId}:chunk:${i}`);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      if (chunk) {
+        result.set(chunk, i * MAX_CHUNK_SIZE);
+      }
+    }
+    
+    db.close();
+    return result.buffer;
+  } catch (error) {
+    console.error('Failed to load chunked PDF:', error);
+    db.close();
+    return null;
+  }
 }
 

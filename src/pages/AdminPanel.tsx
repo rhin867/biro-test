@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Shield, Lock, Trash2, Activity, Ban, KeyRound, Loader2, FolderOpen, Share2, Mail, CheckCircle, XCircle, Star, History as HistoryIcon, ZoomIn, User, Image as ImageIcon } from 'lucide-react';
+import { Shield, Lock, Trash2, Activity, Ban, KeyRound, Loader2, FolderOpen, Share2, Mail, CheckCircle, XCircle, Star, History as HistoryIcon, ZoomIn, User, Image as ImageIcon, Target, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { FolderAccessManager } from '@/components/exam/FolderAccessManager';
 import {
@@ -668,15 +668,21 @@ export default function AdminPanel() {
               <div className="space-y-2">
                 <Label>Question Type</Label>
                 <div className="flex gap-2 flex-wrap">
-                  {['mcq', 'msq', 'integer', 'poll'].map((t) => (
+                  {[
+                    { id: 'mcq', label: 'MCQ', icon: Target },
+                    { id: 'msq', label: 'MSQ', icon: Target },
+                    { id: 'integer', label: 'Integer', icon: Plus },
+                    { id: 'poll', label: 'Poll', icon: Activity }
+                  ].map((t) => (
                     <Button 
-                      key={t}
+                      key={t.id}
                       size="sm"
-                      variant={hotQuestionType === t ? 'default' : 'outline'}
-                      onClick={() => setHotQuestionType(t as any)}
-                      className="uppercase text-[10px]"
+                      variant={hotQuestionType === t.id ? 'default' : 'outline'}
+                      onClick={() => setHotQuestionType(t.id as any)}
+                      className="uppercase text-[10px] gap-1"
                     >
-                      {t}
+                      <t.icon className="h-3 w-3" />
+                      {t.label}
                     </Button>
                   ))}
                 </div>
@@ -748,7 +754,23 @@ export default function AdminPanel() {
                     {hotQuestionImageUrl ? 'Change Image' : 'Upload Image'}
                   </Button>
                 </div>
-                {hot_question_image_preview}
+                {hotQuestionImageUrl && (
+                  <div className="mt-2 relative inline-block">
+                    <img 
+                      src={hotQuestionImageUrl} 
+                      alt="Question preview" 
+                      className="max-h-48 rounded border border-border"
+                    />
+                    <Button 
+                      variant="destructive" 
+                      size="icon" 
+                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                      onClick={() => setHotQuestionImageUrl(null)}
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {(hotQuestionType === 'mcq' || hotQuestionType === 'msq' || hotQuestionType === 'poll') && (
