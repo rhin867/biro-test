@@ -682,7 +682,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
           </div>
 
           {/* Crop list */}
-          <div className="w-full lg:w-72 flex flex-col h-full overflow-hidden border-t lg:border-t-0 lg:border-l pt-2 lg:pt-0 lg:pl-2">
+          <div className="w-full lg:w-72 flex flex-col min-h-[200px] lg:h-full overflow-hidden border-t lg:border-t-0 lg:border-l pt-2 lg:pt-0 lg:pl-2">
             <div className="flex items-center justify-between mb-1">
               <p className="text-xs font-medium">Questions ({croppedImages.length})</p>
               {croppedImages.length > 0 && (
