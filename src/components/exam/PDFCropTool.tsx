@@ -670,6 +670,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                       </svg>
                     )}
                   </>
+                ) : (
                   <div className="w-[500px] h-[700px] flex items-center justify-center bg-white text-muted-foreground text-xs">
                     No page data available
                   </div>
