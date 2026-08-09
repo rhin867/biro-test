@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { saveTest, generateId, saveTestPdfPageImages, saveTestQuestionImages, saveTestPdfFile } from '@/lib/storage';
 import { Test, Question, Subject, QuestionType } from '@/types/exam';
 import { supabase } from '@/integrations/supabase/client';
-import { renderPDFPagesToImages, fileToBase64, PDFPageImage } from '@/lib/pdf-cropper';
+import { renderPDFPagesMetadata, renderSinglePage, fileToBase64, PDFPageImage } from '@/lib/pdf-cropper';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { PDFCropTool } from '@/components/exam/PDFCropTool';
 import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Crop, RefreshCw, Download, FileUp, Lock, Eye, EyeOff, Pencil, Trash2, ImageIcon } from 'lucide-react';
@@ -44,6 +44,29 @@ async function cropQuestionBandFromPage(imageDataUrl: string, indexOnPage: numbe
   return canvas.toDataURL('image/jpeg', 0.82);
 }
 
+async function cropDiagramFromBbox(imageDataUrl: string, bbox: [number, number, number, number]): Promise<string> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new window.Image();
+    image.crossOrigin = "anonymous";
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = imageDataUrl;
+  });
+  const [ymin, xmin, ymax, xmax] = bbox;
+  const sourceX = (xmin / 1000) * img.width;
+  const sourceY = (ymin / 1000) * img.height;
+  const sourceW = ((xmax - xmin) / 1000) * img.width;
+  const sourceH = ((ymax - ymin) / 1000) * img.height;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, sourceW);
+  canvas.height = Math.max(1, sourceH);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return imageDataUrl;
+  ctx.drawImage(img, sourceX, sourceY, sourceW, sourceH, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.9);
+}
+
+
 function CreateTestInner() {
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -63,6 +86,7 @@ function CreateTestInner() {
   } | null>(null);
   const [pdfPageImages, setPdfPageImages] = useState<PDFPageImage[]>([]);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfBuffer, setPdfBuffer] = useState<ArrayBuffer | null>(null);
   const [showPageViewer, setShowPageViewer] = useState(false);
   const [showCropTool, setShowCropTool] = useState(false);
   const [extractionFailed, setExtractionFailed] = useState(false);
@@ -179,6 +203,8 @@ function CreateTestInner() {
       const arrayBuffer = await file.arrayBuffer();
       const bufferForText = arrayBuffer.slice(0);
       const bufferForImages = arrayBuffer.slice(0);
+      setPdfBuffer(bufferForImages);
+      
       const pdf = await pdfjsLib.getDocument({ data: bufferForText }).promise;
       let fullText = '';
       setParseStatus('Reading document text...');
@@ -187,15 +213,23 @@ function CreateTestInner() {
         const textContent = await page.getTextContent();
         const pageText = textContent.items.map((item: any) => item.str).join(' ');
         fullText += `[Page ${i}]\n${pageText}\n\n`;
-        setParseProgress(Math.round((i / pdf.numPages) * 40));
+        setParseProgress(Math.round((i / pdf.numPages) * 30));
       }
       setPdfText(fullText);
       setTestName(file.name.replace('.pdf', ''));
-      setParseStatus('Rendering high-res previews (2.5x)...');
-      const pageImages = await renderPDFPagesToImages(bufferForImages, 2.5); // Even higher resolution for perfect manual selection
+      
+      setParseStatus('Resolving PDF metadata...');
+      const metadata = await renderPDFPagesMetadata(bufferForImages, 2.5);
+      
+      // We store metadata in the state, but we don't hold ALL base64 images at once for "Extreme PDF Handling"
+      const metaPages: PDFPageImage[] = metadata.map(m => ({
+        ...m,
+        imageDataUrl: '', // This will be loaded on-demand in the Crop Tool
+      }));
+
       setParseProgress(100);
       setParseStatus('PDF Ready!');
-      setPdfPageImages(pageImages);
+      setPdfPageImages(metaPages);
       toast.success(`PDF processed: ${pdf.numPages} pages`);
       setStep('configure');
     } catch (error) {
@@ -246,7 +280,22 @@ function CreateTestInner() {
         } as Question;
       });
 
-      const questionsWithImages = await Promise.all(questions.map(async (q) => {
+      const questionsWithImages = await Promise.all(questions.map(async (q, idx) => {
+        const rawQ = raw[idx];
+        // 1. Precise Auto-Vision Crop (if bbox provided by AI)
+        if (rawQ?.diagramBbox && q.pdfPageNumber) {
+          const page = pdfPageImages.find((p) => p.pageNumber === q.pdfPageNumber);
+          if (page) {
+            try {
+              const cropped = await cropDiagramFromBbox(page.imageDataUrl, rawQ.diagramBbox);
+              return { ...q, croppedImageUrl: cropped };
+            } catch (e) {
+              console.warn("Vision crop failed, falling back to band crop:", e);
+            }
+          }
+        }
+        
+        // 2. Fallback: Band-based Crop (original logic)
         if (!q.hasDiagram || q.croppedImageUrl || q.imageUrl || !q.pdfPageNumber) return q;
         const page = pdfPageImages.find((p) => p.pageNumber === q.pdfPageNumber);
         if (!page) return q;
@@ -1042,6 +1091,7 @@ function CreateTestInner() {
         open={showCropTool}
         onOpenChange={setShowCropTool}
         pages={pdfPageImages}
+        pdfBuffer={pdfBuffer || undefined}
         onCroppedQuestions={(crops) => {
           const toSubject = (s: string): Subject => {
             const canon = ['Physics', 'Chemistry', 'Maths'] as const;

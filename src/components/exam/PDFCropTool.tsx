@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
-import { PDFPageImage } from '@/lib/pdf-cropper';
-import { Crop, Download, RotateCcw, ChevronLeft, ChevronRight, Trash2, ZoomIn, ZoomOut, Plus, Image as ImageIcon, Pencil, Eye, Loader2 } from 'lucide-react';
+import { PDFPageImage, renderSinglePage } from '@/lib/pdf-cropper';
+import { Crop, Download, RotateCcw, ChevronLeft, ChevronRight, Trash2, ZoomIn, ZoomOut, Plus, Image as ImageIcon, Pencil, Eye, Loader2, GitMerge, Type } from 'lucide-react';
 import { toast } from 'sonner';
+import { performClientOCR } from '@/lib/ocr';
 
 interface CropRegion { x: number; y: number; width: number; height: number; }
 
@@ -35,6 +36,7 @@ interface PDFCropToolProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pages: PDFPageImage[];
+  pdfBuffer?: ArrayBuffer;
   onCroppedQuestions: (images: CroppedImage[]) => void;
   /** Pre-load existing crops when re-opening the tool for review. */
   initialCrops?: CroppedImage[];
@@ -79,7 +81,7 @@ function ComboInput({
   );
 }
 
-export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, initialCrops }: PDFCropToolProps) {
+export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQuestions, initialCrops }: PDFCropToolProps) {
   const [activePreset, setActivePreset] = useState<string | null>(null);
   const [presets, setPresets] = useState<Record<string, { subject: string; section: string; qType: CropQType }>>(() => {
     try {
@@ -130,8 +132,27 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [isImgLoaded, setIsImgLoaded] = useState(false);
+  const [isOcrLoading, setIsOcrLoading] = useState<number | null>(null);
+  const [currentPageImage, setCurrentPageImage] = useState<string>('');
 
-  const page = pages[currentPage];
+  useEffect(() => {
+    if (!open || !pdfBuffer || !pages[currentPage]) return;
+    const load = async () => {
+      setIsImgLoaded(false);
+      try {
+        const url = await renderSinglePage(pdfBuffer, pages[currentPage].pageNumber, 2.5);
+        setCurrentPageImage(url);
+      } catch (err) {
+        console.error("Manual crop render failed:", err);
+      }
+    };
+    load();
+  }, [open, currentPage, pdfBuffer, pages]);
+
+  const page = pages[currentPage] ? { 
+    ...pages[currentPage], 
+    imageDataUrl: currentPageImage || pages[currentPage].imageDataUrl 
+  } : null;
 
   useEffect(() => {
     if (open) {
@@ -363,6 +384,45 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
   const removeExtra = (i: number, j: number) =>
     updateCrop(i, { extraImages: (croppedImages[i].extraImages || []).filter((_, k) => k !== j) });
 
+  const runOCR = async (i: number) => {
+    const crop = croppedImages[i];
+    if (!crop) return;
+    setIsOcrLoading(i);
+    try {
+      const text = await performClientOCR(crop.dataUrl);
+      if (text) {
+        updateCrop(i, { questionText: (crop.questionText || '') + (crop.questionText ? '\n' : '') + text });
+        toast.success("OCR completed!");
+      } else {
+        toast.error("No text found in crop.");
+      }
+    } catch (e) {
+      toast.error("OCR failed to initialize.");
+    } finally {
+      setIsOcrLoading(null);
+    }
+  };
+
+  const mergeWithPrevious = (i: number) => {
+    if (i <= 0) return;
+    const current = croppedImages[i];
+    const prev = croppedImages[i-1];
+    
+    const updatedPrev = {
+      ...prev,
+      extraImages: [...(prev.extraImages || []), current.dataUrl, ...(current.extraImages || [])],
+      questionText: (prev.questionText || '') + '\n' + (current.questionText || '')
+    };
+    
+    setCroppedImages(prevList => {
+      const newList = [...prevList];
+      newList[i-1] = updatedPrev;
+      newList.splice(i, 1);
+      return newList;
+    });
+    toast.success("Questions merged!");
+  };
+
   const handleDone = () => { onCroppedQuestions(croppedImages); onOpenChange(false); };
 
   if (!pages || pages.length === 0) {
@@ -397,6 +457,20 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
             Manual Crop — Page {currentPage + 1}/{pages.length} · {croppedImages.length} crops
           </DialogTitle>
         </DialogHeader>
+
+        {/* Diagnostic Overlay */}
+        {open && pages.length > 0 && !isImgLoaded && (
+          <div className="absolute inset-0 z-[100] bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
+            <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+            <h3 className="font-bold text-lg mb-2">Rendering PDF Page...</h3>
+            <p className="text-sm text-muted-foreground max-w-xs mb-4">
+              Generating high-resolution previews for precise cropping.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => setIsImgLoaded(true)}>
+              Taking too long? Force show
+            </Button>
+          </div>
+        )}
 
         {/* Compact single-row control bar */}
         <div className="flex flex-col gap-2 p-2 rounded-md bg-muted/40 border mb-2">
@@ -666,6 +740,20 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
                                   onClick={() => setPreviewIdx(i)}>
                             <Eye className="h-3 w-3" />
                           </button>
+                          <button 
+                            className={`p-1 rounded hover:bg-accent ${isOcrLoading === i ? 'animate-pulse text-primary' : ''}`} 
+                            title="Extract text (OCR)"
+                            onClick={() => runOCR(i)}
+                            disabled={isOcrLoading !== null}
+                          >
+                            <Type className="h-3 w-3" />
+                          </button>
+                          {i > 0 && (
+                            <button className="p-1 rounded hover:bg-accent text-primary" title="Merge with previous"
+                                    onClick={() => mergeWithPrevious(i)}>
+                              <GitMerge className="h-3 w-3" />
+                            </button>
+                          )}
                         </div>
                         <button className="p-1 rounded hover:bg-destructive/20 text-destructive" title="Delete"
                                 onClick={() => setCroppedImages(prev => prev.filter((_, j) => j !== i))}>
