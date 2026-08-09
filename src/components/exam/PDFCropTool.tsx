@@ -322,6 +322,28 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
 
   const handleDone = () => { onCroppedQuestions(croppedImages); onOpenChange(false); };
 
+  if (!pages || pages.length === 0) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md p-6">
+          <div className="flex flex-col items-center justify-center py-8 text-center gap-4">
+            <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+              <ImageIcon className="h-6 w-6 text-destructive" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-bold text-lg">No PDF Content Loaded</h3>
+              <p className="text-sm text-muted-foreground">
+                The PDF pages have not been processed yet. Please wait a moment or try re-uploading the PDF.
+              </p>
+            </div>
+            <Button onClick={() => onOpenChange(false)}>Close Tool</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  const page = pages[currentPage];
   if (!page) return null;
 
   return (

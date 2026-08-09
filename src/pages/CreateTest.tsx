@@ -388,7 +388,9 @@ function CreateTestInner() {
       try {
         saveTest(test);
         await saveTestQuestionImages(test.id, questionImages);
-        await saveTestPdfPageImages(test.id, pdfPageImages);
+        if (pdfPageImages.length > 0) {
+          await saveTestPdfPageImages(test.id, pdfPageImages);
+        }
         if (pdfFile) {
           try { await saveTestPdfFile(test.id, await pdfFile.arrayBuffer()); } catch (e) { console.warn('save pdf blob failed', e); }
         }
