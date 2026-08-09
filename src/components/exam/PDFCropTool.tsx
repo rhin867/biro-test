@@ -382,6 +382,26 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
   const removeExtra = (i: number, j: number) =>
     updateCrop(i, { extraImages: (croppedImages[i].extraImages || []).filter((_, k) => k !== j) });
 
+  const mergeWithPrevious = (i: number) => {
+    if (i <= 0) return;
+    const current = croppedImages[i];
+    const prev = croppedImages[i-1];
+    
+    const updatedPrev = {
+      ...prev,
+      extraImages: [...(prev.extraImages || []), current.dataUrl, ...(current.extraImages || [])],
+      questionText: (prev.questionText || '') + '\n' + (current.questionText || '')
+    };
+    
+    setCroppedImages(prevList => {
+      const newList = [...prevList];
+      newList[i-1] = updatedPrev;
+      newList.splice(i, 1);
+      return newList;
+    });
+    toast.success("Questions merged!");
+  };
+
   const handleDone = () => { onCroppedQuestions(croppedImages); onOpenChange(false); };
 
   if (!pages || pages.length === 0) {
