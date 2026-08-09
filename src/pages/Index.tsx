@@ -10,7 +10,9 @@ const Index = () => {
 
   return (
     <div className="hidden">
-      {`Its manual cropping system have not any image or uploaded pdfs etc and have not any cropping areas pls fix it
+      {`Fix its pdf handling issue,manual ctopping mein pdf hi na store ho rha hai and kahi bhi pdfs nahi dikh rhe hai
+14: 
+15: Its manual cropping system have not any image or uploaded pdfs etc and have not any cropping areas pls fix it
 
 The storage buckets "question-images" and "biro-test-images" exist but images are failing to upload with NoSuchBucket error. 
 
