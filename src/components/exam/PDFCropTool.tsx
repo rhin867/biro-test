@@ -438,9 +438,9 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
               </div>
             </div>
 
-            <div className="relative border rounded-md overflow-auto flex-1 bg-muted/30 overscroll-none min-h-[300px] touch-pan-x touch-pan-y">
+            <div className="relative border rounded-md overflow-hidden flex-1 bg-muted/30 overscroll-none min-h-[300px] touch-none">
               <div
-                className="relative inline-block cursor-crosshair select-none outline-none focus-within:ring-2 ring-primary/20"
+                className="relative inline-block cursor-crosshair select-none outline-none focus-within:ring-2 ring-primary/20 w-full h-full"
                 tabIndex={0}
                 onKeyDown={handleKeyDown}
                 style={{ touchAction: 'none', transformOrigin: '0 0' }}
