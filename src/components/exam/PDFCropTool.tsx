@@ -131,8 +131,26 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [isImgLoaded, setIsImgLoaded] = useState(false);
+  const [currentPageImage, setCurrentPageImage] = useState<string>('');
 
-  const page = pages[currentPage];
+  useEffect(() => {
+    if (!open || !pdfBuffer || !pages[currentPage]) return;
+    const load = async () => {
+      setIsImgLoaded(false);
+      try {
+        const url = await renderSinglePage(pdfBuffer, pages[currentPage].pageNumber, 2.5);
+        setCurrentPageImage(url);
+      } catch (err) {
+        console.error("Manual crop render failed:", err);
+      }
+    };
+    load();
+  }, [open, currentPage, pdfBuffer, pages]);
+
+  const page = pages[currentPage] ? { 
+    ...pages[currentPage], 
+    imageDataUrl: currentPageImage || pages[currentPage].imageDataUrl 
+  } : null;
 
   useEffect(() => {
     if (open) {
