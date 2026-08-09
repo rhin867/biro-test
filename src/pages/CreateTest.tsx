@@ -68,7 +68,7 @@ function CreateTestInner() {
   const [extractionFailed, setExtractionFailed] = useState(false);
   const [extractionTime, setExtractionTime] = useState(0);
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
-  const [extractionMode, setExtractionMode] = useState<'manual' | 'auto' | 'ai'>(BIRO_BACKEND_CONFIGURED ? 'auto' : 'manual');
+  const [extractionMode, setExtractionMode] = useState<'manual' | 'auto' | 'ai'>('ai');
   const [backendWarm, setBackendWarm] = useState<'idle' | 'warming' | 'ready' | 'down'>('idle');
   // Password is ONLY required for the AI (Lovable) mode. Manual / Auto-Crop / Import are free.
   const [aiUnlocked, setAiUnlocked] = useState(() => isTestCreationUnlocked(getCachedAppSettings()));
@@ -293,11 +293,9 @@ function CreateTestInner() {
       }
       const userApiKey = getUserApiKey();
       if (pdfFile) {
-        toast.info(BIRO_BACKEND_CONFIGURED
-          ? 'Extracting via Biro backend (0 AI credits)…'
-          : 'Extracting via AI (High Accuracy Scanned PDF OCR Mode)…');
+        toast.info('Extracting via AI (High Accuracy Scanned PDF OCR Mode)…');
         const pdfBase64 = await fileToBase64(pdfFile);
-        // If backend hasn't warmed yet, ping once more before the big call.
+        // ... rest of logic stays same
         if (extractionMode === 'auto' && BIRO_BACKEND_CONFIGURED && backendWarm !== 'ready') {
           toast.info('Waking extraction backend (first call after idle can take ~30s)…');
           const ok = await warmupBackend();
