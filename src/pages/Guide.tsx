@@ -8,6 +8,7 @@ import { fetchQuotaInfo, QuotaInfo } from '@/lib/app-settings';
 import {
   Upload, FileText, BarChart, Crop, Clock, MessageSquare,
   Settings, BookOpen, Target, ExternalLink, Zap, Bot, Gamepad2, Coins, ShieldCheck,
+  GitBranch, Database, Layout, Server, Cpu,
 } from 'lucide-react';
 
 const sections = [
