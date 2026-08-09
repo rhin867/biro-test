@@ -314,14 +314,16 @@ export default function DailyHotQuestion() {
             }
           }
 
-          const { data: profile } = await supabase.from('profiles').select('total_xp').eq('id', user.id).single();
+          const { data: profile, error: profileError } = await supabase.from('profiles').select('total_xp').eq('id', user.id).maybeSingle();
           const newXP = (profile?.total_xp || 0) + 10; // 10 XP per daily question
 
-          await supabase.from('profiles').update({
+          const { error: updateError } = await supabase.from('profiles').update({
             user_streak: newStreak,
             total_xp: newXP,
             last_engagement_at: new Date().toISOString()
           }).eq('id', user.id);
+          
+          if (updateError) console.error("Streak/XP update failed:", updateError);
 
           localStorage.setItem('user_streak', String(newStreak));
           localStorage.setItem('last_solved_date', today);
