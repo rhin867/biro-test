@@ -984,52 +984,6 @@ function CreateTestInner() {
                   </DialogContent>
                 </Dialog>
               )}
-                            <img src={editingQuestion.croppedImageUrl} className="max-h-40 object-contain rounded border" />
-                            <Button 
-                              variant="destructive" 
-                              size="sm" 
-                              className="absolute top-2 right-2 h-6 px-2"
-                              onClick={() => setEditingQuestion({...editingQuestion, croppedImageUrl: undefined, hasDiagram: false})}
-                            >
-                              Remove Image
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button variant="outline" className="w-full" onClick={() => {
-                            const input = document.createElement('input');
-                            input.type = 'file';
-                            input.accept = 'image/*';
-                            input.onchange = async (e) => {
-                              const file = (e.target as HTMLInputElement).files?.[0];
-                              if (file) {
-                                const reader = new FileReader();
-                                reader.onload = (re) => {
-                                  setEditingQuestion({
-                                    ...editingQuestion, 
-                                    croppedImageUrl: re.target?.result as string,
-                                    hasDiagram: true
-                                  });
-                                };
-                                reader.readAsDataURL(file);
-                              }
-                            };
-                            input.click();
-                          }}>
-                            <ImageIcon className="h-4 w-4 mr-2" /> Upload Diagram
-                          </Button>
-                        )}
-                      </div>
-                      <Button className="w-full" onClick={() => {
-                        setExtractedQuestions(prev => prev.map(q => q.id === editingQuestion.id ? editingQuestion : q));
-                        setEditingQuestion(null);
-                        toast.success('Question updated');
-                      }}>
-                        Save Changes
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              )}
             </CardContent>
           </Card>
           {extractedQuestions.some(q => q.correctAnswer) && (
