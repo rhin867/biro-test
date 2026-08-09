@@ -203,6 +203,8 @@ function CreateTestInner() {
       const arrayBuffer = await file.arrayBuffer();
       const bufferForText = arrayBuffer.slice(0);
       const bufferForImages = arrayBuffer.slice(0);
+      setPdfBuffer(bufferForImages);
+      
       const pdf = await pdfjsLib.getDocument({ data: bufferForText }).promise;
       let fullText = '';
       setParseStatus('Reading document text...');
@@ -211,15 +213,23 @@ function CreateTestInner() {
         const textContent = await page.getTextContent();
         const pageText = textContent.items.map((item: any) => item.str).join(' ');
         fullText += `[Page ${i}]\n${pageText}\n\n`;
-        setParseProgress(Math.round((i / pdf.numPages) * 40));
+        setParseProgress(Math.round((i / pdf.numPages) * 30));
       }
       setPdfText(fullText);
       setTestName(file.name.replace('.pdf', ''));
-      setParseStatus('Rendering high-res previews (2.5x)...');
-      const pageImages = await renderPDFPagesToImages(bufferForImages, 2.5); // Even higher resolution for perfect manual selection
+      
+      setParseStatus('Resolving PDF metadata...');
+      const metadata = await renderPDFPagesMetadata(bufferForImages, 2.5);
+      
+      // We store metadata in the state, but we don't hold ALL base64 images at once for "Extreme PDF Handling"
+      const metaPages: PDFPageImage[] = metadata.map(m => ({
+        ...m,
+        imageDataUrl: '', // This will be loaded on-demand in the Crop Tool
+      }));
+
       setParseProgress(100);
       setParseStatus('PDF Ready!');
-      setPdfPageImages(pageImages);
+      setPdfPageImages(metaPages);
       toast.success(`PDF processed: ${pdf.numPages} pages`);
       setStep('configure');
     } catch (error) {
