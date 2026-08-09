@@ -719,6 +719,12 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                                   onClick={() => setPreviewIdx(i)}>
                             <Eye className="h-3 w-3" />
                           </button>
+                          {i > 0 && (
+                            <button className="p-1 rounded hover:bg-accent text-primary" title="Merge with previous"
+                                    onClick={() => mergeWithPrevious(i)}>
+                              <GitMerge className="h-3 w-3" />
+                            </button>
+                          )}
                         </div>
                         <button className="p-1 rounded hover:bg-destructive/20 text-destructive" title="Delete"
                                 onClick={() => setCroppedImages(prev => prev.filter((_, j) => j !== i))}>
