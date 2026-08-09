@@ -44,6 +44,29 @@ async function cropQuestionBandFromPage(imageDataUrl: string, indexOnPage: numbe
   return canvas.toDataURL('image/jpeg', 0.82);
 }
 
+async function cropDiagramFromBbox(imageDataUrl: string, bbox: [number, number, number, number]): Promise<string> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new window.Image();
+    image.crossOrigin = "anonymous";
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = imageDataUrl;
+  });
+  const [ymin, xmin, ymax, xmax] = bbox;
+  const sourceX = (xmin / 1000) * img.width;
+  const sourceY = (ymin / 1000) * img.height;
+  const sourceW = ((xmax - xmin) / 1000) * img.width;
+  const sourceH = ((ymax - ymin) / 1000) * img.height;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, sourceW);
+  canvas.height = Math.max(1, sourceH);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return imageDataUrl;
+  ctx.drawImage(img, sourceX, sourceY, sourceW, sourceH, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.9);
+}
+
+
 function CreateTestInner() {
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
