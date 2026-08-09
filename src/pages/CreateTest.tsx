@@ -362,27 +362,27 @@ function CreateTestInner() {
         );
         return;
       }
-      const subjects: Subject[] = [...new Set(extractedQuestions.map((q) => q.subject))];
-      const hasAnswerKey = extractedQuestions.some(q => q.correctAnswer);
+      const subjects: Subject[] = [...new Set(currentQuestions.map((q) => q.subject))];
+      const hasAnswerKey = currentQuestions.some(q => q.correctAnswer);
       const testId = generateId();
       const questionImages = Object.fromEntries(
-        extractedQuestions
+        currentQuestions
           .filter((q) => q.croppedImageUrl?.startsWith('data:'))
           .map((q) => [q.id, q.croppedImageUrl as string])
       );
-      const storableQuestions = extractedQuestions.map((q) => q.croppedImageUrl?.startsWith('data:')
+      const storableQuestions = currentQuestions.map((q) => q.croppedImageUrl?.startsWith('data:')
         ? { ...q, croppedImageUrl: undefined }
         : q
       );
       const test: Test = {
         id: testId,
-        name: testName || 'Untitled Test',
-        description: `Created from PDF with ${extractedQuestions.length} questions`,
+        name: currentName,
+        description: `Created from PDF with ${currentQuestions.length} questions`,
         createdAt: new Date().toISOString(),
         duration,
         questions: storableQuestions,
         subjects,
-        totalMarks: extractedQuestions.length * positiveMarking,
+        totalMarks: currentQuestions.length * positiveMarking,
         positiveMarking,
         negativeMarking,
         hasAnswerKey,
