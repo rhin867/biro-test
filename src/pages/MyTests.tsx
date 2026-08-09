@@ -147,7 +147,7 @@ export default function MyTests() {
     if (!shareFolderName) return;
     setIsSharing(true);
     try {
-      // Password is hashed and stored server-side; it never reaches the database in plain text.
+      // Password is hashed and stored server-side.
       const { data, error } = await supabase.functions.invoke('folder-share', {
         body: {
           action: 'create',

@@ -279,7 +279,9 @@ export default function DailyHotQuestion() {
       comment: myComment.trim(),
       parent_id: replyTo?.id || null,
       likes: 0,
+      downvotes: 0,
       liked_by: [],
+      disliked_by: [],
       image_url: imageUrl || null
     };
 
