@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import * as pdfjsLib from 'pdfjs-dist';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -125,6 +126,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
   const [previewIdx, setPreviewIdx] = useState<number | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const galleryRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const addBlankRef = useRef<HTMLInputElement>(null);
   const [lastTouchDist, setLastTouchDist] = useState<number | null>(null);
@@ -148,8 +150,21 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
       if (pdfBuffer) {
         try {
           setIsImgLoaded(false);
-          const highResDataUrl = await renderSinglePage(pdfBuffer, currentPage + 1, 2.0);
-          setCurrentPageImage(highResDataUrl);
+          const pdfDoc = await pdfjsLib.getDocument({ data: pdfBuffer.slice(0) }).promise;
+          const page = await pdfDoc.getPage(currentPage + 1);
+          const viewport = page.getViewport({ scale: 2.5 });
+          
+          if (canvasRef.current) {
+            const canvas = canvasRef.current;
+            const context = canvas.getContext('2d');
+            if (context) {
+              canvas.width = viewport.width;
+              canvas.height = viewport.height;
+              await page.render({ canvasContext: context, viewport }).promise;
+              const highResDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+              setCurrentPageImage(highResDataUrl);
+            }
+          }
           setIsImgLoaded(true);
         } catch (error) {
           console.error("Failed to render PDF page:", error);
@@ -606,6 +621,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                 onMouseUp={handleEnd} onMouseLeave={handleEnd}
                 onTouchStart={handleStart} onTouchMove={handleMove} onTouchEnd={handleEnd}
               >
+                <canvas ref={canvasRef} className="hidden" />
                 {page?.imageDataUrl ? (
                   <>
                     <img
