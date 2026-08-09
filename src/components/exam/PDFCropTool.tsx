@@ -219,6 +219,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
     
     setCurrentRegion(region);
     
+    // In drawing mode (Shift held), update the temporary selection or the main crop
     if (!e.shiftKey) {
       setCropRegion(region);
     }
