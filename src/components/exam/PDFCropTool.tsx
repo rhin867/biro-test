@@ -122,9 +122,13 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [previewIdx, setPreviewIdx] = useState<number | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const galleryRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const addBlankRef = useRef<HTMLInputElement>(null);
   const [lastTouchDist, setLastTouchDist] = useState<number | null>(null);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
   const page = pages[currentPage];
 
@@ -143,11 +147,13 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
     const img = imgRef.current;
     if (!img) return { x: 0, y: 0 };
     const rect = img.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as any).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as any).clientY;
+    
+    // Account for zoom and offset when calculating coordinates on the image
     return {
-      x: Math.max(0, Math.min(rect.width, clientX - rect.left)),
-      y: Math.max(0, Math.min(rect.height, clientY - rect.top)),
+      x: Math.max(0, Math.min(img.naturalWidth, (clientX - rect.left) * (img.naturalWidth / rect.width))),
+      y: Math.max(0, Math.min(img.naturalHeight, (clientY - rect.top) * (img.naturalHeight / rect.height))),
     };
   }, []);
 
@@ -155,24 +161,55 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
     if ('touches' in e && e.touches.length === 2) {
       const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
       setLastTouchDist(dist);
+      setIsDrawing(false);
+      setIsPanning(false);
       return;
     }
-    const c = getRelativeCoords(e); setCropStart(c); 
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as any).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as any).clientY;
+
+    // Pan with middle mouse button or space+drag (simplified to check shift/meta for now or just multi-touch)
+    // If not drawing (no shift and no active region start), we pan
+    if (!e.shiftKey && !cropRegion) {
+      setIsPanning(true);
+      setPanStart({ x: clientX - offset.x, y: clientY - offset.y });
+      setIsDrawing(false);
+      return;
+    }
+
+    const c = getRelativeCoords(e); 
+    setCropStart(c); 
     if (!e.shiftKey) {
       setCropRegion(null); 
       setOptionRegions([]);
     }
     setIsDrawing(true);
-  }, [getRelativeCoords]);
+    setIsPanning(false);
+  }, [getRelativeCoords, cropRegion, offset]);
 
   const handleMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as any).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as any).clientY;
+
     if ('touches' in e && e.touches.length === 2 && lastTouchDist !== null) {
       const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
       const delta = dist / lastTouchDist;
-      setZoom(z => Math.min(4, Math.max(0.5, z * delta)));
+      
+      const newZoom = Math.min(4, Math.max(0.5, zoom * delta));
+      setZoom(newZoom);
       setLastTouchDist(dist);
       return;
     }
+
+    if (isPanning) {
+      setOffset({
+        x: clientX - panStart.x,
+        y: clientY - panStart.y
+      });
+      return;
+    }
+
     if (!isDrawing || !cropStart) return;
     const c = getRelativeCoords(e);
     const region = {
@@ -185,11 +222,11 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
     if (!e.shiftKey) {
       setCropRegion(region);
     }
-  }, [isDrawing, cropStart, getRelativeCoords, lastTouchDist]);
+  }, [isDrawing, isPanning, cropStart, getRelativeCoords, lastTouchDist, zoom, panStart]);
 
   const handleEnd = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (isDrawing && cropStart) {
-      const c = getRelativeCoords(e as any);
+      const c = getRelativeCoords(e as any || { clientX: 0, clientY: 0 }); // Fallback for end events
       const region = {
         x: Math.min(cropStart.x, c.x), y: Math.min(cropStart.y, c.y),
         width: Math.abs(c.x - cropStart.x), height: Math.abs(c.y - cropStart.y),
@@ -204,6 +241,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
       }
     }
     setIsDrawing(false);
+    setIsPanning(false);
     setCurrentRegion(null);
     setLastTouchDist(null);
   }, [isDrawing, cropStart, getRelativeCoords]);
@@ -246,14 +284,11 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
   const handleCrop = useCallback(() => {
     if (!cropRegion || !page || !imgRef.current) return;
     const img = imgRef.current;
-    const rect = img.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return;
-    const scaleX = img.naturalWidth / rect.width;
-    const scaleY = img.naturalHeight / rect.height;
-    const srcX = Math.max(0, Math.round(cropRegion.x * scaleX));
-    const srcY = Math.max(0, Math.round(cropRegion.y * scaleY));
-    const srcW = Math.min(img.naturalWidth - srcX, Math.round(cropRegion.width * scaleX));
-    const srcH = Math.min(img.naturalHeight - srcY, Math.round(cropRegion.height * scaleY));
+    
+    const srcX = Math.round(cropRegion.x);
+    const srcY = Math.round(cropRegion.y);
+    const srcW = Math.round(cropRegion.width);
+    const srcH = Math.round(cropRegion.height);
     if (srcW < 5 || srcH < 5) return;
 
     const processCrop = async () => {
@@ -274,10 +309,10 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
 
       const extraImages: string[] = [];
       for (const opt of optionRegions) {
-        const oX = Math.max(0, Math.round(opt.x * scaleX));
-        const oY = Math.max(0, Math.round(opt.y * scaleY));
-        const oW = Math.min(img.naturalWidth - oX, Math.round(opt.width * scaleX));
-        const oH = Math.min(img.naturalHeight - oY, Math.round(opt.height * scaleY));
+        const oX = Math.round(opt.x);
+        const oY = Math.round(opt.y);
+        const oW = Math.round(opt.width);
+        const oH = Math.round(opt.height);
         if (oW < 5 || oH < 5) continue;
         
         const oCanvas = document.createElement('canvas');
@@ -438,12 +473,16 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
               </div>
             </div>
 
-            <div className="relative border rounded-md overflow-hidden flex-1 bg-muted/30 overscroll-none min-h-[300px] touch-none">
+            <div ref={containerRef} className="relative border rounded-md overflow-hidden flex-1 bg-muted/30 overscroll-none min-h-[300px] touch-none">
               <div
-                className="relative inline-block cursor-crosshair select-none outline-none focus-within:ring-2 ring-primary/20 w-full h-full"
+                className="relative inline-block cursor-crosshair select-none outline-none focus-within:ring-2 ring-primary/20"
                 tabIndex={0}
                 onKeyDown={handleKeyDown}
-                style={{ touchAction: 'none', transformOrigin: '0 0' }}
+                style={{ 
+                  touchAction: 'none', 
+                  transformOrigin: '0 0',
+                  transform: `translate(${offset.x}px, ${offset.y}px)`
+                }}
                 onMouseDown={handleStart} onMouseMove={handleMove}
                 onMouseUp={handleEnd} onMouseLeave={handleEnd}
                 onTouchStart={handleStart} onTouchMove={handleMove} onTouchEnd={handleEnd}
