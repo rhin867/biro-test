@@ -22,7 +22,7 @@ const buildLog = [
   "2026-08-09T04:01:39.405905285Z ==> Build failed",
   "09:31:20.139 /vercel/path0/src/components/exam/PDFCropTool.tsx:346:8: ERROR: The symbol \"page\" has already been declared",
   "09:31:20.206 Error: Command \"npm run build\" exited with 1",
-  "\n[INSTRUCTION UPDATE 2026-08-09]: Add pdf crop tool  e2e gtest,verify indexed database persistence,prevent ts regressions,improve crop tool ux,checkout that all the things are working and fixed or not and if have not then fix it",
+  "\n[INSTRUCTION UPDATE 2026-08-09]: Run full e2e test,add crop undo/redo,improve crop handling,add ci typescript vhecks",
 ].join("\n");
 
 const Index = () => {
