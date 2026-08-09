@@ -482,7 +482,8 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
                 style={{ 
                   touchAction: 'none', 
                   transformOrigin: '0 0',
-                  transform: `translate(${offset.x}px, ${offset.y}px)`
+                  transform: `translate(${offset.x}px, ${offset.y}px)`,
+                  zIndex: 10
                 }}
                 onMouseDown={handleStart} onMouseMove={handleMove}
                 onMouseUp={handleEnd} onMouseLeave={handleEnd}
@@ -494,7 +495,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
                   alt={`Page ${currentPage + 1}`}
                   className="pointer-events-none"
                   draggable={false}
-                  style={{ display: 'block', width: `${zoom * 100}%`, maxWidth: 'none', pointerEvents: 'auto' }}
+                  style={{ display: 'block', width: `${zoom * 100}%`, maxWidth: 'none', pointerEvents: 'auto', zIndex: 1 }}
                 />
                 {cropRegion && cropRegion.width > 0 && cropRegion.height > 0 && (
                   <div
@@ -537,6 +538,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
                       top: `${(currentRegion.y / imgRef.current!.naturalHeight) * 100}%`,
                       width: `${(currentRegion.width / imgRef.current!.naturalWidth) * 100}%`, 
                       height: `${(currentRegion.height / imgRef.current!.naturalHeight) * 100}%`,
+                      zIndex: 20
                     }}
                   />
                 )}
