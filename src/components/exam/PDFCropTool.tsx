@@ -571,7 +571,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
               </div>
             </div>
 
-            <div ref={containerRef} className="relative border rounded-md overflow-auto flex-1 bg-muted/30 overscroll-none min-h-[400px] touch-none flex items-start justify-center p-4">
+            <div ref={containerRef} className="relative border rounded-md overflow-auto flex-1 bg-muted/30 overscroll-none min-h-[300px] lg:min-h-[400px] touch-none flex items-start justify-center p-2 md:p-4">
               {!isImgLoaded && (
                 <div className="absolute inset-0 z-[50] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm gap-3">
                   <div className="relative">
