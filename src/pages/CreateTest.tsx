@@ -339,6 +339,11 @@ function CreateTestInner() {
       toast.error('No questions to create test');
       return;
     }
+
+    // Capture values needed after prompt to avoid closure issues or stale refs
+    const currentQuestions = [...extractedQuestions];
+    const currentName = (testName || 'Untitled Test').trim();
+
     // Final confirmation gate
     const appSettings = getCachedAppSettings();
     const phrase = (appSettings.confirmation_phrase || 'I LOVE YOU BIRO').trim();
@@ -357,27 +362,27 @@ function CreateTestInner() {
         );
         return;
       }
-      const subjects: Subject[] = [...new Set(extractedQuestions.map((q) => q.subject))];
-      const hasAnswerKey = extractedQuestions.some(q => q.correctAnswer);
+      const subjects: Subject[] = [...new Set(currentQuestions.map((q) => q.subject))];
+      const hasAnswerKey = currentQuestions.some(q => q.correctAnswer);
       const testId = generateId();
       const questionImages = Object.fromEntries(
-        extractedQuestions
+        currentQuestions
           .filter((q) => q.croppedImageUrl?.startsWith('data:'))
           .map((q) => [q.id, q.croppedImageUrl as string])
       );
-      const storableQuestions = extractedQuestions.map((q) => q.croppedImageUrl?.startsWith('data:')
+      const storableQuestions = currentQuestions.map((q) => q.croppedImageUrl?.startsWith('data:')
         ? { ...q, croppedImageUrl: undefined }
         : q
       );
       const test: Test = {
         id: testId,
-        name: testName || 'Untitled Test',
-        description: `Created from PDF with ${extractedQuestions.length} questions`,
+        name: currentName,
+        description: `Created from PDF with ${currentQuestions.length} questions`,
         createdAt: new Date().toISOString(),
         duration,
         questions: storableQuestions,
         subjects,
-        totalMarks: extractedQuestions.length * positiveMarking,
+        totalMarks: currentQuestions.length * positiveMarking,
         positiveMarking,
         negativeMarking,
         hasAnswerKey,
@@ -913,49 +918,73 @@ function CreateTestInner() {
                       <div className="space-y-2">
                         <Label>Diagram / Image</Label>
                         {editingQuestion.croppedImageUrl ? (
-                          <div className="relative group">
-                            <img src={editingQuestion.croppedImageUrl} className="max-h-40 object-contain rounded border" />
-                            <Button 
-                              variant="destructive" 
-                              size="sm" 
-                              className="absolute top-2 right-2 h-6 px-2"
-                              onClick={() => setEditingQuestion({...editingQuestion, croppedImageUrl: undefined, hasDiagram: false})}
-                            >
-                              Remove Image
-                            </Button>
+                          <div className="relative group space-y-2">
+                            <img src={editingQuestion.croppedImageUrl} className="max-h-48 object-contain rounded border-2 border-primary/20" />
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="destructive" onClick={() => setEditingQuestion({...editingQuestion, croppedImageUrl: undefined, hasDiagram: false})}>
+                                <Trash2 className="h-4 w-4 mr-1" /> Remove
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => {
+                                const input = document.createElement('input');
+                                input.type = 'file';
+                                input.accept = 'image/*';
+                                input.onchange = async (e) => {
+                                  const file = (e.target as HTMLInputElement).files?.[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (ev) => {
+                                      setEditingQuestion({
+                                        ...editingQuestion,
+                                        croppedImageUrl: ev.target?.result as string,
+                                        hasDiagram: true
+                                      });
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                };
+                                input.click();
+                              }}>
+                                <ImageIcon className="h-4 w-4 mr-1" /> Replace Image
+                              </Button>
+                            </div>
                           </div>
                         ) : (
-                          <Button variant="outline" className="w-full" onClick={() => {
-                            const input = document.createElement('input');
-                            input.type = 'file';
-                            input.accept = 'image/*';
-                            input.onchange = async (e) => {
-                              const file = (e.target as HTMLInputElement).files?.[0];
-                              if (file) {
-                                const reader = new FileReader();
-                                reader.onload = (re) => {
-                                  setEditingQuestion({
-                                    ...editingQuestion, 
-                                    croppedImageUrl: re.target?.result as string,
-                                    hasDiagram: true
-                                  });
-                                };
-                                reader.readAsDataURL(file);
-                              }
-                            };
-                            input.click();
-                          }}>
-                            <ImageIcon className="h-4 w-4 mr-2" /> Upload Diagram
+                          <Button 
+                            variant="outline" 
+                            className="w-full border-dashed py-8 gap-2"
+                            onClick={() => {
+                              const input = document.createElement('input');
+                              input.type = 'file';
+                              input.accept = 'image/*';
+                              input.onchange = async (e) => {
+                                const file = (e.target as HTMLInputElement).files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onload = (ev) => {
+                                    setEditingQuestion({
+                                      ...editingQuestion,
+                                      croppedImageUrl: ev.target?.result as string,
+                                      hasDiagram: true
+                                    });
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              };
+                              input.click();
+                            }}
+                          >
+                            <ImageIcon className="h-4 w-4" /> Add Diagram/Image
                           </Button>
                         )}
                       </div>
-                      <Button className="w-full" onClick={() => {
-                        setExtractedQuestions(prev => prev.map(q => q.id === editingQuestion.id ? editingQuestion : q));
-                        setEditingQuestion(null);
-                        toast.success('Question updated');
-                      }}>
-                        Save Changes
-                      </Button>
+                      <div className="flex justify-end gap-3 pt-4 border-t">
+                        <Button variant="outline" onClick={() => setEditingQuestion(null)}>Cancel</Button>
+                        <Button onClick={() => {
+                          setExtractedQuestions(prev => prev.map(q => q.id === editingQuestion.id ? editingQuestion : q));
+                          setEditingQuestion(null);
+                          toast.success('Question updated');
+                        }}>Save Changes</Button>
+                      </div>
                     </div>
                   </DialogContent>
                 </Dialog>

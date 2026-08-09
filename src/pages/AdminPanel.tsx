@@ -754,23 +754,7 @@ export default function AdminPanel() {
                     {hotQuestionImageUrl ? 'Change Image' : 'Upload Image'}
                   </Button>
                 </div>
-                {hotQuestionImageUrl && (
-                  <div className="mt-2 relative inline-block">
-                    <img 
-                      src={hotQuestionImageUrl} 
-                      alt="Question preview" 
-                      className="max-h-48 rounded border border-border"
-                    />
-                    <Button 
-                      variant="destructive" 
-                      size="icon" 
-                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                      onClick={() => setHotQuestionImageUrl(null)}
-                    >
-                      <XCircle className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
+                {hot_question_image_preview}
               </div>
 
               {(hotQuestionType === 'mcq' || hotQuestionType === 'msq' || hotQuestionType === 'poll') && (

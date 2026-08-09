@@ -606,7 +606,7 @@ export default function DailyHotQuestion() {
                                   className="h-8 gap-2 text-[10px]" 
                                   onClick={() => document.getElementById('response-image-upload')?.click()}
                                 >
-                                  <Plus className="h-3 w-3" /> Attach Image
+                                  <ImageIcon className="h-3.5 w-3.5" /> Attach Image
                                 </Button>
                               </div>
                             </div>
@@ -690,7 +690,7 @@ export default function DailyHotQuestion() {
                                 className="h-8 gap-2 text-[10px]" 
                                 onClick={() => document.getElementById('response-image-upload')?.click()}
                               >
-                                <Plus className="h-3 w-3" /> Attach Image
+                                <ImageIcon className="h-3.5 w-3.5" /> Attach Image
                               </Button>
                               <Button 
                                 className="h-8 text-xs gap-2 ml-auto" 
