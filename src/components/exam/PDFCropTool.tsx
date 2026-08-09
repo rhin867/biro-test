@@ -571,7 +571,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
               </div>
             </div>
 
-            <div ref={containerRef} className="relative border rounded-md overflow-hidden flex-1 bg-muted/30 overscroll-none min-h-[300px] touch-none flex items-center justify-center">
+            <div ref={containerRef} className="relative border rounded-md overflow-auto flex-1 bg-muted/30 overscroll-none min-h-[400px] touch-none flex items-start justify-center p-4">
               {!isImgLoaded && (
                 <div className="absolute inset-0 z-[50] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm gap-3">
                   <div className="relative">
@@ -588,43 +588,88 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                 </div>
               )}
               <div
-                className="relative inline-block cursor-crosshair select-none outline-none focus-within:ring-2 ring-primary/20 bg-white"
+                className="relative inline-block select-none outline-none focus-within:ring-2 ring-primary/20 bg-white"
                 tabIndex={0}
                 onKeyDown={handleKeyDown}
                 style={{ 
                   touchAction: 'none', 
-                  transformOrigin: 'center center',
+                  transformOrigin: 'top center',
                   transform: `translate(${offset.x}px, ${offset.y}px)`,
                   zIndex: 10,
                   opacity: isImgLoaded ? 1 : 0.5,
                   transition: 'opacity 0.2s ease-in-out',
                   minWidth: '100px',
-                  minHeight: '100px'
+                  minHeight: '100px',
+                  cursor: isPanning ? 'grabbing' : (isDrawing ? 'crosshair' : 'grab')
                 }}
                 onMouseDown={handleStart} onMouseMove={handleMove}
                 onMouseUp={handleEnd} onMouseLeave={handleEnd}
                 onTouchStart={handleStart} onTouchMove={handleMove} onTouchEnd={handleEnd}
               >
                 {page?.imageDataUrl ? (
-                  <img
-                    ref={imgRef}
-                    src={page.imageDataUrl}
-                    alt={`Page ${currentPage + 1}`}
-                    className="pointer-events-none shadow-2xl border"
-                    draggable={false}
-                    onLoad={() => {
-                      setIsImgLoaded(true);
-                    }}
-                    style={{ 
-                      display: 'block', 
-                      width: `${zoom * 100}%`, 
-                      maxWidth: 'none', 
-                      pointerEvents: 'auto', 
-                      zIndex: 1, 
-                      boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.25)' 
-                    }}
-                  />
-                ) : (
+                  <>
+                    <img
+                      ref={imgRef}
+                      src={page.imageDataUrl}
+                      alt={`Page ${currentPage + 1}`}
+                      className="pointer-events-none shadow-2xl border"
+                      draggable={false}
+                      onLoad={() => setIsImgLoaded(true)}
+                      style={{ 
+                        display: 'block', 
+                        width: 'auto',
+                        height: 'auto',
+                        maxWidth: 'none',
+                        transform: `scale(${zoom})`,
+                        transformOrigin: 'top left',
+                        pointerEvents: 'none',
+                        zIndex: 1, 
+                        imageRendering: 'crisp-edges'
+                      }}
+                    />
+                    {imgRef.current && (
+                      <svg 
+                        className="absolute inset-0 pointer-events-none overflow-visible"
+                        style={{ 
+                          width: imgRef.current.naturalWidth, 
+                          height: imgRef.current.naturalHeight,
+                          transform: `scale(${zoom})`,
+                          transformOrigin: 'top left',
+                          zIndex: 2
+                        }}
+                      >
+                        {currentRegion && (
+                          <rect
+                            x={currentRegion.x} y={currentRegion.y}
+                            width={currentRegion.width} height={currentRegion.height}
+                            fill="rgba(59, 130, 246, 0.2)"
+                            stroke="rgb(59, 130, 246)"
+                            strokeWidth={2 / zoom}
+                            strokeDasharray={`${4/zoom} ${2/zoom}`}
+                          />
+                        )}
+                        {cropRegion && (
+                          <rect
+                            x={cropRegion.x} y={cropRegion.y}
+                            width={cropRegion.width} height={cropRegion.height}
+                            fill="rgba(34, 197, 94, 0.15)"
+                            stroke="rgb(34, 197, 94)"
+                            strokeWidth={3 / zoom}
+                          />
+                        )}
+                        {optionRegions.map((r, i) => (
+                          <rect
+                            key={i}
+                            x={r.x} y={r.y}
+                            width={r.width} height={r.height}
+                            fill="rgba(168, 85, 247, 0.15)"
+                            stroke="rgb(168, 85, 247)"
+                            strokeWidth={2 / zoom}
+                          />
+                        ))}
+                      </svg>
+                    )}
+                  </>
                   <div className="w-[500px] h-[700px] flex items-center justify-center bg-white text-muted-foreground text-xs">
                     No page data available
                   </div>
