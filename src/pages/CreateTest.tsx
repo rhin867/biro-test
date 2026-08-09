@@ -339,6 +339,11 @@ function CreateTestInner() {
       toast.error('No questions to create test');
       return;
     }
+
+    // Capture values needed after prompt to avoid closure issues or stale refs
+    const currentQuestions = [...extractedQuestions];
+    const currentName = (testName || 'Untitled Test').trim();
+
     // Final confirmation gate
     const appSettings = getCachedAppSettings();
     const phrase = (appSettings.confirmation_phrase || 'I LOVE YOU BIRO').trim();
