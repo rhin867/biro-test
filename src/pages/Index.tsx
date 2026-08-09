@@ -17,6 +17,7 @@ const buildLog = [
   "Fixed Daily Hot Question image uploads and dashboard previews.",
   "Enabled automatic 'View Original PDF' drawer during exams.",
   "Fixed Manual Crop visibility: restored high-res canvas rendering, added zoom/pan controls, and unified PDF storage.",
+  "Improved Manual Crop layout for mobile/tablet: fixed container heights and overflow to prevent PDF tool from disappearing.",
 ].join("\n");
 
 const Index = () => {
