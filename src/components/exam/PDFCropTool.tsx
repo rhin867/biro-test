@@ -343,7 +343,6 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
     );
   }
 
-  const page = pages[currentPage];
   if (!page) return null;
 
   return (
