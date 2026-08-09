@@ -117,17 +117,21 @@ export async function renderSinglePage(
   * Auto-crop questions from PDF by detecting question boundaries
   * This is a simplified version - for complex PDFs, AI-based cropping is better
   */
- export async function autoCropQuestions(
-   pdfData: ArrayBuffer,
-   questionsPerPage: number = 3,
-   scale: number = 2
- ): Promise<CroppedQuestion[]> {
-   const pageImages = await renderPDFPagesToImages(pdfData, scale);
-   const croppedQuestions: CroppedQuestion[] = [];
- 
-   let questionIndex = 0;
- 
-   for (const pageImage of pageImages) {
+export async function autoCropQuestions(
+  pdfData: ArrayBuffer,
+  questionsPerPage: number = 3,
+  scale: number = 2
+): Promise<CroppedQuestion[]> {
+  const pdf = await pdfjsLib.getDocument({ data: pdfData.slice(0) }).promise;
+  const croppedQuestions: CroppedQuestion[] = [];
+
+  let questionIndex = 0;
+
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const pageImage = await renderSinglePage(pdfData, pageNum, scale);
+    const page = await pdf.getPage(pageNum);
+    const viewport = page.getViewport({ scale });
+
      // Simple approach: divide page into equal sections
      const sectionHeight = pageImage.height / questionsPerPage;
  
