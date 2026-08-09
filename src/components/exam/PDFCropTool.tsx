@@ -499,6 +499,10 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
                   alt={`Page ${currentPage + 1}`}
                   className="pointer-events-none"
                   draggable={false}
+                  onLoad={() => {
+                    // Force a re-render when image loads to ensure crop markers calculate correctly
+                    setZoom(prev => prev);
+                  }}
                   style={{ display: 'block', width: `${zoom * 100}%`, maxWidth: 'none', pointerEvents: 'auto', zIndex: 1 }}
                 />
                 {cropRegion && cropRegion.width > 0 && cropRegion.height > 0 && (
