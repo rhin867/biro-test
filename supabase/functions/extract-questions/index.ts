@@ -12,12 +12,13 @@ RULES:
 3. Use LaTeX for ALL math: √x→$\\sqrt{x}$, x²→$x^2$, ∫→$\\int$, Σ→$\\sum$, fractions→$\\frac{a}{b}$
 4. Detect Subject (Physics/Chemistry/Maths) and Chapter. If unclear, infer from question context.
 5. Detect question type: MCQ (4 options), MSQ (multiple correct), Numerical (integer/decimal answer), Integer (exact integer).
-6. options: {A: "...", B: "...", C: "...", D: "..."}. Set hasDiagram:true if image/diagram/graph/figure/circuit is present or referenced.
-7. Detect correct answer if visible (e.g., answer key at end or circled), else null.
-8. Skip instructions, watermarks, and non-question text.
-9. Support multi-page documents (up to 75 questions).
+6. options: {A: "...", B: "...", C: "...", D: "..."}. Set hasDiagram:true if image/diagram/graph/figure/circuit is present.
+7. For Vision Models (scanned PDFs): If hasDiagram is true, provide "diagramBbox": [ymin, xmin, ymax, xmax] in normalized coordinates (0-1000) for the most relevant visual element (diagram/figure) of the question.
+8. Detect correct answer if visible (e.g., answer key at end or circled), else null.
+9. Skip instructions, watermarks, and non-question text.
+10. Support multi-page documents (up to 75 questions).
 OUTPUT (STRICT JSON):
-{"examTitle":"Title","questions":[{"questionNumber":1,"question":"text with $LaTeX$","options":{"A":"","B":"","C":"","D":""},"correctAnswer":"A","subject":"Physics","chapter":"Mechanics","type":"MCQ","hasDiagram":false,"pageNumber":1}],"totalExtracted":75,"subjectCounts":{"Physics":25}}`;
+{"examTitle":"Title","questions":[{"questionNumber":1,"question":"text with $LaTeX$","options":{"A":"","B":"","C":"","D":""},"correctAnswer":"A","subject":"Physics","chapter":"Mechanics","type":"MCQ","hasDiagram":false,"diagramBbox":null,"pageNumber":1}],"totalExtracted":75,"subjectCounts":{"Physics":25}}`;
 
 const answerKeyPrompt = `You are a highly accurate OMR and answer key extractor. 
 Extract the answers from the document (this could be a printed answer key OR a hand-marked OMR/answer sheet).
@@ -103,6 +104,7 @@ serve(async (req) => {
       correctAnswer: q.correctAnswer || q.answer || null,
       type: q.type || "MCQ",
       hasDiagram: q.hasDiagram || false,
+      diagramBbox: q.diagramBbox || null,
       pdfPageNumber: q.pageNumber || null
     }));
 
