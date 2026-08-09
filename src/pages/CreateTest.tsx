@@ -192,7 +192,7 @@ function CreateTestInner() {
       setPdfText(fullText);
       setTestName(file.name.replace('.pdf', ''));
       setParseStatus('Rendering high-res previews...');
-      const pageImages = await renderPDFPagesToImages(bufferForImages, 2.0); // Increased scale for better manual cropping
+      const pageImages = await renderPDFPagesToImages(bufferForImages, 2.0); // High-res for clear manual selection
       setParseProgress(100);
       setParseStatus('PDF Ready!');
       setPdfPageImages(pageImages);
