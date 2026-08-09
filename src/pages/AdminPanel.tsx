@@ -155,6 +155,7 @@ export default function AdminPanel() {
   const [hotQuestionOptions, setHotQuestionOptions] = useState<string[]>(['', '', '', '']);
   const [hotQuestionCorrect, setHotQuestionCorrect] = useState('');
   const [hotQuestionImageUrl, setHotQuestionImageUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [savingHot, setSavingHot] = useState(false);
   const [savingPhrase, setSavingPhrase] = useState(false);
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
@@ -313,6 +314,41 @@ export default function AdminPanel() {
     }
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image too large (max 2MB)");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+      const filePath = `hot-questions/${fileName}`;
+
+      const { data, error: uploadError } = await supabase.storage
+        .from('biro-test-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('biro-test-images')
+        .getPublicUrl(filePath);
+
+      setHotQuestionImageUrl(publicUrl);
+      toast.success("Image uploaded!");
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error("Failed to upload image: " + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleEditQuestion = async (q: any) => {
     setEditingQuestionId(q.id);
     setNewHotQuestion(q.content || '');
@@ -427,6 +463,17 @@ export default function AdminPanel() {
 
   const hot_question_image_preview = hotQuestionImageUrl && (
     <div className="mt-4 relative group w-full flex justify-center">
+      <img src={hotQuestionImageUrl} className="max-h-40 object-contain rounded border border-border" />
+      <Button 
+        variant="destructive" 
+        size="icon" 
+        className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={() => setHotQuestionImageUrl(null)}
+      >
+        <XCircle className="h-4 w-4" />
+      </Button>
+    </div>
+  );
       <div className="relative rounded-2xl overflow-hidden border-2 border-primary/20 shadow-neon bg-white p-3 flex justify-center items-center min-h-[200px] w-full max-w-2xl transition-all hover:border-primary/40">
         <img 
           src={`${hotQuestionImageUrl}${hotQuestionImageUrl.includes('?') ? '&' : '?'}t=${Date.now()}`} 

@@ -280,7 +280,11 @@ export default function DailyHotQuestion() {
       parent_id: replyTo?.id || null,
       likes: 0,
       liked_by: [],
-      image_url: imageUrl || null
+      image_url: imageUrl || null,
+      likes: 0,
+      downvotes: 0,
+      liked_by: [],
+      disliked_by: []
     };
 
     const { data, error } = await supabase.from('hot_question_responses').insert(responseData).select();
