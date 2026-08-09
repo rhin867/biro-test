@@ -398,6 +398,20 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
           </DialogTitle>
         </DialogHeader>
 
+        {/* Diagnostic Overlay */}
+        {open && pages.length > 0 && !isImgLoaded && (
+          <div className="absolute inset-0 z-[100] bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
+            <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+            <h3 className="font-bold text-lg mb-2">Rendering PDF Page...</h3>
+            <p className="text-sm text-muted-foreground max-w-xs mb-4">
+              Generating high-resolution previews for precise cropping.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => setIsImgLoaded(true)}>
+              Taking too long? Force show
+            </Button>
+          </div>
+        )}
+
         {/* Compact single-row control bar */}
         <div className="flex flex-col gap-2 p-2 rounded-md bg-muted/40 border mb-2">
           <div className="flex items-center justify-between px-1">
