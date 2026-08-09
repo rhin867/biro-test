@@ -269,7 +269,22 @@ function CreateTestInner() {
         } as Question;
       });
 
-      const questionsWithImages = await Promise.all(questions.map(async (q) => {
+      const questionsWithImages = await Promise.all(questions.map(async (q, idx) => {
+        const rawQ = raw[idx];
+        // 1. Precise Auto-Vision Crop (if bbox provided by AI)
+        if (rawQ?.diagramBbox && q.pdfPageNumber) {
+          const page = pdfPageImages.find((p) => p.pageNumber === q.pdfPageNumber);
+          if (page) {
+            try {
+              const cropped = await cropDiagramFromBbox(page.imageDataUrl, rawQ.diagramBbox);
+              return { ...q, croppedImageUrl: cropped };
+            } catch (e) {
+              console.warn("Vision crop failed, falling back to band crop:", e);
+            }
+          }
+        }
+        
+        // 2. Fallback: Band-based Crop (original logic)
         if (!q.hasDiagram || q.croppedImageUrl || q.imageUrl || !q.pdfPageNumber) return q;
         const page = pdfPageImages.find((p) => p.pageNumber === q.pdfPageNumber);
         if (!page) return q;
