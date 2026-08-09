@@ -151,9 +151,13 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
     const clientY = 'touches' in e ? e.touches[0].clientY : (e as any).clientY;
     
     // Account for zoom and offset when calculating coordinates on the image
+    // Note: rect already reflects the zoom (width/height), so we just need natural scaling
+    const x = (clientX - rect.left) * (img.naturalWidth / rect.width);
+    const y = (clientY - rect.top) * (img.naturalHeight / rect.height);
+
     return {
-      x: Math.max(0, Math.min(img.naturalWidth, (clientX - rect.left) * (img.naturalWidth / rect.width))),
-      y: Math.max(0, Math.min(img.naturalHeight, (clientY - rect.top) * (img.naturalHeight / rect.height))),
+      x: Math.max(0, Math.min(img.naturalWidth, x)),
+      y: Math.max(0, Math.min(img.naturalHeight, y)),
     };
   }, []);
 
