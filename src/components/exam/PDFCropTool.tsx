@@ -531,9 +531,10 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-2 flex-1 min-h-0 mt-1.5 overflow-hidden">
+        <div className="flex flex-col lg:flex-row gap-2 flex-1 min-h-0 mt-1.5 overflow-y-auto lg:overflow-hidden">
           {/* PDF viewer — takes most of the space */}
-          <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
+          <div className="flex flex-col min-w-0 min-h-[60vh] lg:min-h-0 lg:flex-1 lg:h-full overflow-hidden relative">
+
             <div className="flex items-center justify-between mb-1 gap-1 flex-wrap">
               <div className="flex gap-1 items-center">
                 <Button variant="outline" size="sm" className="h-7 px-2" disabled={currentPage === 0}
