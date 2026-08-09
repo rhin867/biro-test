@@ -18,40 +18,56 @@ if (typeof window !== 'undefined') {
    height: number;
  }
  
- /**
-  * Render all PDF pages to images for viewing diagrams
-  */
- export async function renderPDFPagesToImages(
-   pdfData: ArrayBuffer,
-   scale: number = 2
-): Promise<PDFPageImage[]> {
+/**
+ * Render all PDF pages to high-res images.
+ * Returns only metadata to avoid memory bloat for large files.
+ * The actual image data is handled via callbacks or stored in IndexedDB.
+ */
+export async function renderPDFPagesMetadata(
+  pdfData: ArrayBuffer,
+  scale: number = 2
+): Promise<Array<{ pageNumber: number; width: number; height: number }>> {
   const pdf = await pdfjsLib.getDocument({ data: pdfData.slice(0) }).promise;
-   const pages: PDFPageImage[] = [];
- 
-   for (let i = 1; i <= pdf.numPages; i++) {
-     const page = await pdf.getPage(i);
-     const viewport = page.getViewport({ scale });
-     
-     const canvas = document.createElement('canvas');
-     const context = canvas.getContext('2d')!;
-     canvas.width = viewport.width;
-     canvas.height = viewport.height;
- 
-     await page.render({
-       canvasContext: context,
-       viewport: viewport,
-     }).promise;
- 
-     pages.push({
-       pageNumber: i,
-       imageDataUrl: canvas.toDataURL('image/png'),
-       width: viewport.width,
-       height: viewport.height,
-     });
-   }
- 
-   return pages;
- }
+  const metadata = [];
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale });
+    metadata.push({
+      pageNumber: i,
+      width: viewport.width,
+      height: viewport.height,
+    });
+  }
+
+  return metadata;
+}
+
+/**
+ * Render a single PDF page to a base64 image string.
+ */
+export async function renderSinglePage(
+  pdfData: ArrayBuffer,
+  pageNumber: number,
+  scale: number = 2.5
+): Promise<string> {
+  const pdf = await pdfjsLib.getDocument({ data: pdfData.slice(0) }).promise;
+  const page = await pdf.getPage(pageNumber);
+  const viewport = page.getViewport({ scale });
+  
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d')!;
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+
+  await page.render({
+    canvasContext: context,
+    viewport: viewport,
+  }).promise;
+
+  return canvas.toDataURL('image/jpeg', 0.8);
+}
+
  
  /**
   * Crop a specific region from a PDF page
