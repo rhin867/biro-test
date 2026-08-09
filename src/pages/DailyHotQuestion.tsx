@@ -29,6 +29,7 @@ export default function DailyHotQuestion() {
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [revealedAnswer, setRevealedAnswer] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
 
 
@@ -245,6 +246,34 @@ export default function DailyHotQuestion() {
           is_read: false
         });
       }
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `dhq_responses/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('biro-test-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('biro-test-images')
+        .getPublicUrl(filePath);
+
+      await handleSubmit(publicUrl);
+    } catch (error: any) {
+      toast.error('Error uploading image: ' + error.message);
+    } finally {
+      setIsUploading(false);
     }
   };
 
