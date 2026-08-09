@@ -191,8 +191,8 @@ function CreateTestInner() {
       }
       setPdfText(fullText);
       setTestName(file.name.replace('.pdf', ''));
-      setParseStatus('Rendering high-res previews...');
-      const pageImages = await renderPDFPagesToImages(bufferForImages, 2.0); // High-res for clear manual selection
+      setParseStatus('Rendering high-res previews (2.5x)...');
+      const pageImages = await renderPDFPagesToImages(bufferForImages, 2.5); // Even higher resolution for perfect manual selection
       setParseProgress(100);
       setParseStatus('PDF Ready!');
       setPdfPageImages(pageImages);
@@ -708,7 +708,13 @@ function CreateTestInner() {
                   </div>
                 </div>
 
-                <Button variant="default" onClick={() => setShowCropTool(true)} className="gap-2 w-full h-14 text-lg font-black uppercase tracking-widest shadow-xl hover:shadow-primary/30 transition-all group">
+                <Button variant="default" onClick={() => {
+                  if (pdfPageImages.length === 0) {
+                    toast.error("PDF pages not yet rendered. Please wait.");
+                    return;
+                  }
+                  setShowCropTool(true);
+                }} className="gap-2 w-full h-14 text-lg font-black uppercase tracking-widest shadow-xl hover:shadow-primary/30 transition-all group">
                   <Crop className="h-6 w-6 group-hover:rotate-12 transition-transform" /> 
                   Open Manual Selection Tool
                 </Button>
