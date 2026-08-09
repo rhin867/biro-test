@@ -10,7 +10,7 @@ const buildLog = [
   "2026-08-09T04:34:05Z ==> Fetching repository metadata...",
   "2026-08-09T04:34:10Z ==> Resolving dependencies...",
   "2026-08-09T04:34:15Z ==> Starting build pipeline...",
-  "Is it completed or not(means my plan) ,if have not then next(complete it or next )",
+  "If something is not completed from that plan then complete it,and checkout thst all the plans festures are working or not and then fixed if that is not working",
 ].join("\n");
 
 const Index = () => {
