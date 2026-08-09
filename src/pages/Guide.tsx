@@ -8,7 +8,6 @@ import { fetchQuotaInfo, QuotaInfo } from '@/lib/app-settings';
 import {
   Upload, FileText, BarChart, Crop, Clock, MessageSquare,
   Settings, BookOpen, Target, ExternalLink, Zap, Bot, Gamepad2, Coins, ShieldCheck,
-  ShieldCheck,
 } from 'lucide-react';
 
 const sections = [
@@ -127,7 +126,7 @@ export default function Guide() {
 
   return (
     <MainLayout>
-      <PageHeader title="App Guide & System Map" description="Understanding how Biro Test CBT Analyzer works" />
+      <PageHeader title="App Guide" description="Learn how to use every feature of Biro Test CBT Analyzer" />
 
       {/* System Architecture Map */}
       <Card className="mb-6 border-primary/20 bg-primary/5 overflow-hidden">
