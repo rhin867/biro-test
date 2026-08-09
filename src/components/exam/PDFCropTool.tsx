@@ -343,7 +343,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
     );
   }
 
-  if (!page) return null;
+  
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
