@@ -35,6 +35,7 @@ interface PDFCropToolProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pages: PDFPageImage[];
+  pdfBuffer?: ArrayBuffer;
   onCroppedQuestions: (images: CroppedImage[]) => void;
   /** Pre-load existing crops when re-opening the tool for review. */
   initialCrops?: CroppedImage[];
