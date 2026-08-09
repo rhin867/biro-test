@@ -463,17 +463,6 @@ export default function AdminPanel() {
 
   const hot_question_image_preview = hotQuestionImageUrl && (
     <div className="mt-4 relative group w-full flex justify-center">
-      <img src={hotQuestionImageUrl} className="max-h-40 object-contain rounded border border-border" />
-      <Button 
-        variant="destructive" 
-        size="icon" 
-        className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-        onClick={() => setHotQuestionImageUrl(null)}
-      >
-        <XCircle className="h-4 w-4" />
-      </Button>
-    </div>
-  );
       <div className="relative rounded-2xl overflow-hidden border-2 border-primary/20 shadow-neon bg-white p-3 flex justify-center items-center min-h-[200px] w-full max-w-2xl transition-all hover:border-primary/40">
         <img 
           src={`${hotQuestionImageUrl}${hotQuestionImageUrl.includes('?') ? '&' : '?'}t=${Date.now()}`} 
