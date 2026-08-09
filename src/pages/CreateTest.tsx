@@ -86,6 +86,7 @@ function CreateTestInner() {
   } | null>(null);
   const [pdfPageImages, setPdfPageImages] = useState<PDFPageImage[]>([]);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfBuffer, setPdfBuffer] = useState<ArrayBuffer | null>(null);
   const [showPageViewer, setShowPageViewer] = useState(false);
   const [showCropTool, setShowCropTool] = useState(false);
   const [extractionFailed, setExtractionFailed] = useState(false);
