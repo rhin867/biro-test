@@ -169,9 +169,9 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as any).clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : (e as any).clientY;
 
-    // Pan with middle mouse button or space+drag (simplified to check shift/meta for now or just multi-touch)
-    // If not drawing (no shift and no active region start), we pan
-    if (!e.shiftKey && !cropRegion) {
+    // Pan with multi-touch or drag without shift (and no crop region active)
+    // If not drawing (no shift), we pan
+    if (!e.shiftKey) {
       setIsPanning(true);
       setPanStart({ x: clientX - offset.x, y: clientY - offset.y });
       setIsDrawing(false);
