@@ -1091,6 +1091,7 @@ function CreateTestInner() {
         open={showCropTool}
         onOpenChange={setShowCropTool}
         pages={pdfPageImages}
+        pdfBuffer={pdfBuffer || undefined}
         onCroppedQuestions={(crops) => {
           const toSubject = (s: string): Subject => {
             const canon = ['Physics', 'Chemistry', 'Maths'] as const;
