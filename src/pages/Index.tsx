@@ -12,8 +12,10 @@ const buildLog = [
   "2026-08-09T04:34:15Z ==> Starting build pipeline...",
   "2026-08-09T08:15:00Z ==> Initializing Auto-Vision Diagram Extraction and Extreme PDF Handling...",
   "2026-08-09T08:25:00Z ==> Auto-Vision, Multi-Merge, Virtualized PDF, and Advanced OCR Fallback implemented.",
-  "Are madarchod tune to aur bekar bna diya pdf vaalajaise 0ahle tha sabb kuchh vaise hi krde pure jono pahle tha vaiae hi krde",
   "Next(remaining features and those have not completed ke liye next boldena)",
+  "Reverted to immediate PDF rendering for full page visibility in manual cropping tool.",
+  "Fixed Daily Hot Question image uploads and dashboard previews.",
+  "Enabled automatic 'View Original PDF' drawer during exams.",
 ].join("\n");
 
 const Index = () => {
