@@ -533,6 +533,7 @@ export default function AdminPanel() {
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="shares">Shares</TabsTrigger>
           <TabsTrigger value="moderation">Moderation</TabsTrigger>
+          <TabsTrigger value="architecture">Mapping</TabsTrigger>
         </TabsList>
 
         <TabsContent value="passwords" className="space-y-4">
@@ -918,6 +919,86 @@ export default function AdminPanel() {
 
         <TabsContent value="moderation">
           <ModerationDashboard ownerPassword={ownerPassword} />
+        </TabsContent>
+
+        <TabsContent value="architecture">
+          <Card className="border-primary/20 bg-primary/5 overflow-hidden">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <GitBranch className="h-5 w-5 text-primary" /> System Architecture & Mapping
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="flex gap-3 items-start">
+                    <div className="mt-1 p-2 bg-primary/10 rounded-full text-primary">
+                      <Cpu className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm">PDF to CBT Engine</h4>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        How it converts: PDF Buffer (IndexedDB) → PDF.js (Parsing) → Backend AI (Extraction) → React State (UI Review) → LocalStorage (Test Persistence).
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 items-start">
+                    <div className="mt-1 p-2 bg-primary/10 rounded-full text-primary">
+                      <Database className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm">Database & Storage</h4>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Connects to our backend for real-time chat, test sharing, and owner verification. Images are stored in secure buckets (biro-test-images) with per-owner access policies.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex gap-3 items-start">
+                    <div className="mt-1 p-2 bg-primary/10 rounded-full text-primary">
+                      <Layout className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm">Manual & Auto-Cropping Links</h4>
+                      <ul className="text-xs text-muted-foreground space-y-1 mt-1">
+                        <li>• <span className="text-foreground font-medium">Auto-Crop:</span> Uses Gemini 1.5/2.0 Vision to detect Bboxes and extract LaTeX text automatically.</li>
+                        <li>• <span className="text-foreground font-medium">Manual Crop:</span> Directly attached to the PDF Buffer in IndexedDB; uses high-res canvas rendering for UI cropping.</li>
+                        <li>• <span className="text-foreground font-medium">Common Connection:</span> Both feed into the final "Test Questions" array used by the Exam Interface.</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 items-start">
+                    <div className="mt-1 p-2 bg-primary/10 rounded-full text-primary">
+                      <Server className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm">Owner & Admin Layer</h4>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Managed through Edge Functions. Verifies SHA-256 password hashes, manages global quotas, and moderates the community live chat.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg bg-background/80 border border-primary/10 flex flex-col items-center justify-center text-center gap-2">
+                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">App Connection Flow</div>
+                <div className="flex items-center gap-2 text-[10px] sm:text-xs">
+                  <span className="px-2 py-1 bg-secondary rounded">Upload PDF</span>
+                  <span className="text-muted-foreground">→</span>
+                  <span className="px-2 py-1 bg-secondary rounded">AI / Manual Crop</span>
+                  <span className="text-muted-foreground">→</span>
+                  <span className="px-2 py-1 bg-secondary rounded">Backend Sync</span>
+                  <span className="text-muted-foreground">→</span>
+                  <span className="px-2 py-1 bg-primary/20 text-primary font-bold rounded">Live CBT Test</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </MainLayout>

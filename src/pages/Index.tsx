@@ -19,6 +19,7 @@ const buildLog = [
   "Fixed Manual Crop visibility: restored high-res canvas rendering, added zoom/pan controls, and unified PDF storage.",
   "Improved Manual Crop layout for mobile/tablet: fixed container heights and overflow to prevent PDF tool from disappearing.",
   "Added 'System Architecture & Mapping' section to the Guide page explaining PDF-to-CBT flow, database connections, and manual/auto-cropping mechanics.",
+  "Moved 'System Architecture & Mapping' from public Guide to the protected Admin Panel (Owner's Eyes only).",
 ].join("\n");
 
 const Index = () => {
