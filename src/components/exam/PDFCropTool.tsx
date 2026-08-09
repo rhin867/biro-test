@@ -8,8 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { PDFPageImage, renderSinglePage } from '@/lib/pdf-cropper';
-import { Crop, Download, RotateCcw, ChevronLeft, ChevronRight, Trash2, ZoomIn, ZoomOut, Plus, Image as ImageIcon, Pencil, Eye, Loader2, GitMerge } from 'lucide-react';
+import { Crop, Download, RotateCcw, ChevronLeft, ChevronRight, Trash2, ZoomIn, ZoomOut, Plus, Image as ImageIcon, Pencil, Eye, Loader2, GitMerge, Type } from 'lucide-react';
 import { toast } from 'sonner';
+import { performClientOCR } from '@/lib/ocr';
 
 interface CropRegion { x: number; y: number; width: number; height: number; }
 
@@ -131,6 +132,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [isImgLoaded, setIsImgLoaded] = useState(false);
+  const [isOcrLoading, setIsOcrLoading] = useState<number | null>(null);
   const [currentPageImage, setCurrentPageImage] = useState<string>('');
 
   useEffect(() => {
@@ -381,6 +383,25 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
 
   const removeExtra = (i: number, j: number) =>
     updateCrop(i, { extraImages: (croppedImages[i].extraImages || []).filter((_, k) => k !== j) });
+
+  const runOCR = async (i: number) => {
+    const crop = croppedImages[i];
+    if (!crop) return;
+    setIsOcrLoading(i);
+    try {
+      const text = await performClientOCR(crop.dataUrl);
+      if (text) {
+        updateCrop(i, { questionText: (crop.questionText || '') + (crop.questionText ? '\n' : '') + text });
+        toast.success("OCR completed!");
+      } else {
+        toast.error("No text found in crop.");
+      }
+    } catch (e) {
+      toast.error("OCR failed to initialize.");
+    } finally {
+      setIsOcrLoading(null);
+    }
+  };
 
   const mergeWithPrevious = (i: number) => {
     if (i <= 0) return;
@@ -718,6 +739,14 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                           <button className="p-1 rounded hover:bg-accent" title="Preview"
                                   onClick={() => setPreviewIdx(i)}>
                             <Eye className="h-3 w-3" />
+                          </button>
+                          <button 
+                            className={`p-1 rounded hover:bg-accent ${isOcrLoading === i ? 'animate-pulse text-primary' : ''}`} 
+                            title="Extract text (OCR)"
+                            onClick={() => runOCR(i)}
+                            disabled={isOcrLoading !== null}
+                          >
+                            <Type className="h-3 w-3" />
                           </button>
                           {i > 0 && (
                             <button className="p-1 rounded hover:bg-accent text-primary" title="Merge with previous"
