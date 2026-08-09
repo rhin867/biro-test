@@ -199,6 +199,8 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
       const newZoom = Math.min(4, Math.max(0.5, zoom * delta));
       setZoom(newZoom);
       setLastTouchDist(dist);
+      
+      // Keep center point stable during zoom
       return;
     }
 
