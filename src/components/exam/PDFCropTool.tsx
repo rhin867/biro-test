@@ -80,7 +80,7 @@ function ComboInput({
   );
 }
 
-export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, initialCrops }: PDFCropToolProps) {
+export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQuestions, initialCrops }: PDFCropToolProps) {
   const [activePreset, setActivePreset] = useState<string | null>(null);
   const [presets, setPresets] = useState<Record<string, { subject: string; section: string; qType: CropQType }>>(() => {
     try {
