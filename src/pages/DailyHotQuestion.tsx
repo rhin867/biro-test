@@ -613,14 +613,15 @@ export default function DailyHotQuestion() {
                                   className="h-8 gap-2 text-[10px]" 
                                   onClick={() => document.getElementById('response-image-upload')?.click()}
                                 >
-                                  <ImageIcon className="h-3.5 w-3.5" /> Attach Image
+                                  {isUploading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />} 
+                                  {isUploading ? 'Uploading...' : 'Attach Image'}
                                 </Button>
                               </div>
                             </div>
                             <Button 
                               className="w-full h-12 text-lg gap-2 glow-primary" 
                               onClick={() => handleSubmit()} 
-                              disabled={isSubmitting || (!replyTo && !hasAnswered && !myResponse.trim()) || (!myComment.trim() && !isSubmitting)}
+                              disabled={isSubmitting || isUploading || (!replyTo && !hasAnswered && !myResponse.trim()) || (!myComment.trim() && !isSubmitting && !isUploading)}
                             >
                               <Send className="h-5 w-5" /> 
                               {isSubmitting ? 'Submitting...' : replyTo ? 'Post Reply' : 'Submit Final Answer'}
