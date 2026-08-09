@@ -129,6 +129,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [isImgLoaded, setIsImgLoaded] = useState(false);
 
   const page = pages[currentPage];
 
@@ -139,6 +140,8 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
       setCropStart(null);
       setIsDrawing(false);
       setZoom(1);
+      setIsImgLoaded(false);
+      setOffset({ x: 0, y: 0 });
       if (initialCrops && initialCrops.length) setCroppedImages(initialCrops);
     }
   }, [open, initialCrops]);
@@ -441,16 +444,16 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
 
         <div className="flex flex-col lg:flex-row gap-2 flex-1 min-h-0 mt-1.5 overflow-hidden">
           {/* PDF viewer — takes most of the space */}
-          <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+          <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
             <div className="flex items-center justify-between mb-1 gap-1 flex-wrap">
               <div className="flex gap-1 items-center">
                 <Button variant="outline" size="sm" className="h-7 px-2" disabled={currentPage === 0}
-                        onClick={() => { setCurrentPage(p => p - 1); setCropRegion(null); }}>
+                        onClick={() => { setCurrentPage(p => p - 1); setCropRegion(null); setIsImgLoaded(false); }}>
                   <ChevronLeft className="h-3.5 w-3.5" />
                 </Button>
                 <span className="text-[11px] px-1">{currentPage + 1}/{pages.length}</span>
                 <Button variant="outline" size="sm" className="h-7 px-2" disabled={currentPage === pages.length - 1}
-                        onClick={() => { setCurrentPage(p => p + 1); setCropRegion(null); }}>
+                        onClick={() => { setCurrentPage(p => p + 1); setCropRegion(null); setIsImgLoaded(false); }}>
                   <ChevronRight className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -478,7 +481,13 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
               </div>
             </div>
 
-            <div ref={containerRef} className="relative border rounded-md overflow-hidden flex-1 bg-muted/30 overscroll-none min-h-[300px] touch-none">
+            <div ref={containerRef} className="relative border rounded-md overflow-hidden flex-1 bg-muted/30 overscroll-none min-h-[300px] touch-none flex items-center justify-center">
+              {!isImgLoaded && (
+                <div className="absolute inset-0 z-[50] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm gap-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm font-medium animate-pulse">Loading High-Res Page...</p>
+                </div>
+              )}
               <div
                 className="relative inline-block cursor-crosshair select-none outline-none focus-within:ring-2 ring-primary/20"
                 tabIndex={0}
@@ -487,7 +496,8 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
                   touchAction: 'none', 
                   transformOrigin: '0 0',
                   transform: `translate(${offset.x}px, ${offset.y}px)`,
-                  zIndex: 10
+                  zIndex: 10,
+                  opacity: isImgLoaded ? 1 : 0
                 }}
                 onMouseDown={handleStart} onMouseMove={handleMove}
                 onMouseUp={handleEnd} onMouseLeave={handleEnd}
@@ -497,11 +507,10 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
                   ref={imgRef}
                   src={page.imageDataUrl}
                   alt={`Page ${currentPage + 1}`}
-                  className="pointer-events-none"
+                  className="pointer-events-none shadow-2xl border"
                   draggable={false}
                   onLoad={() => {
-                    // Force a re-render when image loads to ensure crop markers calculate correctly
-                    setZoom(prev => prev);
+                    setIsImgLoaded(true);
                   }}
                   style={{ display: 'block', width: `${zoom * 100}%`, maxWidth: 'none', pointerEvents: 'auto', zIndex: 1 }}
                 />
