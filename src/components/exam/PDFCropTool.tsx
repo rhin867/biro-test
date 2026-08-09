@@ -465,7 +465,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
                 <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))}>
                   <ZoomIn className="h-3.5 w-3.5" />
                 </Button>
-                <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setCropRegion(null)} disabled={!cropRegion}>
+                <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => { setCropRegion(null); setZoom(1); setOffset({ x: 0, y: 0 }); }} disabled={!cropRegion && zoom === 1}>
                   <RotateCcw className="h-3.5 w-3.5" />
                 </Button>
                 <Button size="sm" className="h-7 px-2 text-[11px]"
@@ -484,8 +484,17 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
             <div ref={containerRef} className="relative border rounded-md overflow-hidden flex-1 bg-muted/30 overscroll-none min-h-[300px] touch-none flex items-center justify-center">
               {!isImgLoaded && (
                 <div className="absolute inset-0 z-[50] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm gap-3">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <p className="text-sm font-medium animate-pulse">Loading High-Res Page...</p>
+                  <div className="relative">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                    <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-primary">PDF</div>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <p className="text-sm font-bold animate-pulse text-primary">Loading High-Res Page...</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Page {currentPage + 1} of {pages.length}</p>
+                  </div>
+                  <Button variant="ghost" size="sm" className="mt-4 text-[10px]" onClick={() => setIsImgLoaded(true)}>
+                    Stuck? Click to force show
+                  </Button>
                 </div>
               )}
               <div
@@ -494,10 +503,11 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
                 onKeyDown={handleKeyDown}
                 style={{ 
                   touchAction: 'none', 
-                  transformOrigin: '0 0',
+                  transformOrigin: 'center center',
                   transform: `translate(${offset.x}px, ${offset.y}px)`,
                   zIndex: 10,
-                  opacity: isImgLoaded ? 1 : 0
+                  opacity: isImgLoaded ? 1 : 0,
+                  transition: 'opacity 0.2s ease-in-out'
                 }}
                 onMouseDown={handleStart} onMouseMove={handleMove}
                 onMouseUp={handleEnd} onMouseLeave={handleEnd}
@@ -512,7 +522,7 @@ export function PDFCropTool({ open, onOpenChange, pages, onCroppedQuestions, ini
                   onLoad={() => {
                     setIsImgLoaded(true);
                   }}
-                  style={{ display: 'block', width: `${zoom * 100}%`, maxWidth: 'none', pointerEvents: 'auto', zIndex: 1 }}
+                  style={{ display: 'block', width: `${zoom * 100}%`, maxWidth: 'none', pointerEvents: 'auto', zIndex: 1, boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.25)' }}
                 />
                 {cropRegion && cropRegion.width > 0 && cropRegion.height > 0 && (
                   <div
