@@ -531,9 +531,9 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-2 flex-1 min-h-0 mt-1.5 overflow-y-auto lg:overflow-hidden">
+        <div className="flex flex-col lg:flex-row gap-2 flex-1 min-h-0 mt-1.5 overflow-hidden">
           {/* PDF viewer — takes most of the space */}
-          <div className="flex flex-col min-w-0 min-h-[60vh] lg:min-h-0 lg:flex-1 lg:h-full overflow-hidden relative">
+          <div className="flex flex-col min-w-0 flex-1 h-full overflow-hidden relative">
 
             <div className="flex items-center justify-between mb-1 gap-1 flex-wrap">
               <div className="flex gap-1 items-center">
@@ -571,7 +571,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
               </div>
             </div>
 
-            <div ref={containerRef} className="relative border rounded-md overflow-auto flex-1 bg-muted/30 overscroll-none min-h-[400px] touch-none flex items-start justify-center p-4">
+            <div ref={containerRef} className="relative border rounded-md overflow-auto flex-1 bg-muted/30 overscroll-none min-h-[300px] lg:min-h-[400px] touch-none flex items-start justify-center p-2 md:p-4">
               {!isImgLoaded && (
                 <div className="absolute inset-0 z-[50] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm gap-3">
                   <div className="relative">
@@ -728,7 +728,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
           </div>
 
           {/* Crop list */}
-          <div className="w-full lg:w-72 flex flex-col min-h-[200px] lg:h-full overflow-hidden border-t lg:border-t-0 lg:border-l pt-2 lg:pt-0 lg:pl-2">
+          <div className="w-full lg:w-72 flex flex-col h-[200px] lg:h-full overflow-hidden border-t lg:border-t-0 lg:border-l pt-2 lg:pt-0 lg:pl-2">
             <div className="flex items-center justify-between mb-1">
               <p className="text-xs font-medium">Questions ({croppedImages.length})</p>
               {croppedImages.length > 0 && (
