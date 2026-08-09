@@ -1,6 +1,15 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
+/**
+ * PROJECT INSTRUCTIONS & REQUIREMENTS LOG
+ * 
+ * CURRENT GOALS:
+ * 1. Add pdf e2e test, verify indexDB storage, prevent TS regressions.
+ * 2. Harden pdf crop tool: ensure pdfs are storing and visible in manual crop tool.
+ * 3. Fix all manual crop tool issues: hand cropping, two-finger zooming, etc.
+ */
+
 const buildLog = [
   "2026-08-09T04:01:19.888239425Z ==> Downloading cache...",
   "2026-08-09T04:01:19.916525011Z ==> Cloning from https://github.com/rhin867/biro-test",
@@ -13,6 +22,7 @@ const buildLog = [
   "2026-08-09T04:01:39.405905285Z ==> Build failed",
   "09:31:20.139 /vercel/path0/src/components/exam/PDFCropTool.tsx:346:8: ERROR: The symbol \"page\" has already been declared",
   "09:31:20.206 Error: Command \"npm run build\" exited with 1",
+  "\n[INSTRUCTION UPDATE 2026-08-09]: Add pdf e2e test,verify indexDB storage,prevent TS regressions,harden pdf crop tool,test pdf are storing and visible in manual crop tool and fix all the issues of manual crop tool,and make sure they are cropping by hand and zooming out in by two fingers etc",
 ].join("\n");
 
 const Index = () => {
