@@ -151,7 +151,20 @@ function DailyHotQuestionPreview() {
           <div className="space-y-3">
             {question.image_url && (
               <div className="w-full bg-white rounded border border-border/50 flex items-center justify-center overflow-hidden mb-3">
-                <img src={question.image_url} alt="Question preview" className="w-full h-auto object-contain max-h-[200px]" />
+                <img 
+                  src={question.image_url.startsWith('http') ? question.image_url : (
+                    // If it's just a path from Supabase storage, construct the public URL if needed, 
+                    // though usually it should be a signed or public URL already.
+                    // We assume image_url stored in DB is a valid public URL or base64.
+                    question.image_url
+                  )} 
+                  alt="Question preview" 
+                  className="w-full h-auto object-contain max-h-[300px]" 
+                  onError={(e) => {
+                    console.error("Dashboard DHQ image load error:", question.image_url);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
               </div>
             )}
             <div className="text-sm line-clamp-2 overflow-hidden font-medium">

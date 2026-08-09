@@ -218,13 +218,16 @@ function CreateTestInner() {
       setPdfText(fullText);
       setTestName(file.name.replace('.pdf', ''));
       
-      setParseStatus('Resolving PDF metadata...');
+      setParseStatus('Rendering PDF pages...');
       const metadata = await renderPDFPagesMetadata(bufferForImages, 2.5);
       
-      // We store metadata in the state, but we don't hold ALL base64 images at once for "Extreme PDF Handling"
-      const metaPages: PDFPageImage[] = metadata.map(m => ({
-        ...m,
-        imageDataUrl: '', // This will be loaded on-demand in the Crop Tool
+      // Reverting "Extreme PDF Handling": Load all pages immediately for visibility
+      const metaPages: PDFPageImage[] = await Promise.all(metadata.map(async (m) => {
+        const imageDataUrl = await renderSinglePage(bufferForImages, m.pageNumber, 2.5);
+        return {
+          ...m,
+          imageDataUrl,
+        };
       }));
 
       setParseProgress(100);

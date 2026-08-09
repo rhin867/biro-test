@@ -29,6 +29,7 @@ export default function DailyHotQuestion() {
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [revealedAnswer, setRevealedAnswer] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
 
 
@@ -245,6 +246,34 @@ export default function DailyHotQuestion() {
           is_read: false
         });
       }
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `dhq_responses/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('biro-test-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('biro-test-images')
+        .getPublicUrl(filePath);
+
+      await handleSubmit(publicUrl);
+    } catch (error: any) {
+      toast.error('Error uploading image: ' + error.message);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -576,29 +605,7 @@ export default function DailyHotQuestion() {
                                   accept="image/*" 
                                   className="hidden" 
                                   id="response-image-upload" 
-                                  onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                      toast.info('Uploading image...');
-                                      const fileExt = file.name.split('.').pop();
-                                      const fileName = `resp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
-                                      const { data, error } = await supabase.storage
-                                        .from('biro-test-images')
-                                        .upload(fileName, file, {
-                                          upsert: true
-                                        });
-                                      if (error) {
-                                        console.error('Upload error:', error);
-                                        toast.error('Upload failed: ' + error.message);
-                                      } else {
-                                        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-                                        const publicUrl = `${supabaseUrl}/storage/v1/object/public/biro-test-images/${fileName}`;
-                                        const freshUrl = `${publicUrl}?t=${Date.now()}`;
-                                        toast.success('Image uploaded! Submitting...');
-                                        handleSubmit(freshUrl);
-                                      }
-                                    }
-                                  }}
+                                  onChange={handleImageUpload}
                                 />
                                 <Button 
                                   variant="outline" 
@@ -606,14 +613,15 @@ export default function DailyHotQuestion() {
                                   className="h-8 gap-2 text-[10px]" 
                                   onClick={() => document.getElementById('response-image-upload')?.click()}
                                 >
-                                  <ImageIcon className="h-3.5 w-3.5" /> Attach Image
+                                  {isUploading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />} 
+                                  {isUploading ? 'Uploading...' : 'Attach Image'}
                                 </Button>
                               </div>
                             </div>
                             <Button 
                               className="w-full h-12 text-lg gap-2 glow-primary" 
                               onClick={() => handleSubmit()} 
-                              disabled={isSubmitting || (!replyTo && !hasAnswered && !myResponse.trim()) || (!myComment.trim() && !isSubmitting)}
+                              disabled={isSubmitting || isUploading || (!replyTo && !hasAnswered && !myResponse.trim()) || (!myComment.trim() && !isSubmitting && !isUploading)}
                             >
                               <Send className="h-5 w-5" /> 
                               {isSubmitting ? 'Submitting...' : replyTo ? 'Post Reply' : 'Submit Final Answer'}

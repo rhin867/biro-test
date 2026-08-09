@@ -110,6 +110,7 @@ export default function ExamInterface() {
       if (!buf) return;
       const blob = new Blob([buf], { type: 'application/pdf' });
       setPdfViewerUrl(URL.createObjectURL(blob));
+      setShowPdfViewer(true); // Auto-open PDF viewer if available when test starts
     }).catch(() => {});
     // Check for existing attempt
     const existingAttempt = getCurrentAttempt();
@@ -464,8 +465,8 @@ export default function ExamInterface() {
             <DialogContent className="max-w-[95vw] w-[95vw] h-[92vh] p-2 flex flex-col">
               <DialogHeader className="pb-1"><DialogTitle className="text-sm">Original PDF</DialogTitle></DialogHeader>
               {pdfViewerUrl && (
-                <iframe src={`${pdfViewerUrl}#page=${currentQuestion?.pdfPageNumber || 1}&view=FitH`}
-                        className="flex-1 w-full rounded border" title="Original PDF" />
+                <iframe src={`${pdfViewerUrl}#page=${currentQuestion?.pdfPageNumber || 1}`}
+                        className="flex-1 w-full rounded border bg-white" title="Original PDF" />
               )}
             </DialogContent>
           </Dialog>
