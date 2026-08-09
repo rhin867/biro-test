@@ -136,18 +136,9 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
   const [currentPageImage, setCurrentPageImage] = useState<string>('');
 
   useEffect(() => {
-    if (!open || !pdfBuffer || !pages[currentPage]) return;
-    const load = async () => {
-      setIsImgLoaded(false);
-      try {
-        const url = await renderSinglePage(pdfBuffer, pages[currentPage].pageNumber, 2.5);
-        setCurrentPageImage(url);
-      } catch (err) {
-        console.error("Manual crop render failed:", err);
-      }
-    };
-    load();
-  }, [open, currentPage, pdfBuffer, pages]);
+    if (!open || !pages[currentPage]) return;
+    setCurrentPageImage(pages[currentPage].imageDataUrl);
+  }, [open, currentPage, pages]);
 
   const page = pages[currentPage] ? { 
     ...pages[currentPage], 
@@ -459,7 +450,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
         </DialogHeader>
 
         {/* Diagnostic Overlay */}
-        {open && pages.length > 0 && !isImgLoaded && (
+        {open && pages.length > 0 && !isImgLoaded && !currentPageImage && (
           <div className="absolute inset-0 z-[100] bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
             <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
             <h3 className="font-bold text-lg mb-2">Rendering PDF Page...</h3>
