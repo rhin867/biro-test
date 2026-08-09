@@ -20,6 +20,7 @@ const buildLog = [
   "Improved Manual Crop layout for mobile/tablet: fixed container heights and overflow to prevent PDF tool from disappearing.",
   "Added 'System Architecture & Mapping' section to the Guide page explaining PDF-to-CBT flow, database connections, and manual/auto-cropping mechanics.",
   "Moved 'System Architecture & Mapping' from public Guide to the protected Admin Panel (Owner's Eyes only).",
+  "Aur kya ham backend ko changekar skte hai?? (Jvxsm... ko hata kar main tujhe apne supabase ka keys project ids ye sabb du and tu sabb kuchh usse kar (kya aisa ho skta hai???) Yaani tune jojo kara hai supabase ye sbabka merepaas access hona chahiye isliye main aisa kr rha hu to kya ham kr skte hai(jisse ki mereko access rhe and main kuchh edit vagaira kr sku and sjh sku kaha real problem aarha hai)",
 ].join("\n");
 
 const Index = () => {
