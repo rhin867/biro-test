@@ -138,47 +138,61 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
   const [currentPageImage, setCurrentPageImage] = useState<string>('');
 
   useEffect(() => {
+    let isMounted = true;
     async function loadPage() {
       if (!open || !pages[currentPage]) return;
       
+      // Reset visibility states when changing pages
+      setIsImgLoaded(false);
+      setCurrentPageImage('');
+      
       // If we have an existing imageDataUrl, use it as fallback
       if (pages[currentPage].imageDataUrl) {
-        setCurrentPageImage(pages[currentPage].imageDataUrl);
+        if (isMounted) setCurrentPageImage(pages[currentPage].imageDataUrl);
       }
 
       // If we have the raw pdfBuffer, re-render the page at high resolution to ensure visibility
       if (pdfBuffer) {
         try {
-          setIsImgLoaded(false);
-          const pdfDoc = await pdfjsLib.getDocument({ data: pdfBuffer }).promise;
-          const page = await pdfDoc.getPage(currentPage + 1);
-          const viewport = page.getViewport({ scale: zoom > 1.5 ? 2.5 : 2.0 });
+          // Use a fresh slice to ensure we don't have issues with detached buffers
+          const bufferSlice = pdfBuffer.slice(0);
+          const pdfDoc = await pdfjsLib.getDocument({ data: bufferSlice }).promise;
+          const pageObj = await pdfDoc.getPage(currentPage + 1);
           
-          if (canvasRef.current) {
+          // Higher scale for precision cropping, capped for memory efficiency on mobiles
+          const isMobile = window.innerWidth < 768;
+          const renderScale = isMobile ? 1.8 : 2.5;
+          const viewport = pageObj.getViewport({ scale: renderScale * zoom });
+          
+          if (canvasRef.current && isMounted) {
             const canvas = canvasRef.current;
-            const context = canvas.getContext('2d', { alpha: false }); // Optimize for speed
+            const context = canvas.getContext('2d', { alpha: false });
             if (context) {
               canvas.width = viewport.width;
               canvas.height = viewport.height;
-              await page.render({ canvasContext: context, viewport }).promise;
-              const highResDataUrl = canvas.toDataURL('image/jpeg', 0.7); // Lower quality for memory
-              setCurrentPageImage(highResDataUrl);
+              await pageObj.render({ canvasContext: context, viewport }).promise;
+              const highResDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+              if (isMounted) {
+                setCurrentPageImage(highResDataUrl);
+                setIsImgLoaded(true);
+              }
             }
           }
-
-          setIsImgLoaded(true);
         } catch (error) {
           console.error("Failed to render PDF page:", error);
-          toast.error("Failed to render PDF page. Showing lower quality preview.");
-          setIsImgLoaded(true);
+          if (isMounted) {
+            toast.error("Failed to render PDF page. Showing lower quality preview.");
+            setIsImgLoaded(true);
+          }
         }
       } else {
-        setIsImgLoaded(true);
+        if (isMounted) setIsImgLoaded(true);
       }
     }
     
     loadPage();
-  }, [open, currentPage, pages, pdfBuffer]);
+    return () => { isMounted = false; };
+  }, [open, currentPage, pages, pdfBuffer, zoom]);
 
   const page = pages[currentPage] ? { 
     ...pages[currentPage], 
@@ -481,7 +495,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[100vw] lg:max-w-7xl h-full lg:h-[98vh] p-2 md:p-3 flex flex-col overflow-hidden">
+      <DialogContent className="max-w-none w-screen h-screen p-0 flex flex-col overflow-hidden rounded-none border-none">
         <DialogHeader className="pb-1">
           <DialogTitle className="flex items-center gap-2 text-sm">
             <Crop className="h-4 w-4 text-primary" />
@@ -739,9 +753,16 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                 )}
               </div>
             </div>
-            <p className="text-[10px] md:text-xs text-muted-foreground bg-accent/30 p-2 rounded mt-1">
-              <span className="font-bold text-primary">Instructions:</span> 1. Drag to select Question area. 2. <b>Hold SHIFT</b> and drag to select Option areas (A, B, C...). 3. Click "Add" to save all selected areas as one question.
-            </p>
+            <div className="text-[10px] md:text-xs text-muted-foreground bg-accent/30 p-2 rounded mt-1 flex justify-between items-center">
+              <p>
+                <span className="font-bold text-primary">Instructions:</span> 1. Drag to select Question area. 2. <b>Hold SHIFT</b> and drag to select Option areas. 3. Click "Add" or the crop button.
+              </p>
+              {cropRegion && (
+                <Button size="sm" className="h-7 px-3 bg-primary animate-pulse shadow-lg" onClick={handleCrop}>
+                  <Crop className="h-3.5 w-3.5 mr-1" /> Confirm Crop
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Crop list */}
