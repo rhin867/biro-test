@@ -565,8 +565,12 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
           {/* PDF viewer — takes most of the space */}
           <div className="flex flex-col min-w-0 flex-1 h-full overflow-hidden relative">
 
-            <div className="flex items-center justify-between mb-1 gap-1 flex-wrap">
+            <div className="flex items-center justify-between mb-1 gap-1 flex-wrap px-2">
               <div className="flex gap-1 items-center">
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-muted-foreground hover:text-foreground" onClick={() => onOpenChange(false)}>
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Back
+                </Button>
+                <div className="h-4 w-[1px] bg-border mx-1" />
                 <Button variant="outline" size="sm" className="h-7 px-2" disabled={currentPage === 0}
                         onClick={() => { setCurrentPage(p => p - 1); setCropRegion(null); setIsImgLoaded(false); }}>
                   <ChevronLeft className="h-3.5 w-3.5" />
