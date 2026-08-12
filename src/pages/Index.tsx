@@ -24,6 +24,7 @@ const buildLog = [
   "Where is build og? And kya aap mere diye gye pronects etcko bhi aapke paas access rhega? Means aisa to nahi ki mereko hi sbb coding vagria krna pd jaaye and aisa to nahi codes copy paste krne pdenge bugs khudse dhoondhne pdenge etc (means aap ko bhi pta honw chahiye proboem kaha aarhi hai)[jaise ki ham ye 3 days searound kar rhe hai na? Image seen vaala joki saala fix nahi ho rha hai impahle manual cropp8ng mein pdf image s dikhte the lekin abb nahi...) and kya ye supabase ka egc ka change krne se backend hara ye theek ho jaayrga? Jo iage seen nahi ho rha hai?? And manual cropping system ein image nahi dikh rha hai and pdf ke image hi na dikh rhe to uxer cropnkaise krega que ko , and aap 1 mo ths ago iss project mein aunsa supabase id project id bucket etc use kr rhe the qki tbb visible ho rhz tha...,and abb nahi...,kya aap yehi jx vaala hi use kr rhe the ya ya meri vaali oi agar meri vaali t9 btao akunsi???",
   "Ye web app crash hojaa rha hai make sure ispr pr 1000+viewvers ek saath aasakein and ye handlr kr ske everything smoothly works",
   "I have remixed this project  some weeks ago so give me its api kry or tell me in the text in this chat how can i find that biro test api key and which api key are you using and how can i give this api key",
+  "Ok give me the api key which is you are using in this prohect etc...",
 ].join("\n");
 
 const Index = () => {
