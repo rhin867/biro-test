@@ -156,6 +156,8 @@ export default function AdminPanel() {
   const [hotQuestionCorrect, setHotQuestionCorrect] = useState('');
   const [hotQuestionImageUrl, setHotQuestionImageUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [activeTab, setActiveTab] = useState('moderation');
+  const [systemMap, setSystemMap] = useState<string>('');
   const [savingHot, setSavingHot] = useState(false);
   const [savingPhrase, setSavingPhrase] = useState(false);
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
@@ -432,6 +434,82 @@ export default function AdminPanel() {
   const avgRating = appRatings.length > 0
     ? (appRatings.reduce((s: number, r: any) => s + r.rating, 0) / appRatings.length).toFixed(1) : 'N/A';
   const visitLog = getVisitLog();
+
+  const renderMappingTab = () => (
+    <Card className="border-none shadow-none bg-transparent">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Database className="h-5 w-5 text-primary" />
+          System Architecture & Data Flow
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="p-4 rounded-xl border bg-card">
+            <div className="flex items-center gap-2 mb-2">
+              <Layout className="h-4 w-4 text-primary" />
+              <h4 className="font-bold text-sm">PDF-to-CBT Engine</h4>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Uses PDF.js for rendering and Gemini-1.5-Flash for vision-based extraction. 
+              Scanned PDFs are processed by cropping page segments and sending them to AI.
+            </p>
+          </div>
+          <div className="p-4 rounded-xl border bg-card">
+            <div className="flex items-center gap-2 mb-2">
+              <Server className="h-4 w-4 text-green-500" />
+              <h4 className="font-bold text-sm">Storage Layer</h4>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              - **IndexedDB**: Persistent large PDF storage in 1MB chunks.<br/>
+              - **Supabase Storage**: `biro-test-images` bucket stores question and DHQ images.
+            </p>
+          </div>
+          <div className="p-4 rounded-xl border bg-card">
+            <div className="flex items-center gap-2 mb-2">
+              <Cpu className="h-4 w-4 text-purple-500" />
+              <h4 className="font-bold text-sm">Manual Crop Logic</h4>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Renders PDF buffer onto a high-res hidden canvas (2.5x). Crops are transformed from screen coordinates to natural image coordinates.
+            </p>
+          </div>
+        </div>
+
+        <div className="p-6 rounded-2xl border-2 border-dashed border-primary/20 bg-muted/30">
+          <h4 className="font-black text-xl mb-4 text-center">Data Mapping Diagram</h4>
+          <pre className="text-[10px] md:text-xs font-mono p-4 bg-black/90 text-green-400 rounded-lg overflow-x-auto">
+{`
+[USER PDF] -> (IndexedDB Chunks) -> [BROWSER MEMORY]
+                                      |
+       +------------------------------+------------------------------+
+       |                              |                              |
+[AUTO EXTRACTION]             [MANUAL CROP TOOL]             [SYSTEM CONFIG]
+       |                              |                              |
+(Gemini Vision API)           (PDF.js Renderer)              (Supabase RLS)
+       |                              |                              |
+[JSON TEST SCHEMA] <----------- [CROP COORDINATES] ----------> [STORAGE BUCKET]
+       |                              |                              |
+[MY TESTS HISTORY] <---------- [CREATED TEST] --------------> [PUBLIC CATALOG]
+`}
+          </pre>
+        </div>
+
+        <div className="bg-primary/5 border border-primary/20 p-4 rounded-xl">
+          <h4 className="font-bold text-sm mb-2 flex items-center gap-2">
+            <Shield className="h-4 w-4 text-primary" />
+            Security & Persistence
+          </h4>
+          <ul className="text-xs space-y-2 list-disc pl-4 text-muted-foreground">
+            <li>Owner credentials (2-tier) are verified via Edge Functions.</li>
+            <li>Row-Level Security (RLS) protects `hot_questions` and `tests` tables.</li>
+            <li>PDFs are never stored on the backend to save bandwidth and ensure privacy.</li>
+            <li>User Gemini keys are stored in LocalStorage, never touching our servers.</li>
+          </ul>
+        </div>
+      </CardContent>
+    </Card>
+  );
   const totalVisits = parseInt(localStorage.getItem('total_visit_count') || '0');
   const lastVisit = localStorage.getItem('last_visit') || 'Never';
 
@@ -921,86 +999,11 @@ export default function AdminPanel() {
           <ModerationDashboard ownerPassword={ownerPassword} />
         </TabsContent>
 
-        <TabsContent value="architecture">
-          <Card className="border-primary/20 bg-primary/5 overflow-hidden">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <GitBranch className="h-5 w-5 text-primary" /> System Architecture & Mapping
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6 pt-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex gap-3 items-start">
-                    <div className="mt-1 p-2 bg-primary/10 rounded-full text-primary">
-                      <Cpu className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-sm">PDF to CBT Engine</h4>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        How it converts: PDF Buffer (IndexedDB) → PDF.js (Parsing) → Backend AI (Extraction) → React State (UI Review) → LocalStorage (Test Persistence).
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 items-start">
-                    <div className="mt-1 p-2 bg-primary/10 rounded-full text-primary">
-                      <Database className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-sm">Database & Storage</h4>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        Connects to our backend for real-time chat, test sharing, and owner verification. Images are stored in secure buckets (biro-test-images) with per-owner access policies.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex gap-3 items-start">
-                    <div className="mt-1 p-2 bg-primary/10 rounded-full text-primary">
-                      <Layout className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-sm">Manual & Auto-Cropping Links</h4>
-                      <ul className="text-xs text-muted-foreground space-y-1 mt-1">
-                        <li>• <span className="text-foreground font-medium">Auto-Crop:</span> Uses Gemini 1.5/2.0 Vision to detect Bboxes and extract LaTeX text automatically.</li>
-                        <li>• <span className="text-foreground font-medium">Manual Crop:</span> Directly attached to the PDF Buffer in IndexedDB; uses high-res canvas rendering for UI cropping.</li>
-                        <li>• <span className="text-foreground font-medium">Common Connection:</span> Both feed into the final "Test Questions" array used by the Exam Interface.</li>
-                      </ul>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 items-start">
-                    <div className="mt-1 p-2 bg-primary/10 rounded-full text-primary">
-                      <Server className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-sm">Owner & Admin Layer</h4>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        Managed through Edge Functions. Verifies SHA-256 password hashes, manages global quotas, and moderates the community live chat.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-lg bg-background/80 border border-primary/10 flex flex-col items-center justify-center text-center gap-2">
-                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">App Connection Flow</div>
-                <div className="flex items-center gap-2 text-[10px] sm:text-xs">
-                  <span className="px-2 py-1 bg-secondary rounded">Upload PDF</span>
-                  <span className="text-muted-foreground">→</span>
-                  <span className="px-2 py-1 bg-secondary rounded">AI / Manual Crop</span>
-                  <span className="text-muted-foreground">→</span>
-                  <span className="px-2 py-1 bg-secondary rounded">Backend Sync</span>
-                  <span className="text-muted-foreground">→</span>
-                  <span className="px-2 py-1 bg-primary/20 text-primary font-bold rounded">Live CBT Test</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="mapping">
+          {renderMappingTab()}
         </TabsContent>
       </Tabs>
     </MainLayout>
   );
+}
 }
