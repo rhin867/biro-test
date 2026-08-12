@@ -218,17 +218,21 @@ function CreateTestInner() {
       setPdfText(fullText);
       setTestName(file.name.replace('.pdf', ''));
       
-      setParseStatus('Rendering PDF pages...');
+      setParseStatus('Rendering PDF pages metadata...');
       const metadata = await renderPDFPagesMetadata(bufferForImages, 2.5);
       
-      // Reverting "Extreme PDF Handling": Load all pages immediately for visibility
-      const metaPages: PDFPageImage[] = await Promise.all(metadata.map(async (m) => {
-        const imageDataUrl = await renderSinglePage(bufferForImages, m.pageNumber, 2.5);
-        return {
-          ...m,
-          imageDataUrl,
-        };
+      // Memory Optimization: Don't render all pages as base64 immediately for large PDFs.
+      // Instead, store metadata and render on-demand or in chunks.
+      const metaPages: PDFPageImage[] = metadata.map((m) => ({
+        ...m,
+        imageDataUrl: '', // Will be rendered on-demand in the crop tool
       }));
+
+      // Render just the first page for immediate feedback
+      if (metaPages.length > 0) {
+        metaPages[0].imageDataUrl = await renderSinglePage(bufferForImages, 1, 2.5);
+      }
+
 
       setParseProgress(100);
       setParseStatus('PDF Ready!');

@@ -26,6 +26,7 @@ const buildLog = [
   "I have remixed this project  some weeks ago so give me its api kry or tell me in the text in this chat how can i find that biro test api key and which api key are you using and how can i give this api key",
   "Ok give me the api key which is you are using in this prohect etc...",
   "Madarchod tu api key de kuchh bhi iske alava edit build etc mat kr ,tu iss prohect mein jojo api kry use kr rha meri trf se sbb kuchh de ,and with name like supabase api key gemini api key,and iss image mein ye kaunsa api kry maang rha yebhi de tu",
+  "Make it can handle 15-20mb pdfs and this aw snap etc would not be happen again and pdf will smoothly uploading and test creation all thething would be work smoothly and our this web app can handle 10000+test creation at a time and 100000 +viewrs handling system and make sure all the things are working",
 ].join("\n");
 
 const Index = () => {
