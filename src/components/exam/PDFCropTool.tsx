@@ -720,6 +720,17 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                     <div className="absolute -top-5 left-0 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap">
                       {subject} · {qType}
                     </div>
+                    <Button 
+                      size="sm" 
+                      className="absolute left-1/2 -top-12 -translate-x-1/2 bg-green-600 hover:bg-green-700 text-white shadow-lg pointer-events-auto h-8 px-3 text-xs rounded-full flex items-center gap-1.5 whitespace-nowrap"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCrop();
+                      }}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Confirm Crop
+                    </Button>
                   </div>
                 )}
                 {optionRegions.map((opt, i) => (
