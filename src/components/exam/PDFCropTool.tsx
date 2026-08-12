@@ -150,21 +150,22 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
       if (pdfBuffer) {
         try {
           setIsImgLoaded(false);
-          const pdfDoc = await pdfjsLib.getDocument({ data: pdfBuffer.slice(0) }).promise;
+          const pdfDoc = await pdfjsLib.getDocument({ data: pdfBuffer }).promise;
           const page = await pdfDoc.getPage(currentPage + 1);
-          const viewport = page.getViewport({ scale: 2.5 });
+          const viewport = page.getViewport({ scale: zoom > 1.5 ? 2.5 : 2.0 });
           
           if (canvasRef.current) {
             const canvas = canvasRef.current;
-            const context = canvas.getContext('2d');
+            const context = canvas.getContext('2d', { alpha: false }); // Optimize for speed
             if (context) {
               canvas.width = viewport.width;
               canvas.height = viewport.height;
               await page.render({ canvasContext: context, viewport }).promise;
-              const highResDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+              const highResDataUrl = canvas.toDataURL('image/jpeg', 0.7); // Lower quality for memory
               setCurrentPageImage(highResDataUrl);
             }
           }
+
           setIsImgLoaded(true);
         } catch (error) {
           console.error("Failed to render PDF page:", error);
