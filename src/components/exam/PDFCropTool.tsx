@@ -578,14 +578,24 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                 </Button>
               </div>
               <div className="flex gap-1 items-center">
-                <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))}>
+                <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setZoom(z => Math.max(0.5, +(z - 0.05).toFixed(2)))}>
                   <ZoomOut className="h-3.5 w-3.5" />
                 </Button>
-                <span className="text-[11px] w-10 text-center">{Math.round(zoom * 100)}%</span>
-                <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))}>
+                <div className="flex items-center gap-1 group relative">
+                  <Input 
+                    className="h-7 w-14 text-[11px] px-1 text-center bg-background border-primary/20" 
+                    value={Math.round(zoom * 100)} 
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      if (!isNaN(val)) setZoom(Math.min(10, Math.max(0.1, val / 100)));
+                    }}
+                  />
+                  <span className="text-[10px] absolute -right-3 text-muted-foreground">%</span>
+                </div>
+                <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setZoom(z => Math.min(10, +(z + 0.05).toFixed(2)))}>
                   <ZoomIn className="h-3.5 w-3.5" />
                 </Button>
-                <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => { setCropRegion(null); setZoom(1); setOffset({ x: 0, y: 0 }); }} disabled={!cropRegion && zoom === 1}>
+                <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => { setCropRegion(null); setZoom(1); setOffset({ x: 0, y: 0 }); }}>
                   <RotateCcw className="h-3.5 w-3.5" />
                 </Button>
                 <Button size="sm" className="h-7 px-2 text-[11px]"
@@ -792,8 +802,11 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                 )}
                 {croppedImages.map((ci, i) => (
                   <div key={i} className="relative border rounded-md overflow-hidden bg-card flex-shrink-0 w-36 lg:w-full">
-                    <div className="relative bg-white">
-                      <img src={ci.dataUrl} alt={`Crop ${i + 1}`} className="w-full max-h-20 object-contain" />
+                    <div className="absolute top-1 left-1 z-10 bg-primary/80 text-white text-[9px] px-1.5 py-0.5 rounded font-bold backdrop-blur-sm">
+                      Q.{i + 1} (Pg.{ci.pageNumber})
+                    </div>
+                    <div className="relative bg-white pt-4">
+                      <img src={ci.dataUrl} alt={`Crop ${i + 1}`} className="w-full max-h-24 object-contain" />
                       <div className="absolute top-0.5 left-0.5 bg-primary/90 text-primary-foreground text-[9px] px-1 rounded flex items-center gap-1">
                         Q{i + 1}
                         {ci.qType && <span className="opacity-80">[{ci.qType}]</span>}

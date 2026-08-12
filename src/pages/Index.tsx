@@ -27,6 +27,7 @@ const buildLog = [
   "User Guidance",
   "  - Added detailed instructions in the Admin mapping section explaining the PDF-to-CBT flow. Checkout this all the things have done or not if havenot then done it step by step",
   "So is that plan have completed or any else areremaining? Just tell me",
+  "You can see there is not any back button and also there is not any croping button so that user can start or end (on or off) cropping for selecting areas of que and you can see there is not any more image after 1st que of image in preview of the pdf(there is not que number or page number after 1st image...),and also you can see there is not zooming in out are working smoothly and these are fastly working around 50 75 100 125 etc zooming etc and have not any integer number like anything(51 55 56 57 77 127 122 145 etc zooming in out and that is qhy user cant use this smoothly ),and also there is not any full screen visible button for manual cropping for user selecting areas (and so that user can full screen their pages and easily select them in their small screen type androide etc),pls fix that all the things and also recheck that that all things have fixed or not and if not then again fix them until they cant fixed",
 ].join("\n");
 
 const Index = () => {
