@@ -26,6 +26,7 @@ const buildLog = [
   "  - Memory Management: Use JPEG with 0.7-0.85 quality and optimized canvas contexts to prevent browser crashes on low-end devices.",
   "User Guidance",
   "  - Added detailed instructions in the Admin mapping section explaining the PDF-to-CBT flow. Checkout this all the things have done or not if havenot then done it step by step",
+  "So is that plan have completed or any else areremaining? Just tell me",
 ].join("\n");
 
 const Index = () => {
