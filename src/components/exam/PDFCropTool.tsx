@@ -243,6 +243,8 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
     };
   }, []);
 
+  const touchStartPos = useRef<{ x: number, y: number } | null>(null);
+
   const handleStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if ('touches' in e && e.touches.length === 2) {
       const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
@@ -254,6 +256,10 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
 
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as any).clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : (e as any).clientY;
+
+    if ('touches' in e) {
+      touchStartPos.current = { x: clientX, y: clientY };
+    }
 
     // If not in crop mode and not holding shift, we pan
     if (!isCropMode && !e.shiftKey) {
@@ -271,7 +277,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
     }
     setIsDrawing(true);
     setIsPanning(false);
-  }, [getRelativeCoords, cropRegion, offset]);
+  }, [getRelativeCoords, isCropMode, offset]);
 
   const handleMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as any).clientX;
