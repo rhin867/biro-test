@@ -189,47 +189,55 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
     async function loadPage() {
       if (!open || !pages[currentPage]) return;
       
-      // Reset visibility states when changing pages
       setIsImgLoaded(false);
-      setCurrentPageImage('');
       
-      // If we have an existing imageDataUrl, use it as fallback
       if (pages[currentPage].imageDataUrl) {
         if (isMounted) setCurrentPageImage(pages[currentPage].imageDataUrl);
       }
 
-      // If we have the raw pdfBuffer, re-render the page at high resolution to ensure visibility
       if (pdfBuffer) {
         try {
-          // Use a fresh slice to ensure we don't have issues with detached buffers
           const bufferSlice = pdfBuffer.slice(0);
-          const pdfDoc = await pdfjsLib.getDocument({ data: bufferSlice }).promise;
+          const pdfDoc = await pdfjsLib.getDocument({ 
+            data: bufferSlice,
+            disableAutoFetch: true,
+            disableStream: true
+          }).promise;
+          
           const pageObj = await pdfDoc.getPage(currentPage + 1);
           
-          // Higher scale for precision cropping, capped for memory efficiency on mobiles
           const isMobile = window.innerWidth < 768;
-          // Capping scale to avoid OOM crashes on large pages
-          const renderScale = isMobile ? 1.5 : 2.0;
-          const viewport = pageObj.getViewport({ scale: renderScale * zoom });
+          // Scale dynamically based on device and zoom to prevent memory pressure
+          const baseScale = isMobile ? 1.4 : 1.8;
+          const renderScale = Math.min(2.5, baseScale * zoom);
+          
+          const viewport = pageObj.getViewport({ scale: renderScale });
           
           if (canvasRef.current && isMounted) {
             const canvas = canvasRef.current;
-            const context = canvas.getContext('2d', { alpha: false });
+            const context = canvas.getContext('2d', { 
+              alpha: false,
+              willReadFrequently: true 
+            });
+            
             if (context) {
               canvas.width = viewport.width;
               canvas.height = viewport.height;
               await pageObj.render({ canvasContext: context, viewport }).promise;
-              const highResDataUrl = canvas.toDataURL('image/png');
+              const highResDataUrl = canvas.toDataURL('image/jpeg', 0.9);
               if (isMounted) {
                 setCurrentPageImage(highResDataUrl);
                 setIsImgLoaded(true);
               }
             }
           }
-        } catch (error) {
+          pageObj.cleanup();
+          pdfDoc.cleanup();
+          pdfDoc.destroy();
+        } catch (error: any) {
           console.error("Failed to render PDF page:", error);
           if (isMounted) {
-            toast.error("Failed to render PDF page. Showing lower quality preview.");
+            toast.error(`Render error: ${error.message || 'Unknown cause'}. Using basic preview.`);
             setIsImgLoaded(true);
           }
         }
