@@ -369,13 +369,18 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
 
   const handleCrop = useCallback(() => {
     if (!cropRegion || !page || !imgRef.current) return;
-    const img = imgRef.current;
     
+    // Validation: Check if the crop area is too small
+    if (cropRegion.width < 15 || cropRegion.height < 15) {
+      toast.error("Crop area is too small. Please select a larger area.");
+      return;
+    }
+
+    const img = imgRef.current;
     const srcX = Math.round(cropRegion.x);
     const srcY = Math.round(cropRegion.y);
     const srcW = Math.round(cropRegion.width);
     const srcH = Math.round(cropRegion.height);
-    if (srcW < 5 || srcH < 5) return;
 
     const processCrop = async () => {
       const canvas = document.createElement('canvas');
@@ -399,7 +404,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
         const oY = Math.round(opt.y);
         const oW = Math.round(opt.width);
         const oH = Math.round(opt.height);
-        if (oW < 5 || oH < 5) continue;
+        if (oW < 10 || oH < 10) continue;
         
         const oCanvas = document.createElement('canvas');
         oCanvas.width = oW; oCanvas.height = oH;
@@ -417,10 +422,11 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
       }]);
       setCropRegion(null);
       setOptionRegions([]);
+      toast.success(`Question ${croppedImages.length + 1} added!`);
     };
 
     processCrop().catch(console.error);
-  }, [cropRegion, optionRegions, page, subject, section, qType]);
+  }, [cropRegion, optionRegions, page, subject, section, qType, croppedImages.length]);
 
   const updateCrop = (i: number, patch: Partial<CroppedImage>) =>
     setCroppedImages(prev => prev.map((c, j) => j === i ? { ...c, ...patch } : c));
