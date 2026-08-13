@@ -255,7 +255,10 @@ function CreateTestInner() {
 
       setParseProgress(100);
       setParseStatus('PDF Ready!');
+      // Explicitly set the pages once more at the end to ensure nothing was missed during chunked rendering
+      setPdfPageImages(metaPages);
       toast.success(`PDF processed: ${pdf.numPages} pages`);
+
       setStep('configure');
     } catch (error) {
       console.error('PDF processing error:', error);
