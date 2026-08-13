@@ -879,6 +879,11 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                         height: 'auto',
                         maxWidth: 'none',
                         transform: `scale(${zoom})`,
+                        transformOrigin: 'top left'
+                      }}
+                        height: 'auto',
+                        maxWidth: 'none',
+                        transform: `scale(${zoom})`,
                         transformOrigin: 'top left',
                         pointerEvents: 'none',
                         zIndex: 1, 
