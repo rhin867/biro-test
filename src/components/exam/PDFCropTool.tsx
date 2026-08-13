@@ -844,7 +844,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
               <div
                 className={cn(
                   "relative inline-block select-none outline-none focus-within:ring-2 ring-primary/20 bg-white shadow-2xl transition-all duration-300",
-                  isFullscreen ? "fixed inset-0 z-[1000] w-screen h-screen m-0 bg-background overflow-auto flex items-start justify-center p-0" : ""
+                  isFullscreen ? "fixed inset-0 z-[1000] w-screen h-screen m-0 bg-background overflow-hidden flex items-start justify-center p-0" : ""
                 )}
                 tabIndex={0}
                 onKeyDown={(e) => handleKeyDown(e.nativeEvent)}
