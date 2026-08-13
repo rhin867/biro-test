@@ -228,11 +228,11 @@ function CreateTestInner() {
         imageDataUrl: '', // Will be rendered on-demand in the crop tool
       }));
 
-      // Render some pages for feedback
-      const pagesToRender = Math.min(metaPages.length, 25);
+      // Render all pages for preview visibility
+      const pagesToRender = metaPages.length;
       for (let i = 0; i < pagesToRender; i++) {
         metaPages[i].imageDataUrl = await renderSinglePage(bufferForImages, i + 1, 1.8);
-        setParseProgress(30 + Math.round((i / pagesToRender) * 20));
+        setParseProgress(30 + Math.round((i / pagesToRender) * 60)); // Spend most progress on rendering
       }
 
 
