@@ -257,11 +257,14 @@ export default function DailyHotQuestion() {
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `dhq_responses/${fileName}`;
+      const filePath = `dhq/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('biro-test-images')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
       if (uploadError) throw uploadError;
 
