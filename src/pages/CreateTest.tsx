@@ -233,24 +233,40 @@ function CreateTestInner() {
       setPdfPageImages(metaPages);
 
       // Render pages in chunks to keep UI responsive
+      // Optimized for large PDFs: Only render the first 10 pages immediately
+      // The rest will be rendered as needed or in slower background batches to avoid "Aw, Snap!"
       const renderPage = async (i: number) => {
-        const url = await renderSinglePage(bufferForImages, i + 1, 1.8);
-        setPdfPageImages(prev => {
-          const next = [...prev];
-          if (next[i]) next[i] = { ...next[i], imageDataUrl: url };
-          return next;
-        });
-        setParseProgress(30 + Math.round((i / metaPages.length) * 60));
+        try {
+          const url = await renderSinglePage(bufferForImages, i + 1, 1.8);
+          setPdfPageImages(prev => {
+            const next = [...prev];
+            if (next[i]) next[i] = { ...next[i], imageDataUrl: url };
+            return next;
+          });
+          setParseProgress(30 + Math.round((i / metaPages.length) * 60));
+        } catch (err) {
+          console.error(`Failed to render page ${i+1}:`, err);
+        }
       };
 
-      // Concurrent rendering with a small pool to avoid memory spikes
-      for (let i = 0; i < metaPages.length; i += 3) {
-        const batch = [];
-        for (let j = 0; j < 3 && i + j < metaPages.length; j++) {
-          batch.push(renderPage(i + j));
-        }
-        await Promise.all(batch);
+      // Initial batch: First 10 pages (priority)
+      const initialBatch = [];
+      for (let i = 0; i < Math.min(10, metaPages.length); i++) {
+        initialBatch.push(renderPage(i));
       }
+      await Promise.all(initialBatch);
+
+      // Remaining pages in slower sequential batches to preserve memory
+      const renderRemaining = async () => {
+        for (let i = 10; i < metaPages.length; i++) {
+          await renderPage(i);
+          // Small delay to let the browser breathe
+          if (i % 5 === 0) await new Promise(r => setTimeout(r, 100));
+        }
+      };
+      
+      // Don't await remaining, let them load in background
+      renderRemaining();
 
 
       setParseProgress(100);

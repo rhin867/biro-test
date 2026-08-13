@@ -208,7 +208,8 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
           
           // Higher scale for precision cropping, capped for memory efficiency on mobiles
           const isMobile = window.innerWidth < 768;
-          const renderScale = isMobile ? 1.8 : 2.5;
+          // Capping scale to avoid OOM crashes on large pages
+          const renderScale = isMobile ? 1.5 : 2.0;
           const viewport = pageObj.getViewport({ scale: renderScale * zoom });
           
           if (canvasRef.current && isMounted) {

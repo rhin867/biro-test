@@ -47,7 +47,7 @@ export async function renderPDFPagesMetadata(
 export async function renderSinglePage(
   pdfData: ArrayBuffer,
   pageNumber: number,
-  scale: number = 2.5
+  scale: number = 1.8
 ): Promise<string> {
   const pdf = await pdfjsLib.getDocument({ data: pdfData.slice(0) }).promise;
   const page = await pdf.getPage(pageNumber);
