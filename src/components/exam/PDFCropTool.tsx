@@ -243,9 +243,8 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as any).clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : (e as any).clientY;
 
-    // Pan with multi-touch or drag without shift (and no crop region active)
-    // If not drawing (no shift), we pan
-    if (!e.shiftKey) {
+    // If not in crop mode and not holding shift, we pan
+    if (!isCropMode && !e.shiftKey) {
       setIsPanning(true);
       setPanStart({ x: clientX - offset.x, y: clientY - offset.y });
       setIsDrawing(false);
