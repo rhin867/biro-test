@@ -41,7 +41,7 @@ async function cropQuestionBandFromPage(imageDataUrl: string, indexOnPage: numbe
   const ctx = canvas.getContext('2d');
   if (!ctx) return imageDataUrl;
   ctx.drawImage(img, marginX, sourceY, canvas.width, sourceH, 0, 0, canvas.width, sourceH);
-  return canvas.toDataURL('image/jpeg', 0.82);
+  return canvas.toDataURL('image/jpeg', 0.95);
 }
 
 async function cropDiagramFromBbox(imageDataUrl: string, bbox: [number, number, number, number]): Promise<string> {

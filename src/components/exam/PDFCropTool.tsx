@@ -215,7 +215,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
               canvas.width = viewport.width;
               canvas.height = viewport.height;
               await pageObj.render({ canvasContext: context, viewport }).promise;
-              const highResDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+              const highResDataUrl = canvas.toDataURL('image/png');
               if (isMounted) {
                 setCurrentPageImage(highResDataUrl);
                 setIsImgLoaded(true);
@@ -434,8 +434,38 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
     } : null);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!cropRegion) return;
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Keyboard Shortcuts
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) redo();
+        else undo();
+        return;
+      }
+      if (e.key === 's') {
+        e.preventDefault();
+        handleSave();
+        return;
+      }
+    }
+
+    if (e.key === 'Escape') {
+      if (currentRegion) setCurrentRegion(null);
+      else if (cropRegion) setCropRegion(null);
+      return;
+    }
+
+    if (!cropRegion) {
+      // Navigation shortcuts when no crop is active
+      if (e.key === 'ArrowRight' || e.key === 'n') {
+        if (currentPage < pages.length - 1) setCurrentPage(p => p + 1);
+      } else if (e.key === 'ArrowLeft' || e.key === 'p') {
+        if (currentPage > 0) setCurrentPage(p => p - 1);
+      }
+      return;
+    }
+
     const step = e.shiftKey ? 10 : 2;
     
     switch (e.key) {
@@ -448,8 +478,15 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
       case 'a': resizeCrop(-step, 0); e.preventDefault(); break;
       case 'd': resizeCrop(step, 0); e.preventDefault(); break;
       case 'Enter': handleCrop(); break;
+      case 'Delete': 
+      case 'Backspace': setCropRegion(null); break;
     }
-  };
+  }, [cropRegion, currentPage, pages.length, moveCrop, resizeCrop, undo, redo, handleCrop, handleSave]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   const handleCrop = useCallback(() => {
     if (!cropRegion || !page || !imgRef.current) return;
