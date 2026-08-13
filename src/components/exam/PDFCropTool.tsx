@@ -118,7 +118,13 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
   const [currentRegion, setCurrentRegion] = useState<CropRegion | null>(null);
   const [cropRegion, setCropRegion] = useState<CropRegion | null>(null);
   const [optionRegions, setOptionRegions] = useState<CropRegion[]>([]);
-  const [croppedImages, setCroppedImages] = useState<CroppedImage[]>(initialCrops || []);
+  const [croppedImages, setCroppedImages] = useState<CroppedImage[]>(() => {
+    if (initialCrops && initialCrops.length > 0) return initialCrops;
+    try {
+      const saved = localStorage.getItem('biro_autosave_crops');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [subject, setSubject] = useState<string>(initialCrops?.[0]?.subject || 'Maths');
   const [section, setSection] = useState<string>(initialCrops?.[0]?.section || 'Section 1');
   const [qType, setQType] = useState<CropQType>(initialCrops?.[0]?.qType || 'MCQ');
@@ -212,6 +218,12 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
       if (initialCrops && initialCrops.length) setCroppedImages(initialCrops);
     }
   }, [open, initialCrops]);
+  
+  useEffect(() => {
+    if (croppedImages.length > 0) {
+      localStorage.setItem('biro_autosave_crops', JSON.stringify(croppedImages));
+    }
+  }, [croppedImages]);
 
   const getRelativeCoords = useCallback((e: React.MouseEvent | React.TouchEvent | { clientX: number, clientY: number }) => {
     const img = imgRef.current;
@@ -357,13 +369,18 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
 
   const handleCrop = useCallback(() => {
     if (!cropRegion || !page || !imgRef.current) return;
-    const img = imgRef.current;
     
+    // Validation: Check if the crop area is too small
+    if (cropRegion.width < 15 || cropRegion.height < 15) {
+      toast.error("Crop area is too small. Please select a larger area.");
+      return;
+    }
+
+    const img = imgRef.current;
     const srcX = Math.round(cropRegion.x);
     const srcY = Math.round(cropRegion.y);
     const srcW = Math.round(cropRegion.width);
     const srcH = Math.round(cropRegion.height);
-    if (srcW < 5 || srcH < 5) return;
 
     const processCrop = async () => {
       const canvas = document.createElement('canvas');
@@ -387,7 +404,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
         const oY = Math.round(opt.y);
         const oW = Math.round(opt.width);
         const oH = Math.round(opt.height);
-        if (oW < 5 || oH < 5) continue;
+        if (oW < 10 || oH < 10) continue;
         
         const oCanvas = document.createElement('canvas');
         oCanvas.width = oW; oCanvas.height = oH;
@@ -405,10 +422,11 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
       }]);
       setCropRegion(null);
       setOptionRegions([]);
+      toast.success(`Question ${croppedImages.length + 1} added!`);
     };
 
     processCrop().catch(console.error);
-  }, [cropRegion, optionRegions, page, subject, section, qType]);
+  }, [cropRegion, optionRegions, page, subject, section, qType, croppedImages.length]);
 
   const updateCrop = (i: number, patch: Partial<CroppedImage>) =>
     setCroppedImages(prev => prev.map((c, j) => j === i ? { ...c, ...patch } : c));
@@ -564,6 +582,27 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
         <div className="flex flex-col lg:flex-row gap-2 flex-1 min-h-0 mt-1.5 overflow-hidden">
           {/* PDF viewer — takes most of the space */}
           <div className="flex flex-col min-w-0 flex-1 h-full overflow-hidden relative">
+            {/* Quick Page Navigator */}
+            <div className="flex gap-1 overflow-x-auto px-2 py-1 bg-muted/20 border-b scrollbar-none scroll-smooth h-16 shrink-0">
+              {pages.map((p, idx) => (
+                <div 
+                  key={idx} 
+                  className={`flex-shrink-0 w-10 h-14 border rounded cursor-pointer transition-all overflow-hidden relative ${currentPage === idx ? 'ring-2 ring-primary border-primary' : 'opacity-60 hover:opacity-100'}`}
+                  onClick={() => { setCurrentPage(idx); setIsImgLoaded(false); }}
+                >
+                  {p.imageDataUrl ? (
+                    <img src={p.imageDataUrl} className="w-full h-full object-cover" alt="" />
+                  ) : (
+                    <div className="w-full h-full bg-muted flex items-center justify-center text-[8px]">{idx + 1}</div>
+                  )}
+                  {currentPage === idx && (
+                    <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
+                      <div className="bg-primary text-white text-[8px] px-1 rounded-sm">{idx + 1}</div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
 
             <div className="flex items-center justify-between mb-1 gap-1 flex-wrap px-2">
               <div className="flex gap-1 items-center">
@@ -820,8 +859,13 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
             <div className="flex items-center justify-between mb-1">
               <p className="text-xs font-medium">Questions ({croppedImages.length})</p>
               {croppedImages.length > 0 && (
-                <Button variant="ghost" size="sm" className="h-6 text-[10px]"
-                        onClick={() => setCroppedImages([])}>Clear</Button>
+                <Button variant="ghost" size="sm" className="h-6 text-[10px] text-destructive"
+                        onClick={() => {
+                          if (window.confirm("Clear all crops?")) {
+                            setCroppedImages([]);
+                            localStorage.removeItem('biro_autosave_crops');
+                          }
+                        }}>Clear All</Button>
               )}
             </div>
             <ScrollArea className="flex-1">
