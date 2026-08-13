@@ -866,6 +866,19 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                 <canvas ref={canvasRef} className="hidden" />
                 {page?.imageDataUrl ? (
                   <>
+                    {isFullscreen && (
+                      <div className="fixed top-4 right-4 z-[1100] flex gap-2">
+                         <Button variant="secondary" size="sm" className="h-10 w-10 rounded-full shadow-lg" onClick={() => setZoom(z => Math.min(10, +(z + 0.1).toFixed(2)))}>
+                           <ZoomIn className="h-5 w-5" />
+                         </Button>
+                         <Button variant="secondary" size="sm" className="h-10 w-10 rounded-full shadow-lg" onClick={() => setZoom(z => Math.max(0.1, +(z - 0.1).toFixed(2)))}>
+                           <ZoomOut className="h-5 w-5" />
+                         </Button>
+                         <Button variant="destructive" size="sm" className="h-10 w-10 rounded-full shadow-lg" onClick={() => setIsFullscreen(false)}>
+                           <X className="h-5 w-5" />
+                         </Button>
+                      </div>
+                    )}
                     <img
                       ref={imgRef}
                       src={page.imageDataUrl}
