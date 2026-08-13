@@ -904,56 +904,48 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                     No page data available
                   </div>
                 )}
-                {cropRegion && cropRegion.width > 0 && cropRegion.height > 0 && (
-                  <div
-                    className="absolute border-2 border-primary bg-primary/20 pointer-events-none"
-                    style={{
-                      left: cropRegion.x, 
-                      top: cropRegion.y,
-                      width: cropRegion.width, 
-                      height: cropRegion.height,
-                      borderStyle: 'dashed',
+                {imgRef.current && (
+                  <svg 
+                    className="absolute inset-0 pointer-events-none overflow-visible"
+                    style={{ 
+                      width: imgRef.current.naturalWidth, 
+                      height: imgRef.current.naturalHeight,
                       transform: `scale(${zoom})`,
                       transformOrigin: 'top left',
-                      zIndex: 20
+                      zIndex: 2
                     }}
                   >
-                    <div className="absolute -top-5 left-0 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap">
-                      {subject} · {qType}
-                    </div>
-                    <Button 
-                      size="sm" 
-                      className="absolute left-1/2 -top-12 -translate-x-1/2 bg-green-600 hover:bg-green-700 text-white shadow-lg pointer-events-auto h-8 px-3 text-xs rounded-full flex items-center gap-1.5 whitespace-nowrap"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCrop();
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Confirm Crop
-                    </Button>
-                  </div>
+                    {currentRegion && (
+                      <rect
+                        x={currentRegion.x} y={currentRegion.y}
+                        width={currentRegion.width} height={currentRegion.height}
+                        fill="rgba(59, 130, 246, 0.2)"
+                        stroke="rgb(59, 130, 246)"
+                        strokeWidth={2 / zoom}
+                        strokeDasharray={`${4/zoom} ${2/zoom}`}
+                      />
+                    )}
+                    {cropRegion && (
+                      <rect
+                        x={cropRegion.x} y={cropRegion.y}
+                        width={cropRegion.width} height={cropRegion.height}
+                        fill="rgba(34, 197, 94, 0.15)"
+                        stroke="rgb(34, 197, 94)"
+                        strokeWidth={3 / zoom}
+                      />
+                    )}
+                    {optionRegions.map((r, i) => (
+                      <rect
+                        key={i}
+                        x={r.x} y={r.y}
+                        width={r.width} height={r.height}
+                        fill="rgba(168, 85, 247, 0.15)"
+                        stroke="rgb(168, 85, 247)"
+                        strokeWidth={2 / zoom}
+                      />
+                    ))}
+                  </svg>
                 )}
-                {optionRegions.map((opt, i) => (
-                  <div
-                    key={i}
-                    className="absolute border border-orange-500 bg-orange-500/10 pointer-events-none"
-                    style={{
-                      left: opt.x, 
-                      top: opt.y,
-                      width: opt.width, 
-                      height: opt.height,
-                      borderStyle: 'dotted',
-                      transform: `scale(${zoom})`,
-                      transformOrigin: 'top left',
-                      zIndex: 20
-                    }}
-                  >
-                    <div className="absolute -top-4 left-0 bg-orange-500 text-white text-[8px] px-1 rounded">
-                      Opt {String.fromCharCode(65 + i)}
-                    </div>
-                  </div>
-                ))}
                 {currentRegion && currentRegion.width > 2 && currentRegion.height > 2 && (
                   <div
                     className="absolute border border-primary/50 bg-primary/10 pointer-events-none"
