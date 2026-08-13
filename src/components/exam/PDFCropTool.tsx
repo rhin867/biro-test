@@ -832,8 +832,13 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
             <div className="flex items-center justify-between mb-1">
               <p className="text-xs font-medium">Questions ({croppedImages.length})</p>
               {croppedImages.length > 0 && (
-                <Button variant="ghost" size="sm" className="h-6 text-[10px]"
-                        onClick={() => setCroppedImages([])}>Clear</Button>
+                <Button variant="ghost" size="sm" className="h-6 text-[10px] text-destructive"
+                        onClick={() => {
+                          if (window.confirm("Clear all crops?")) {
+                            setCroppedImages([]);
+                            localStorage.removeItem('biro_autosave_crops');
+                          }
+                        }}>Clear All</Button>
               )}
             </div>
             <ScrollArea className="flex-1">
