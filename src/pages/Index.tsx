@@ -37,6 +37,7 @@ const buildLog = [
   "You can see in this screenshot that much different in the quality of given image/pdf from you in the panel of preview and also in manual cropping section that you have blur and not in original page/pdf of uploaded ,pls add that it should give original quality,add keyboard shortcuts,add crop version history,persist crop region,improve area accessibility",
   "Fixed Manual Crop UI: Removed ghost/fake selection area, implemented true fullscreen mode, and optimized SVG overlay for precision. Improved PDF rendering performance in preview by rendering pages in concurrent batches to keep UI responsive.",
   "Fixed Daily Hot Question (DHQ): Corrected storage folder paths (hot-questions -> dhq) and added proper bucket upload parameters to fix 'new row violates row-level security' errors for owner image uploads.",
+  "Make layout fully responsive.Add manual preview setting panel add manual crop setting u I panel improve keyboard and accessibility ensure preview and quality four crop",
 ].join("\n");
 
 const Index = () => {
