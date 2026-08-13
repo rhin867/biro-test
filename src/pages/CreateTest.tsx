@@ -738,7 +738,7 @@ function CreateTestInner() {
                   </Button>
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-primary/20">
-                  {pdfPageImages.slice(0, 10).map((page) => (
+                  {pdfPageImages.map((page) => (
                     <div key={page.pageNumber} className="flex-shrink-0 space-y-1">
                       {page.imageDataUrl ? (
                         <img 
@@ -758,15 +758,6 @@ function CreateTestInner() {
                       <p className="text-[10px] text-center text-muted-foreground font-medium">Page {page.pageNumber}</p>
                     </div>
                   ))}
-                  {pdfPageImages.length > 10 && (
-                    <div className="flex-shrink-0 space-y-1">
-                      <div className="h-28 w-20 flex items-center justify-center rounded border border-border bg-muted cursor-pointer hover:bg-accent transition-colors"
-                        onClick={() => setShowPageViewer(true)}>
-                        <span className="text-xs text-muted-foreground font-bold">+{pdfPageImages.length - 10}</span>
-                      </div>
-                      <p className="text-[10px] text-center text-muted-foreground font-medium">More</p>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
