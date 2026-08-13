@@ -1116,6 +1116,55 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
             </DialogContent>
           </Dialog>
         )}
+        {/* Gesture Help Overlay */}
+        {showGestureHelp && (
+          <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-white">
+            <div className="max-w-xs w-full bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-300">
+              <div className="flex justify-between items-start">
+                <div className="bg-primary/20 p-2 rounded-lg">
+                  <HelpCircle className="w-6 h-6 text-primary" />
+                </div>
+                <button 
+                  className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                  onClick={() => {
+                    setShowGestureHelp(false);
+                    localStorage.setItem('biro_gesture_help_hidden', 'true');
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              
+              <div className="space-y-3">
+                <h3 className="text-lg font-bold">Touch Gestures</h3>
+                <div className="space-y-2.5">
+                  <div className="flex gap-3 text-sm items-center">
+                    <div className="w-8 h-8 flex items-center justify-center bg-white/5 rounded border border-white/10 text-xs">2+</div>
+                    <span><b>Pinch</b> to Zoom In/Out</span>
+                  </div>
+                  <div className="flex gap-3 text-sm items-center">
+                    <div className="w-8 h-8 flex items-center justify-center bg-white/5 rounded border border-white/10 text-xs">↔️</div>
+                    <span><b>Swipe</b> horizontally to change pages</span>
+                  </div>
+                  <div className="flex gap-3 text-sm items-center">
+                    <div className="w-8 h-8 flex items-center justify-center bg-white/5 rounded border border-white/10 text-xs">👆</div>
+                    <span><b>Drag</b> to Crop or Pan</span>
+                  </div>
+                </div>
+              </div>
+              
+              <Button 
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" 
+                onClick={() => {
+                  setShowGestureHelp(false);
+                  localStorage.setItem('biro_gesture_help_hidden', 'true');
+                }}
+              >
+                Got it!
+              </Button>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
