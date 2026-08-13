@@ -255,7 +255,6 @@ function CreateTestInner() {
 
       setParseProgress(100);
       setParseStatus('PDF Ready!');
-      setPdfPageImages(metaPages);
       toast.success(`PDF processed: ${pdf.numPages} pages`);
       setStep('configure');
     } catch (error) {
