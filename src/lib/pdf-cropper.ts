@@ -63,7 +63,7 @@ export async function renderSinglePage(
     viewport: viewport,
   }).promise;
 
-  return canvas.toDataURL('image/jpeg', 0.8);
+  return canvas.toDataURL('image/jpeg', 0.95);
 }
 
 /**

@@ -34,6 +34,7 @@ const buildLog = [
   "Add quixk page thumbnails,enable autosave crop session,add crop valiidation previw",
   "Support pinch and swipe",
   "Enable pinch-to-zoom and swipe navigation between pages/questions to make manual cropping smooth on Android and small screens.add crop undo /redo,persist zoom and page,show gesture help overlay,improve accessiblity controls",
+  "You can see in this screenshot that much different in the quality of given image/pdf from you in the panel of preview and also in manual cropping section that you have blur and not in original page/pdf of uploaded ,pls add that it should give original quality,add keyboard shortcuts,add crop version history,persist crop region,improve area accessibility",
 ].join("\n");
 
 const Index = () => {

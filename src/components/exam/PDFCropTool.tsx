@@ -215,7 +215,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
               canvas.width = viewport.width;
               canvas.height = viewport.height;
               await pageObj.render({ canvasContext: context, viewport }).promise;
-              const highResDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+              const highResDataUrl = canvas.toDataURL('image/png');
               if (isMounted) {
                 setCurrentPageImage(highResDataUrl);
                 setIsImgLoaded(true);
@@ -434,23 +434,6 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
     } : null);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!cropRegion) return;
-    const step = e.shiftKey ? 10 : 2;
-    
-    switch (e.key) {
-      case 'ArrowUp': moveCrop(0, -step); e.preventDefault(); break;
-      case 'ArrowDown': moveCrop(0, step); e.preventDefault(); break;
-      case 'ArrowLeft': moveCrop(-step, 0); e.preventDefault(); break;
-      case 'ArrowRight': moveCrop(step, 0); e.preventDefault(); break;
-      case 'w': resizeCrop(0, -step); e.preventDefault(); break;
-      case 's': resizeCrop(0, step); e.preventDefault(); break;
-      case 'a': resizeCrop(-step, 0); e.preventDefault(); break;
-      case 'd': resizeCrop(step, 0); e.preventDefault(); break;
-      case 'Enter': handleCrop(); break;
-    }
-  };
-
   const handleCrop = useCallback(() => {
     if (!cropRegion || !page || !imgRef.current) return;
     
@@ -480,7 +463,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
       });
       
       ctx.drawImage(tmp, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
-      const mainDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      const mainDataUrl = canvas.toDataURL('image/jpeg', 0.95);
 
       const extraImages: string[] = [];
       for (const opt of optionRegions) {
@@ -494,7 +477,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
         oCanvas.width = oW; oCanvas.height = oH;
         const oCtx = oCanvas.getContext('2d')!;
         oCtx.drawImage(tmp, oX, oY, oW, oH, 0, 0, oW, oH);
-        extraImages.push(oCanvas.toDataURL('image/jpeg', 0.82));
+        extraImages.push(oCanvas.toDataURL('image/jpeg', 0.9));
       }
 
       const newCrops: CroppedImage[] = [...croppedImages, {
@@ -513,6 +496,63 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
 
     processCrop().catch(console.error);
   }, [cropRegion, optionRegions, page, subject, section, qType, croppedImages, pushToHistory]);
+
+  const handleDone = useCallback(() => { 
+    onCroppedQuestions(croppedImages); 
+    onOpenChange(false); 
+  }, [onCroppedQuestions, croppedImages, onOpenChange]);
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Keyboard Shortcuts
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) redo();
+        else undo();
+        return;
+      }
+      if (e.key === 's') {
+        e.preventDefault();
+        handleDone();
+        return;
+      }
+    }
+
+    if (e.key === 'Escape') {
+      if (currentRegion) setCurrentRegion(null);
+      else if (cropRegion) setCropRegion(null);
+      return;
+    }
+
+    if (!cropRegion) {
+      if (e.key === 'ArrowRight' || e.key === 'n') {
+        if (currentPage < pages.length - 1) setCurrentPage(p => p + 1);
+      } else if (e.key === 'ArrowLeft' || e.key === 'p') {
+        if (currentPage > 0) setCurrentPage(p => p - 1);
+      }
+      return;
+    }
+
+    const step = e.shiftKey ? 10 : 2;
+    switch (e.key) {
+      case 'ArrowUp': moveCrop(0, -step); e.preventDefault(); break;
+      case 'ArrowDown': moveCrop(0, step); e.preventDefault(); break;
+      case 'ArrowLeft': moveCrop(-step, 0); e.preventDefault(); break;
+      case 'ArrowRight': moveCrop(step, 0); e.preventDefault(); break;
+      case 'w': resizeCrop(0, -step); e.preventDefault(); break;
+      case 's': resizeCrop(0, step); e.preventDefault(); break;
+      case 'a': resizeCrop(-step, 0); e.preventDefault(); break;
+      case 'd': resizeCrop(step, 0); e.preventDefault(); break;
+      case 'Enter': handleCrop(); break;
+      case 'Delete': 
+      case 'Backspace': setCropRegion(null); break;
+    }
+  }, [cropRegion, currentRegion, currentPage, pages.length, moveCrop, resizeCrop, undo, redo, handleCrop, handleDone]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   const updateCrop = (i: number, patch: Partial<CroppedImage>) =>
     setCroppedImages(prev => prev.map((c, j) => j === i ? { ...c, ...patch } : c));
@@ -572,7 +612,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
     toast.success("Questions merged!");
   };
 
-  const handleDone = () => { onCroppedQuestions(croppedImages); onOpenChange(false); };
+  
 
   if (!pages || pages.length === 0) {
     return (
@@ -798,7 +838,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
               <div
                 className="relative inline-block select-none outline-none focus-within:ring-2 ring-primary/20 bg-white"
                 tabIndex={0}
-                onKeyDown={handleKeyDown}
+                onKeyDown={(e) => handleKeyDown(e.nativeEvent)}
                 style={{ 
                   touchAction: 'none', 
                   transformOrigin: 'top center',
