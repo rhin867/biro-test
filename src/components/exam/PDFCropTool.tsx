@@ -898,48 +898,6 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                         imageRendering: 'crisp-edges'
                       }}
                     />
-                    {imgRef.current && (
-                      <svg 
-                        className="absolute inset-0 pointer-events-none overflow-visible"
-                        style={{ 
-                          width: imgRef.current.naturalWidth, 
-                          height: imgRef.current.naturalHeight,
-                          transform: `scale(${zoom})`,
-                          transformOrigin: 'top left',
-                          zIndex: 2
-                        }}
-                      >
-                        {currentRegion && (
-                          <rect
-                            x={currentRegion.x} y={currentRegion.y}
-                            width={currentRegion.width} height={currentRegion.height}
-                            fill="rgba(59, 130, 246, 0.2)"
-                            stroke="rgb(59, 130, 246)"
-                            strokeWidth={2 / zoom}
-                            strokeDasharray={`${4/zoom} ${2/zoom}`}
-                          />
-                        )}
-                        {cropRegion && (
-                          <rect
-                            x={cropRegion.x} y={cropRegion.y}
-                            width={cropRegion.width} height={cropRegion.height}
-                            fill="rgba(34, 197, 94, 0.15)"
-                            stroke="rgb(34, 197, 94)"
-                            strokeWidth={3 / zoom}
-                          />
-                        )}
-                        {optionRegions.map((r, i) => (
-                          <rect
-                            key={i}
-                            x={r.x} y={r.y}
-                            width={r.width} height={r.height}
-                            fill="rgba(168, 85, 247, 0.15)"
-                            stroke="rgb(168, 85, 247)"
-                            strokeWidth={2 / zoom}
-                          />
-                        ))}
-                      </svg>
-                    )}
                   </>
                 ) : (
                   <div className="w-[500px] h-[700px] flex items-center justify-center bg-white text-muted-foreground text-xs">
