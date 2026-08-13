@@ -162,7 +162,10 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
   const [subject, setSubject] = useState<string>(initialCrops?.[0]?.subject || 'Maths');
   const [section, setSection] = useState<string>(initialCrops?.[0]?.section || 'Section 1');
   const [qType, setQType] = useState<CropQType>(initialCrops?.[0]?.qType || 'MCQ');
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(() => {
+    const saved = localStorage.getItem('biro_last_zoom');
+    return saved ? parseFloat(saved) : 1;
+  });
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [previewIdx, setPreviewIdx] = useState<number | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
