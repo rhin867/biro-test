@@ -148,9 +148,11 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
   }, [history, historyIndex]);
   const [isDrawing, setIsDrawing] = useState(false);
   const [isCropMode, setIsCropMode] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
   const [currentRegion, setCurrentRegion] = useState<CropRegion | null>(null);
   const [cropRegion, setCropRegion] = useState<CropRegion | null>(null);
+  const [fakeRegion, setFakeRegion] = useState<CropRegion | null>(null);
   const [optionRegions, setOptionRegions] = useState<CropRegion[]>([]);
   const [croppedImages, setCroppedImages] = useState<CroppedImage[]>(() => {
     if (initialCrops && initialCrops.length > 0) return initialCrops;
