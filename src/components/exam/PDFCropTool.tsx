@@ -946,19 +946,23 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                     ))}
                   </svg>
                 )}
-                {currentRegion && currentRegion.width > 2 && currentRegion.height > 2 && (
-                  <div
-                    className="absolute border border-primary/50 bg-primary/10 pointer-events-none"
+                {cropRegion && (
+                  <Button 
+                    size="sm" 
+                    className="absolute z-[40] bg-green-600 hover:bg-green-700 text-white shadow-lg pointer-events-auto h-10 px-4 text-sm rounded-full flex items-center gap-1.5 whitespace-nowrap"
                     style={{
-                      left: currentRegion.x, 
-                      top: currentRegion.y,
-                      width: currentRegion.width, 
-                      height: currentRegion.height,
-                      transform: `scale(${zoom})`,
-                      transformOrigin: 'top left',
-                      zIndex: 30
+                      left: `calc(${(cropRegion.x + cropRegion.width / 2) * zoom}px + ${offset.x}px)`,
+                      top: `calc(${(cropRegion.y) * zoom}px + ${offset.y}px - 50px)`,
+                      transform: 'translateX(-50%)',
                     }}
-                  />
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCrop();
+                    }}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Confirm Crop
+                  </Button>
                 )}
               </div>
             </div>
