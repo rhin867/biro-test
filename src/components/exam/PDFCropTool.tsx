@@ -245,14 +245,17 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
 
   useEffect(() => {
     if (open) {
-      setCurrentPage(0);
+      // Don't force reset if we want persistence, but initialize some states
       setCropRegion(null);
       setCropStart(null);
       setIsDrawing(false);
-      setZoom(1);
       setIsImgLoaded(false);
       setOffset({ x: 0, y: 0 });
-      if (initialCrops && initialCrops.length) setCroppedImages(initialCrops);
+      if (initialCrops && initialCrops.length) {
+        setCroppedImages(initialCrops);
+        setHistory([[...initialCrops]]);
+        setHistoryIndex(0);
+      }
     }
   }, [open, initialCrops]);
   
