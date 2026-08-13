@@ -228,10 +228,10 @@ function CreateTestInner() {
         imageDataUrl: '', // Will be rendered on-demand in the crop tool
       }));
 
-      // Render the first few pages (up to 10) for immediate feedback in the preview
-      const pagesToRender = Math.min(metaPages.length, 10);
+      // Render some pages for feedback
+      const pagesToRender = Math.min(metaPages.length, 25);
       for (let i = 0; i < pagesToRender; i++) {
-        metaPages[i].imageDataUrl = await renderSinglePage(bufferForImages, i + 1, 2.5);
+        metaPages[i].imageDataUrl = await renderSinglePage(bufferForImages, i + 1, 1.8);
         setParseProgress(30 + Math.round((i / pagesToRender) * 20));
       }
 
