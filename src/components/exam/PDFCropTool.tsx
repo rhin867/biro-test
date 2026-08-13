@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { PDFPageImage, renderSinglePage } from '@/lib/pdf-cropper';
-import { Crop, Download, RotateCcw, ChevronLeft, ChevronRight, Trash2, ZoomIn, ZoomOut, Plus, Image as ImageIcon, Pencil, Eye, Loader2, GitMerge, Type } from 'lucide-react';
+import { Crop, Download, RotateCcw, ChevronLeft, ChevronRight, Trash2, ZoomIn, ZoomOut, Plus, Image as ImageIcon, Pencil, Eye, Loader2, GitMerge, Type, Undo2, Redo2, HelpCircle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { performClientOCR } from '@/lib/ocr';
 
@@ -111,7 +111,41 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
     }
   };
 
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(() => {
+    const saved = localStorage.getItem('biro_last_page');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+  const [showGestureHelp, setShowGestureHelp] = useState(() => !localStorage.getItem('biro_gesture_help_hidden'));
+  const [history, setHistory] = useState<CroppedImage[][]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
+  const pushToHistory = useCallback((currentCrops: CroppedImage[]) => {
+    setHistory(prev => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push([...currentCrops]);
+      if (newHistory.length > 30) newHistory.shift();
+      setHistoryIndex(newHistory.length - 1);
+      return newHistory;
+    });
+  }, [historyIndex]);
+
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      const prevCrops = history[historyIndex - 1];
+      setCroppedImages([...prevCrops]);
+      setHistoryIndex(historyIndex - 1);
+      toast.info("Undo successful");
+    }
+  }, [history, historyIndex]);
+
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const nextCrops = history[historyIndex + 1];
+      setCroppedImages([...nextCrops]);
+      setHistoryIndex(historyIndex + 1);
+      toast.info("Redo successful");
+    }
+  }, [history, historyIndex]);
   const [isDrawing, setIsDrawing] = useState(false);
   const [isCropMode, setIsCropMode] = useState(true);
   const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
@@ -128,7 +162,10 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
   const [subject, setSubject] = useState<string>(initialCrops?.[0]?.subject || 'Maths');
   const [section, setSection] = useState<string>(initialCrops?.[0]?.section || 'Section 1');
   const [qType, setQType] = useState<CropQType>(initialCrops?.[0]?.qType || 'MCQ');
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(() => {
+    const saved = localStorage.getItem('biro_last_zoom');
+    return saved ? parseFloat(saved) : 1;
+  });
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [previewIdx, setPreviewIdx] = useState<number | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -208,21 +245,31 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
 
   useEffect(() => {
     if (open) {
-      setCurrentPage(0);
+      // Don't force reset if we want persistence, but initialize some states
       setCropRegion(null);
       setCropStart(null);
       setIsDrawing(false);
-      setZoom(1);
       setIsImgLoaded(false);
       setOffset({ x: 0, y: 0 });
-      if (initialCrops && initialCrops.length) setCroppedImages(initialCrops);
+      if (initialCrops && initialCrops.length) {
+        setCroppedImages(initialCrops);
+        setHistory([[...initialCrops]]);
+        setHistoryIndex(0);
+      }
     }
   }, [open, initialCrops]);
   
   useEffect(() => {
-    if (croppedImages.length > 0) {
-      localStorage.setItem('biro_autosave_crops', JSON.stringify(croppedImages));
+    localStorage.setItem('biro_last_page', currentPage.toString());
+    localStorage.setItem('biro_last_zoom', zoom.toString());
+  }, [currentPage, zoom]);
+
+  useEffect(() => {
+    if (historyIndex === -1 && croppedImages.length >= 0) {
+      setHistory([[...croppedImages]]);
+      setHistoryIndex(0);
     }
+    localStorage.setItem('biro_autosave_crops', JSON.stringify(croppedImages));
   }, [croppedImages]);
 
   const getRelativeCoords = useCallback((e: React.MouseEvent | React.TouchEvent | { clientX: number, clientY: number }) => {
@@ -450,20 +497,22 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
         extraImages.push(oCanvas.toDataURL('image/jpeg', 0.82));
       }
 
-      setCroppedImages(prev => [...prev, {
+      const newCrops: CroppedImage[] = [...croppedImages, {
         dataUrl: mainDataUrl,
         pageNumber: page.pageNumber,
-        index: prev.length,
+        index: croppedImages.length,
         subject, section, qType,
         extraImages: extraImages.length > 0 ? extraImages : undefined,
-      }]);
+      }];
+      setCroppedImages(newCrops);
+      pushToHistory(newCrops);
       setCropRegion(null);
       setOptionRegions([]);
-      toast.success(`Question ${croppedImages.length + 1} added!`);
+      toast.success(`Question ${newCrops.length} added!`);
     };
 
     processCrop().catch(console.error);
-  }, [cropRegion, optionRegions, page, subject, section, qType, croppedImages.length]);
+  }, [cropRegion, optionRegions, page, subject, section, qType, croppedImages, pushToHistory]);
 
   const updateCrop = (i: number, patch: Partial<CroppedImage>) =>
     setCroppedImages(prev => prev.map((c, j) => j === i ? { ...c, ...patch } : c));
@@ -683,25 +732,39 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                 </Button>
               </div>
               <div className="flex gap-1 items-center">
+                <div className="flex border rounded-md overflow-hidden bg-background mr-1">
+                  <Button variant="ghost" size="sm" className="h-7 px-2 rounded-none" 
+                          disabled={historyIndex <= 0} onClick={undo}>
+                    <Undo2 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 rounded-none" 
+                          disabled={historyIndex >= history.length - 1} onClick={redo}>
+                    <Redo2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+
                 <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setZoom(z => Math.max(0.5, +(z - 0.05).toFixed(2)))}>
                   <ZoomOut className="h-3.5 w-3.5" />
                 </Button>
                 <div className="flex items-center gap-1 group relative">
                   <Input 
-                    className="h-7 w-14 text-[11px] px-1 text-center bg-background border-primary/20" 
+                    className="h-7 w-12 md:w-14 text-[11px] px-1 text-center bg-background border-primary/20" 
                     value={Math.round(zoom * 100)} 
                     onChange={(e) => {
                       const val = parseInt(e.target.value);
                       if (!isNaN(val)) setZoom(Math.min(10, Math.max(0.1, val / 100)));
                     }}
                   />
-                  <span className="text-[10px] absolute -right-3 text-muted-foreground">%</span>
+                  <span className="text-[10px] hidden md:inline text-muted-foreground mr-1">%</span>
                 </div>
                 <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setZoom(z => Math.min(10, +(z + 0.05).toFixed(2)))}>
                   <ZoomIn className="h-3.5 w-3.5" />
                 </Button>
                 <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => { setCropRegion(null); setZoom(1); setOffset({ x: 0, y: 0 }); }}>
                   <RotateCcw className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setShowGestureHelp(true)}>
+                  <HelpCircle className="h-3.5 w-3.5" />
                 </Button>
                 <Button size="sm" className="h-7 px-2 text-[11px]"
                         disabled={!cropRegion || cropRegion.width < 10 || cropRegion.height < 10} onClick={handleCrop}>
@@ -1005,7 +1068,11 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                           )}
                         </div>
                         <button className="p-1 rounded hover:bg-destructive/20 text-destructive" title="Delete"
-                                onClick={() => setCroppedImages(prev => prev.filter((_, j) => j !== i))}>
+                                onClick={() => {
+                                  const newCrops = croppedImages.filter((_, j) => j !== i);
+                                  setCroppedImages(newCrops);
+                                  pushToHistory(newCrops);
+                                }}>
                           <Trash2 className="h-3 w-3" />
                         </button>
                       </div>
@@ -1052,6 +1119,55 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
               ))}
             </DialogContent>
           </Dialog>
+        )}
+        {/* Gesture Help Overlay */}
+        {showGestureHelp && (
+          <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-white">
+            <div className="max-w-xs w-full bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-300">
+              <div className="flex justify-between items-start">
+                <div className="bg-primary/20 p-2 rounded-lg">
+                  <HelpCircle className="w-6 h-6 text-primary" />
+                </div>
+                <button 
+                  className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                  onClick={() => {
+                    setShowGestureHelp(false);
+                    localStorage.setItem('biro_gesture_help_hidden', 'true');
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              
+              <div className="space-y-3">
+                <h3 className="text-lg font-bold">Touch Gestures</h3>
+                <div className="space-y-2.5">
+                  <div className="flex gap-3 text-sm items-center">
+                    <div className="w-8 h-8 flex items-center justify-center bg-white/5 rounded border border-white/10 text-xs">2+</div>
+                    <span><b>Pinch</b> to Zoom In/Out</span>
+                  </div>
+                  <div className="flex gap-3 text-sm items-center">
+                    <div className="w-8 h-8 flex items-center justify-center bg-white/5 rounded border border-white/10 text-xs">↔️</div>
+                    <span><b>Swipe</b> horizontally to change pages</span>
+                  </div>
+                  <div className="flex gap-3 text-sm items-center">
+                    <div className="w-8 h-8 flex items-center justify-center bg-white/5 rounded border border-white/10 text-xs">👆</div>
+                    <span><b>Drag</b> to Crop or Pan</span>
+                  </div>
+                </div>
+              </div>
+              
+              <Button 
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" 
+                onClick={() => {
+                  setShowGestureHelp(false);
+                  localStorage.setItem('biro_gesture_help_hidden', 'true');
+                }}
+              >
+                Got it!
+              </Button>
+            </div>
+          </div>
         )}
       </DialogContent>
     </Dialog>

@@ -33,6 +33,7 @@ const buildLog = [
   "Fix this thing(add image preview visible in all pages and que like there are only visible 1dt page you see in uploaded screenshot of the biro test,so fix this preview issue and add that all",
   "Add quixk page thumbnails,enable autosave crop session,add crop valiidation previw",
   "Support pinch and swipe",
+  "Enable pinch-to-zoom and swipe navigation between pages/questions to make manual cropping smooth on Android and small screens.add crop undo /redo,persist zoom and page,show gesture help overlay,improve accessiblity controls",
 ].join("\n");
 
 const Index = () => {
