@@ -111,7 +111,41 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
     }
   };
 
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(() => {
+    const saved = localStorage.getItem('biro_last_page');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+  const [showGestureHelp, setShowGestureHelp] = useState(() => !localStorage.getItem('biro_gesture_help_hidden'));
+  const [history, setHistory] = useState<CroppedImage[][]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
+  const pushToHistory = useCallback((currentCrops: CroppedImage[]) => {
+    setHistory(prev => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push([...currentCrops]);
+      if (newHistory.length > 30) newHistory.shift();
+      setHistoryIndex(newHistory.length - 1);
+      return newHistory;
+    });
+  }, [historyIndex]);
+
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      const prevCrops = history[historyIndex - 1];
+      setCroppedImages([...prevCrops]);
+      setHistoryIndex(historyIndex - 1);
+      toast.info("Undo successful");
+    }
+  }, [history, historyIndex]);
+
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const nextCrops = history[historyIndex + 1];
+      setCroppedImages([...nextCrops]);
+      setHistoryIndex(historyIndex + 1);
+      toast.info("Redo successful");
+    }
+  }, [history, historyIndex]);
   const [isDrawing, setIsDrawing] = useState(false);
   const [isCropMode, setIsCropMode] = useState(true);
   const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
