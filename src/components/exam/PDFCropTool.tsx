@@ -497,20 +497,22 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
         extraImages.push(oCanvas.toDataURL('image/jpeg', 0.82));
       }
 
-      setCroppedImages(prev => [...prev, {
+      const newCrops: CroppedImage[] = [...croppedImages, {
         dataUrl: mainDataUrl,
         pageNumber: page.pageNumber,
-        index: prev.length,
+        index: croppedImages.length,
         subject, section, qType,
         extraImages: extraImages.length > 0 ? extraImages : undefined,
-      }]);
+      }];
+      setCroppedImages(newCrops);
+      pushToHistory(newCrops);
       setCropRegion(null);
       setOptionRegions([]);
-      toast.success(`Question ${croppedImages.length + 1} added!`);
+      toast.success(`Question ${newCrops.length} added!`);
     };
 
     processCrop().catch(console.error);
-  }, [cropRegion, optionRegions, page, subject, section, qType, croppedImages.length]);
+  }, [cropRegion, optionRegions, page, subject, section, qType, croppedImages, pushToHistory]);
 
   const updateCrop = (i: number, patch: Partial<CroppedImage>) =>
     setCroppedImages(prev => prev.map((c, j) => j === i ? { ...c, ...patch } : c));
