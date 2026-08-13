@@ -189,6 +189,14 @@ function CreateTestInner() {
       toast.error('Please upload a PDF file');
       return;
     }
+
+    // PDF Size Limit Check (25MB)
+    const MAX_SIZE = 25 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      toast.error(`File is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max 25MB allowed.`);
+      return;
+    }
+
     setIsProcessing(true);
     setParseStatus('Initializing...');
     setParseProgress(0);
@@ -206,26 +214,37 @@ function CreateTestInner() {
       const bufferForImages = arrayBuffer.slice(0);
       setPdfBuffer(bufferForImages);
       
-      const pdf = await pdfjsLib.getDocument({ data: bufferForText }).promise;
+      const pdf = await pdfjsLib.getDocument({ 
+        data: bufferForText,
+        // Disable high-memory features for stability
+        disableAutoFetch: true,
+        disableStream: true
+      }).promise;
+
       const totalPages = pdf.numPages;
-      
-      let fullText = '';
       setParseStatus('Reading document text...');
       
+      let fullText = '';
       // Step 1: Text extraction (0-30%)
       for (let i = 1; i <= totalPages; i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items.map((item: any) => item.str).join(' ');
-        fullText += `[Page ${i}]\n${pageText}\n\n`;
-        setParseProgress(Math.round((i / totalPages) * 30));
+        try {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items.map((item: any) => item.str).join(' ');
+          fullText += `[Page ${i}]\n${pageText}\n\n`;
+          setParseProgress(Math.round((i / totalPages) * 30));
+          // Explicitly cleanup page to free memory
+          page.cleanup();
+        } catch (e) {
+          console.warn(`Text extraction failed for page ${i}:`, e);
+        }
       }
       setPdfText(fullText);
       setTestName(file.name.replace('.pdf', ''));
       
       // Step 2: Metadata and initial rendering (30-100%)
       setParseStatus('Rendering pages...');
-      const metadata = await renderPDFPagesMetadata(bufferForImages, 2.5);
+      const metadata = await renderPDFPagesMetadata(bufferForImages, 2.0);
       
       const metaPages: PDFPageImage[] = metadata.map((m) => ({
         ...m,
@@ -235,40 +254,40 @@ function CreateTestInner() {
 
       const renderPage = async (i: number) => {
         try {
-          const url = await renderSinglePage(bufferForImages, i + 1, 1.8);
+          // Slightly lower scale for preview to save memory on large PDFs
+          const url = await renderSinglePage(bufferForImages, i + 1, 1.5);
           setPdfPageImages(prev => {
             const next = [...prev];
             if (next[i]) next[i] = { ...next[i], imageDataUrl: url };
             return next;
           });
-          // Update progress based on page rendering (30% to 95%)
-          setParseProgress(30 + Math.round((i / totalPages) * 65));
+          setParseProgress(30 + Math.round((i / totalPages) * 70));
         } catch (err) {
           console.error(`Failed to render page ${i+1}:`, err);
         }
       };
 
-      // We wait for ALL pages to render before proceeding, to satisfy the "load everything first" requirement
-      // for smaller PDFs or initial batching for stability.
-      // To prevent Aw Snap, we still batch them but we await the whole process before success.
-      const batchSize = 5;
+      // Concurrent batch rendering with small delay for GC
+      const batchSize = window.innerWidth < 768 ? 2 : 4;
       for (let i = 0; i < totalPages; i += batchSize) {
         const batch = [];
         for (let j = i; j < Math.min(i + batchSize, totalPages); j++) {
           batch.push(renderPage(j));
         }
         await Promise.all(batch);
-        // Small breathing room for GC
-        await new Promise(r => setTimeout(r, 100));
+        // Breathing room for Garbage Collection to prevent Aw Snap
+        await new Promise(r => setTimeout(r, 150));
       }
 
       setParseProgress(100);
       setParseStatus('PDF Ready!');
       toast.success(`PDF fully processed: ${totalPages} pages`);
       setStep('configure');
-    } catch (error) {
+    } catch (error: any) {
       console.error('PDF processing error:', error);
-      toast.error('Failed to process PDF. Please try again.');
+      const errorMsg = error.message || 'Unknown error during PDF processing';
+      toast.error(`Error: ${errorMsg}. Please check if the PDF is corrupted or too complex.`);
+      setParseStatus(`Error: ${errorMsg}`);
     } finally {
       setIsProcessing(false);
     }
