@@ -669,7 +669,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                   transition: 'opacity 0.2s ease-in-out',
                   minWidth: '100px',
                   minHeight: '100px',
-                  cursor: isPanning ? 'grabbing' : (isDrawing ? 'crosshair' : 'grab')
+                  cursor: isPanning ? 'grabbing' : (isDrawing ? 'crosshair' : (isCropMode ? 'crosshair' : 'grab'))
                 }}
                 onMouseDown={handleStart} onMouseMove={handleMove}
                 onMouseUp={handleEnd} onMouseLeave={handleEnd}
