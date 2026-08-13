@@ -981,11 +981,14 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                     key={i}
                     className="absolute border border-orange-500 bg-orange-500/10 pointer-events-none"
                     style={{
-                      left: `${(opt.x / (imgRef.current?.naturalWidth || 1)) * 100}%`, 
-                      top: `${(opt.y / (imgRef.current?.naturalHeight || 1)) * 100}%`,
-                      width: `${(opt.width / (imgRef.current?.naturalWidth || 1)) * 100}%`, 
-                      height: `${(opt.height / (imgRef.current?.naturalHeight || 1)) * 100}%`,
+                      left: opt.x, 
+                      top: opt.y,
+                      width: opt.width, 
+                      height: opt.height,
                       borderStyle: 'dotted',
+                      transform: `scale(${zoom})`,
+                      transformOrigin: 'top left',
+                      zIndex: 20
                     }}
                   >
                     <div className="absolute -top-4 left-0 bg-orange-500 text-white text-[8px] px-1 rounded">
