@@ -806,6 +806,9 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                 <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => { setCropRegion(null); setZoom(1); setOffset({ x: 0, y: 0 }); }}>
                   <RotateCcw className="h-3.5 w-3.5" />
                 </Button>
+                <Button variant={isFullscreen ? "default" : "outline"} size="sm" className="h-7 px-2" onClick={() => setIsFullscreen(!isFullscreen)}>
+                  {isFullscreen ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
+                </Button>
                 <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setShowGestureHelp(true)}>
                   <HelpCircle className="h-3.5 w-3.5" />
                 </Button>
