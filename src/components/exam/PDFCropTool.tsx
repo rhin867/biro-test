@@ -497,69 +497,6 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
     processCrop().catch(console.error);
   }, [cropRegion, optionRegions, page, subject, section, qType, croppedImages, pushToHistory]);
 
-  const handleCrop = useCallback(() => {
-    if (!cropRegion || !page || !imgRef.current) return;
-    
-    // Validation: Check if the crop area is too small
-    if (cropRegion.width < 15 || cropRegion.height < 15) {
-      toast.error("Crop area is too small. Please select a larger area.");
-      return;
-    }
-
-    const img = imgRef.current;
-    const srcX = Math.round(cropRegion.x);
-    const srcY = Math.round(cropRegion.y);
-    const srcW = Math.round(cropRegion.width);
-    const srcH = Math.round(cropRegion.height);
-
-    const processCrop = async () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = srcW; canvas.height = srcH;
-      const ctx = canvas.getContext('2d')!;
-      
-      const tmp = new window.Image();
-      tmp.crossOrigin = 'anonymous';
-      await new Promise((resolve, reject) => {
-        tmp.onload = resolve;
-        tmp.onerror = reject;
-        tmp.src = page.imageDataUrl;
-      });
-      
-      ctx.drawImage(tmp, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
-      const mainDataUrl = canvas.toDataURL('image/jpeg', 0.95);
-
-      const extraImages: string[] = [];
-      for (const opt of optionRegions) {
-        const oX = Math.round(opt.x);
-        const oY = Math.round(opt.y);
-        const oW = Math.round(opt.width);
-        const oH = Math.round(opt.height);
-        if (oW < 10 || oH < 10) continue;
-        
-        const oCanvas = document.createElement('canvas');
-        oCanvas.width = oW; oCanvas.height = oH;
-        const oCtx = oCanvas.getContext('2d')!;
-        oCtx.drawImage(tmp, oX, oY, oW, oH, 0, 0, oW, oH);
-        extraImages.push(oCanvas.toDataURL('image/jpeg', 0.9));
-      }
-
-      const newCrops: CroppedImage[] = [...croppedImages, {
-        dataUrl: mainDataUrl,
-        pageNumber: page.pageNumber,
-        index: croppedImages.length,
-        subject, section, qType,
-        extraImages: extraImages.length > 0 ? extraImages : undefined,
-      }];
-      setCroppedImages(newCrops);
-      pushToHistory(newCrops);
-      setCropRegion(null);
-      setOptionRegions([]);
-      toast.success(`Question ${newCrops.length} added!`);
-    };
-
-    processCrop().catch(console.error);
-  }, [cropRegion, optionRegions, page, subject, section, qType, croppedImages, pushToHistory]);
-
   const handleDone = useCallback(() => { 
     onCroppedQuestions(croppedImages); 
     onOpenChange(false); 
