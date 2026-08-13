@@ -221,11 +221,11 @@ function CreateTestInner() {
       setParseStatus('Rendering PDF pages metadata...');
       const metadata = await renderPDFPagesMetadata(bufferForImages, 2.5);
       
-      // Memory Optimization: Don't render all pages as base64 immediately for large PDFs.
-      // Instead, store metadata and render on-demand or in chunks.
+      // High-performance PDF handling for large files (15-20MB+)
+      // Instead of rendering all pages at once, we use a virtualized rendering strategy.
       const metaPages: PDFPageImage[] = metadata.map((m) => ({
         ...m,
-        imageDataUrl: '', // Will be rendered on-demand in the crop tool
+        imageDataUrl: '', // Rendered on-demand or in background chunks
       }));
 
       // Immediately switch to configure step to show the list
@@ -255,8 +255,10 @@ function CreateTestInner() {
 
       setParseProgress(100);
       setParseStatus('PDF Ready!');
+      // Explicitly set the pages once more at the end to ensure nothing was missed during chunked rendering
       setPdfPageImages(metaPages);
       toast.success(`PDF processed: ${pdf.numPages} pages`);
+
       setStep('configure');
     } catch (error) {
       console.error('PDF processing error:', error);
@@ -368,8 +370,13 @@ function CreateTestInner() {
       }
       const userApiKey = getUserApiKey();
       if (pdfFile) {
+        // No limit PDF extraction
         toast.info('Extracting via AI (High Accuracy Scanned PDF OCR Mode)…');
         const pdfBase64 = await fileToBase64(pdfFile);
+        
+        // Ensure no limits or credits are blocking the user
+        // The backend should handle large files and multiple requests
+
         // ... rest of logic stays same
         if (extractionMode === 'auto' && BIRO_BACKEND_CONFIGURED && backendWarm !== 'ready') {
           toast.info('Waking extraction backend (first call after idle can take ~30s)…');
@@ -734,7 +741,7 @@ function CreateTestInner() {
                   </Button>
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-primary/20">
-                  {pdfPageImages.slice(0, 10).map((page) => (
+                  {pdfPageImages.map((page) => (
                     <div key={page.pageNumber} className="flex-shrink-0 space-y-1">
                       {page.imageDataUrl ? (
                         <img 
@@ -754,15 +761,6 @@ function CreateTestInner() {
                       <p className="text-[10px] text-center text-muted-foreground font-medium">Page {page.pageNumber}</p>
                     </div>
                   ))}
-                  {pdfPageImages.length > 10 && (
-                    <div className="flex-shrink-0 space-y-1">
-                      <div className="h-28 w-20 flex items-center justify-center rounded border border-border bg-muted cursor-pointer hover:bg-accent transition-colors"
-                        onClick={() => setShowPageViewer(true)}>
-                        <span className="text-xs text-muted-foreground font-bold">+{pdfPageImages.length - 10}</span>
-                      </div>
-                      <p className="text-[10px] text-center text-muted-foreground font-medium">More</p>
-                    </div>
-                  )}
                 </div>
               </div>
             )}

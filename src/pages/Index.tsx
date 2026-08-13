@@ -38,6 +38,7 @@ const buildLog = [
   "Fixed Manual Crop UI: Removed ghost/fake selection area, implemented true fullscreen mode, and optimized SVG overlay for precision. Improved PDF rendering performance in preview by rendering pages in concurrent batches to keep UI responsive.",
   "Fixed Daily Hot Question (DHQ): Corrected storage folder paths (hot-questions -> dhq) and added proper bucket upload parameters to fix 'new row violates row-level security' errors for owner image uploads.",
   "Make layout fully responsive.Add manual preview setting panel add manual crop setting u I panel improve keyboard and accessibility ensure preview and quality four crop",
+  "Analyse this image and add and fix issues and features,make sure i think you have not fixed the visiblity of images in preview after 25 images or pages pls strictly fix and add features for this,test all the todays added features that they are really working or not",
 ].join("\n");
 
 const Index = () => {
