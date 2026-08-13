@@ -9,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { PDFPageImage, renderSinglePage } from '@/lib/pdf-cropper';
-import { Crop, Download, RotateCcw, ChevronLeft, ChevronRight, Trash2, ZoomIn, ZoomOut, Plus, Image as ImageIcon, Pencil, Eye, Loader2, GitMerge, Type, Undo2, Redo2, HelpCircle, X } from 'lucide-react';
+import { Crop, Download, RotateCcw, ChevronLeft, ChevronRight, Trash2, ZoomIn, ZoomOut, Plus, Image as ImageIcon, Pencil, Eye, Loader2, GitMerge, Type, Undo2, Redo2, HelpCircle, X, Maximize, Minimize } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { performClientOCR } from '@/lib/ocr';
 
