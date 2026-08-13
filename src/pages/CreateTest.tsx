@@ -716,16 +716,34 @@ function CreateTestInner() {
                     <ZoomIn className="h-4 w-4 mr-1" /> View Pages
                   </Button>
                 </div>
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {pdfPageImages.slice(0, 4).map((page) => (
-                    <img key={page.pageNumber} src={page.imageDataUrl} alt={`Page ${page.pageNumber}`}
-                      className="h-20 w-auto rounded border border-border cursor-pointer hover:ring-2 hover:ring-primary"
-                      onClick={() => setShowPageViewer(true)} />
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-primary/20">
+                  {pdfPageImages.slice(0, 10).map((page) => (
+                    <div key={page.pageNumber} className="flex-shrink-0 space-y-1">
+                      {page.imageDataUrl ? (
+                        <img 
+                          src={page.imageDataUrl} 
+                          alt={`Page ${page.pageNumber}`}
+                          className="h-28 w-auto rounded border border-border cursor-pointer hover:ring-2 hover:ring-primary shadow-sm transition-all"
+                          onClick={() => setShowPageViewer(true)} 
+                        />
+                      ) : (
+                        <div 
+                          className="h-28 w-20 flex items-center justify-center rounded border border-border bg-muted/50 cursor-wait animate-pulse"
+                          onClick={() => setShowPageViewer(true)}
+                        >
+                          <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
+                        </div>
+                      )}
+                      <p className="text-[10px] text-center text-muted-foreground font-medium">Page {page.pageNumber}</p>
+                    </div>
                   ))}
-                  {pdfPageImages.length > 4 && (
-                    <div className="h-20 w-16 flex items-center justify-center rounded border border-border bg-muted cursor-pointer hover:bg-accent"
-                      onClick={() => setShowPageViewer(true)}>
-                      <span className="text-xs text-muted-foreground">+{pdfPageImages.length - 4}</span>
+                  {pdfPageImages.length > 10 && (
+                    <div className="flex-shrink-0 space-y-1">
+                      <div className="h-28 w-20 flex items-center justify-center rounded border border-border bg-muted cursor-pointer hover:bg-accent transition-colors"
+                        onClick={() => setShowPageViewer(true)}>
+                        <span className="text-xs text-muted-foreground font-bold">+{pdfPageImages.length - 10}</span>
+                      </div>
+                      <p className="text-[10px] text-center text-muted-foreground font-medium">More</p>
                     </div>
                   )}
                 </div>
