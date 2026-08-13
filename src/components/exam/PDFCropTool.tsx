@@ -576,6 +576,27 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
         <div className="flex flex-col lg:flex-row gap-2 flex-1 min-h-0 mt-1.5 overflow-hidden">
           {/* PDF viewer — takes most of the space */}
           <div className="flex flex-col min-w-0 flex-1 h-full overflow-hidden relative">
+            {/* Quick Page Navigator */}
+            <div className="flex gap-1 overflow-x-auto px-2 py-1 bg-muted/20 border-b scrollbar-none scroll-smooth h-16 shrink-0">
+              {pages.map((p, idx) => (
+                <div 
+                  key={idx} 
+                  className={`flex-shrink-0 w-10 h-14 border rounded cursor-pointer transition-all overflow-hidden relative ${currentPage === idx ? 'ring-2 ring-primary border-primary' : 'opacity-60 hover:opacity-100'}`}
+                  onClick={() => { setCurrentPage(idx); setIsImgLoaded(false); }}
+                >
+                  {p.imageDataUrl ? (
+                    <img src={p.imageDataUrl} className="w-full h-full object-cover" alt="" />
+                  ) : (
+                    <div className="w-full h-full bg-muted flex items-center justify-center text-[8px]">{idx + 1}</div>
+                  )}
+                  {currentPage === idx && (
+                    <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
+                      <div className="bg-primary text-white text-[8px] px-1 rounded-sm">{idx + 1}</div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
 
             <div className="flex items-center justify-between mb-1 gap-1 flex-wrap px-2">
               <div className="flex gap-1 items-center">
