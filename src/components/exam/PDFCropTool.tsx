@@ -850,8 +850,8 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                 onKeyDown={(e) => handleKeyDown(e.nativeEvent)}
                 style={{ 
                   touchAction: 'none', 
-                  transformOrigin: isFullscreen ? 'center' : 'top center',
-                  transform: isFullscreen ? `translate(${offset.x}px, ${offset.y}px)` : `translate(${offset.x}px, ${offset.y}px)`,
+                  transformOrigin: '0 0',
+                  transform: `translate(${offset.x}px, ${offset.y}px)`,
                   zIndex: isFullscreen ? 1000 : 10,
                   opacity: isImgLoaded ? 1 : 0.5,
                   transition: 'opacity 0.2s ease-in-out',
