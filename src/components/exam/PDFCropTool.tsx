@@ -1068,7 +1068,11 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                           )}
                         </div>
                         <button className="p-1 rounded hover:bg-destructive/20 text-destructive" title="Delete"
-                                onClick={() => setCroppedImages(prev => prev.filter((_, j) => j !== i))}>
+                                onClick={() => {
+                                  const newCrops = croppedImages.filter((_, j) => j !== i);
+                                  setCroppedImages(newCrops);
+                                  pushToHistory(newCrops);
+                                }}>
                           <Trash2 className="h-3 w-3" />
                         </button>
                       </div>
