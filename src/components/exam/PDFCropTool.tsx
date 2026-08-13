@@ -9,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { PDFPageImage, renderSinglePage } from '@/lib/pdf-cropper';
-import { Crop, Download, RotateCcw, ChevronLeft, ChevronRight, Trash2, ZoomIn, ZoomOut, Plus, Image as ImageIcon, Pencil, Eye, Loader2, GitMerge, Type, Undo2, Redo2, HelpCircle, X } from 'lucide-react';
+import { Crop, Download, RotateCcw, ChevronLeft, ChevronRight, Trash2, ZoomIn, ZoomOut, Plus, Image as ImageIcon, Pencil, Eye, Loader2, GitMerge, Type, Undo2, Redo2, HelpCircle, X, Maximize, Minimize } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { performClientOCR } from '@/lib/ocr';
 
@@ -148,9 +149,11 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
   }, [history, historyIndex]);
   const [isDrawing, setIsDrawing] = useState(false);
   const [isCropMode, setIsCropMode] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
   const [currentRegion, setCurrentRegion] = useState<CropRegion | null>(null);
   const [cropRegion, setCropRegion] = useState<CropRegion | null>(null);
+  const [fakeRegion, setFakeRegion] = useState<CropRegion | null>(null);
   const [optionRegions, setOptionRegions] = useState<CropRegion[]>([]);
   const [croppedImages, setCroppedImages] = useState<CroppedImage[]>(() => {
     if (initialCrops && initialCrops.length > 0) return initialCrops;
@@ -381,7 +384,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
       const dy = touchEnd.clientY - touchStartPos.current.y;
       
       // Threshold for swipe: 50px horizontal, less than 30px vertical
-      if (Math.abs(dx) > 70 && Math.abs(dy) < 50) {
+      if (Math.abs(dx) > 70 && Math.abs(dy) < 50 && !isFullscreen) {
         if (dx > 0 && currentPage > 0) {
           setCurrentPage(p => p - 1);
           setIsImgLoaded(false);
@@ -803,6 +806,9 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                 <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => { setCropRegion(null); setZoom(1); setOffset({ x: 0, y: 0 }); }}>
                   <RotateCcw className="h-3.5 w-3.5" />
                 </Button>
+                <Button variant={isFullscreen ? "default" : "outline"} size="sm" className="h-7 px-2" onClick={() => setIsFullscreen(!isFullscreen)}>
+                  {isFullscreen ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
+                </Button>
                 <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setShowGestureHelp(true)}>
                   <HelpCircle className="h-3.5 w-3.5" />
                 </Button>
@@ -836,14 +842,17 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                 </div>
               )}
               <div
-                className="relative inline-block select-none outline-none focus-within:ring-2 ring-primary/20 bg-white"
+                className={cn(
+                  "relative inline-block select-none outline-none focus-within:ring-2 ring-primary/20 bg-white shadow-2xl transition-all duration-300",
+                  isFullscreen ? "fixed inset-0 z-[1000] w-screen h-screen m-0 bg-background overflow-hidden flex items-start justify-center p-0" : ""
+                )}
                 tabIndex={0}
                 onKeyDown={(e) => handleKeyDown(e.nativeEvent)}
                 style={{ 
                   touchAction: 'none', 
-                  transformOrigin: 'top center',
+                  transformOrigin: '0 0',
                   transform: `translate(${offset.x}px, ${offset.y}px)`,
-                  zIndex: 10,
+                  zIndex: isFullscreen ? 1000 : 10,
                   opacity: isImgLoaded ? 1 : 0.5,
                   transition: 'opacity 0.2s ease-in-out',
                   minWidth: '100px',
@@ -857,6 +866,19 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                 <canvas ref={canvasRef} className="hidden" />
                 {page?.imageDataUrl ? (
                   <>
+                    {isFullscreen && (
+                      <div className="fixed top-4 right-4 z-[1100] flex gap-2">
+                         <Button variant="secondary" size="sm" className="h-10 w-10 rounded-full shadow-lg" onClick={() => setZoom(z => Math.min(10, +(z + 0.1).toFixed(2)))}>
+                           <ZoomIn className="h-5 w-5" />
+                         </Button>
+                         <Button variant="secondary" size="sm" className="h-10 w-10 rounded-full shadow-lg" onClick={() => setZoom(z => Math.max(0.1, +(z - 0.1).toFixed(2)))}>
+                           <ZoomOut className="h-5 w-5" />
+                         </Button>
+                         <Button variant="destructive" size="sm" className="h-10 w-10 rounded-full shadow-lg" onClick={() => setIsFullscreen(false)}>
+                           <X className="h-5 w-5" />
+                         </Button>
+                      </div>
+                    )}
                     <img
                       ref={imgRef}
                       src={page.imageDataUrl}
@@ -876,109 +898,71 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                         imageRendering: 'crisp-edges'
                       }}
                     />
-                    {imgRef.current && (
-                      <svg 
-                        className="absolute inset-0 pointer-events-none overflow-visible"
-                        style={{ 
-                          width: imgRef.current.naturalWidth, 
-                          height: imgRef.current.naturalHeight,
-                          transform: `scale(${zoom})`,
-                          transformOrigin: 'top left',
-                          zIndex: 2
-                        }}
-                      >
-                        {currentRegion && (
-                          <rect
-                            x={currentRegion.x} y={currentRegion.y}
-                            width={currentRegion.width} height={currentRegion.height}
-                            fill="rgba(59, 130, 246, 0.2)"
-                            stroke="rgb(59, 130, 246)"
-                            strokeWidth={2 / zoom}
-                            strokeDasharray={`${4/zoom} ${2/zoom}`}
-                          />
-                        )}
-                        {cropRegion && (
-                          <rect
-                            x={cropRegion.x} y={cropRegion.y}
-                            width={cropRegion.width} height={cropRegion.height}
-                            fill="rgba(34, 197, 94, 0.15)"
-                            stroke="rgb(34, 197, 94)"
-                            strokeWidth={3 / zoom}
-                          />
-                        )}
-                        {optionRegions.map((r, i) => (
-                          <rect
-                            key={i}
-                            x={r.x} y={r.y}
-                            width={r.width} height={r.height}
-                            fill="rgba(168, 85, 247, 0.15)"
-                            stroke="rgb(168, 85, 247)"
-                            strokeWidth={2 / zoom}
-                          />
-                        ))}
-                      </svg>
-                    )}
                   </>
                 ) : (
                   <div className="w-[500px] h-[700px] flex items-center justify-center bg-white text-muted-foreground text-xs">
                     No page data available
                   </div>
                 )}
-                {cropRegion && cropRegion.width > 0 && cropRegion.height > 0 && (
-                  <div
-                    className="absolute border-2 border-primary bg-primary/20 pointer-events-none"
-                    style={{
-                      left: `${(cropRegion.x / (imgRef.current?.naturalWidth || 1)) * 100}%`, 
-                      top: `${(cropRegion.y / (imgRef.current?.naturalHeight || 1)) * 100}%`,
-                      width: `${(cropRegion.width / (imgRef.current?.naturalWidth || 1)) * 100}%`, 
-                      height: `${(cropRegion.height / (imgRef.current?.naturalHeight || 1)) * 100}%`,
-                      borderStyle: 'dashed',
+                {imgRef.current && (
+                  <svg 
+                    className="absolute inset-0 pointer-events-none overflow-visible"
+                    style={{ 
+                      width: imgRef.current.naturalWidth, 
+                      height: imgRef.current.naturalHeight,
+                      transform: `scale(${zoom})`,
+                      transformOrigin: 'top left',
+                      zIndex: 2
                     }}
                   >
-                    <div className="absolute -top-5 left-0 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap">
-                      {subject} · {qType}
-                    </div>
-                    <Button 
-                      size="sm" 
-                      className="absolute left-1/2 -top-12 -translate-x-1/2 bg-green-600 hover:bg-green-700 text-white shadow-lg pointer-events-auto h-8 px-3 text-xs rounded-full flex items-center gap-1.5 whitespace-nowrap"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCrop();
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Confirm Crop
-                    </Button>
-                  </div>
+                    {currentRegion && (
+                      <rect
+                        x={currentRegion.x} y={currentRegion.y}
+                        width={currentRegion.width} height={currentRegion.height}
+                        fill="rgba(59, 130, 246, 0.2)"
+                        stroke="rgb(59, 130, 246)"
+                        strokeWidth={2 / zoom}
+                        strokeDasharray={`${4/zoom} ${2/zoom}`}
+                      />
+                    )}
+                    {cropRegion && (
+                      <rect
+                        x={cropRegion.x} y={cropRegion.y}
+                        width={cropRegion.width} height={cropRegion.height}
+                        fill="rgba(34, 197, 94, 0.15)"
+                        stroke="rgb(34, 197, 94)"
+                        strokeWidth={3 / zoom}
+                      />
+                    )}
+                    {optionRegions.map((r, i) => (
+                      <rect
+                        key={i}
+                        x={r.x} y={r.y}
+                        width={r.width} height={r.height}
+                        fill="rgba(168, 85, 247, 0.15)"
+                        stroke="rgb(168, 85, 247)"
+                        strokeWidth={2 / zoom}
+                      />
+                    ))}
+                  </svg>
                 )}
-                {optionRegions.map((opt, i) => (
-                  <div
-                    key={i}
-                    className="absolute border border-orange-500 bg-orange-500/10 pointer-events-none"
+                {cropRegion && (
+                  <Button 
+                    size="sm" 
+                    className="absolute z-[40] bg-green-600 hover:bg-green-700 text-white shadow-lg pointer-events-auto h-10 px-4 text-sm rounded-full flex items-center gap-1.5 whitespace-nowrap"
                     style={{
-                      left: `${(opt.x / (imgRef.current?.naturalWidth || 1)) * 100}%`, 
-                      top: `${(opt.y / (imgRef.current?.naturalHeight || 1)) * 100}%`,
-                      width: `${(opt.width / (imgRef.current?.naturalWidth || 1)) * 100}%`, 
-                      height: `${(opt.height / (imgRef.current?.naturalHeight || 1)) * 100}%`,
-                      borderStyle: 'dotted',
+                      left: `calc(${(cropRegion.x + cropRegion.width / 2) * zoom}px + ${offset.x}px)`,
+                      top: `calc(${(cropRegion.y) * zoom}px + ${offset.y}px - 50px)`,
+                      transform: 'translateX(-50%)',
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCrop();
                     }}
                   >
-                    <div className="absolute -top-4 left-0 bg-orange-500 text-white text-[8px] px-1 rounded">
-                      Opt {String.fromCharCode(65 + i)}
-                    </div>
-                  </div>
-                ))}
-                {currentRegion && currentRegion.width > 2 && currentRegion.height > 2 && (
-                  <div
-                    className="absolute border border-primary/50 bg-primary/10 pointer-events-none"
-                    style={{
-                      left: `${(currentRegion.x / (imgRef.current?.naturalWidth || 1)) * 100}%`, 
-                      top: `${(currentRegion.y / (imgRef.current?.naturalHeight || 1)) * 100}%`,
-                      width: `${(currentRegion.width / (imgRef.current?.naturalWidth || 1)) * 100}%`, 
-                      height: `${(currentRegion.height / (imgRef.current?.naturalHeight || 1)) * 100}%`,
-                      zIndex: 20
-                    }}
-                  />
+                    <Plus className="w-4 h-4" />
+                    Confirm Crop
+                  </Button>
                 )}
               </div>
             </div>

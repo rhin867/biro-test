@@ -35,6 +35,8 @@ const buildLog = [
   "Support pinch and swipe",
   "Enable pinch-to-zoom and swipe navigation between pages/questions to make manual cropping smooth on Android and small screens.add crop undo /redo,persist zoom and page,show gesture help overlay,improve accessiblity controls",
   "You can see in this screenshot that much different in the quality of given image/pdf from you in the panel of preview and also in manual cropping section that you have blur and not in original page/pdf of uploaded ,pls add that it should give original quality,add keyboard shortcuts,add crop version history,persist crop region,improve area accessibility",
+  "Fixed Manual Crop UI: Removed ghost/fake selection area, implemented true fullscreen mode, and optimized SVG overlay for precision. Improved PDF rendering performance in preview by rendering pages in concurrent batches to keep UI responsive.",
+  "Fixed Daily Hot Question (DHQ): Corrected storage folder paths (hot-questions -> dhq) and added proper bucket upload parameters to fix 'new row violates row-level security' errors for owner image uploads.",
 ].join("\n");
 
 const Index = () => {
