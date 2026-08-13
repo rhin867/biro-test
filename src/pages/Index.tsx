@@ -31,6 +31,7 @@ const buildLog = [
   "Add back button in manual cropping section,add selecting area for cropping button in manual cropping section",
   "Implemented Crop/Pan mode toggle and verified Back button in manual cropping tool.",
   "Fix this thing(add image preview visible in all pages and que like there are only visible 1dt page you see in uploaded screenshot of the biro test,so fix this preview issue and add that all",
+  "Add quixk page thumbnails,enable autosave crop session,add crop valiidation previw",
 ].join("\n");
 
 const Index = () => {
