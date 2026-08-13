@@ -190,51 +190,49 @@ function CreateTestInner() {
       return;
     }
     setIsProcessing(true);
-    toast.info('Processing PDF...');
-    setParseStatus('Initializing worker...');
+    setParseStatus('Initializing...');
     setParseProgress(0);
     setPdfFile(file);
+    
     try {
       const pdfjsLib = await import('pdfjs-dist');
       pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
         'pdfjs-dist/build/pdf.worker.min.mjs',
         import.meta.url
       ).toString();
+      
       const arrayBuffer = await file.arrayBuffer();
       const bufferForText = arrayBuffer.slice(0);
       const bufferForImages = arrayBuffer.slice(0);
       setPdfBuffer(bufferForImages);
       
       const pdf = await pdfjsLib.getDocument({ data: bufferForText }).promise;
+      const totalPages = pdf.numPages;
+      
       let fullText = '';
       setParseStatus('Reading document text...');
-      for (let i = 1; i <= pdf.numPages; i++) {
+      
+      // Step 1: Text extraction (0-30%)
+      for (let i = 1; i <= totalPages; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
         const pageText = textContent.items.map((item: any) => item.str).join(' ');
         fullText += `[Page ${i}]\n${pageText}\n\n`;
-        setParseProgress(Math.round((i / pdf.numPages) * 30));
+        setParseProgress(Math.round((i / totalPages) * 30));
       }
       setPdfText(fullText);
       setTestName(file.name.replace('.pdf', ''));
       
-      setParseStatus('Rendering PDF pages metadata...');
+      // Step 2: Metadata and initial rendering (30-100%)
+      setParseStatus('Rendering pages...');
       const metadata = await renderPDFPagesMetadata(bufferForImages, 2.5);
       
-      // High-performance PDF handling for large files (15-20MB+)
-      // Instead of rendering all pages at once, we use a virtualized rendering strategy.
       const metaPages: PDFPageImage[] = metadata.map((m) => ({
         ...m,
-        imageDataUrl: '', // Rendered on-demand or in background chunks
+        imageDataUrl: '',
       }));
-
-      // Immediately switch to configure step to show the list
-      setStep('configure');
       setPdfPageImages(metaPages);
 
-      // Render pages in chunks to keep UI responsive
-      // Optimized for large PDFs: Only render the first 10 pages immediately
-      // The rest will be rendered as needed or in slower background batches to avoid "Aw, Snap!"
       const renderPage = async (i: number) => {
         try {
           const url = await renderSinglePage(bufferForImages, i + 1, 1.8);
@@ -243,38 +241,30 @@ function CreateTestInner() {
             if (next[i]) next[i] = { ...next[i], imageDataUrl: url };
             return next;
           });
-          setParseProgress(30 + Math.round((i / metaPages.length) * 60));
+          // Update progress based on page rendering (30% to 95%)
+          setParseProgress(30 + Math.round((i / totalPages) * 65));
         } catch (err) {
           console.error(`Failed to render page ${i+1}:`, err);
         }
       };
 
-      // Initial batch: First 10 pages (priority)
-      const initialBatch = [];
-      for (let i = 0; i < Math.min(10, metaPages.length); i++) {
-        initialBatch.push(renderPage(i));
-      }
-      await Promise.all(initialBatch);
-
-      // Remaining pages in slower sequential batches to preserve memory
-      const renderRemaining = async () => {
-        for (let i = 10; i < metaPages.length; i++) {
-          await renderPage(i);
-          // Small delay to let the browser breathe
-          if (i % 5 === 0) await new Promise(r => setTimeout(r, 100));
+      // We wait for ALL pages to render before proceeding, to satisfy the "load everything first" requirement
+      // for smaller PDFs or initial batching for stability.
+      // To prevent Aw Snap, we still batch them but we await the whole process before success.
+      const batchSize = 5;
+      for (let i = 0; i < totalPages; i += batchSize) {
+        const batch = [];
+        for (let j = i; j < Math.min(i + batchSize, totalPages); j++) {
+          batch.push(renderPage(j));
         }
-      };
-      
-      // Don't await remaining, let them load in background
-      renderRemaining();
-
+        await Promise.all(batch);
+        // Small breathing room for GC
+        await new Promise(r => setTimeout(r, 100));
+      }
 
       setParseProgress(100);
       setParseStatus('PDF Ready!');
-      // Explicitly set the pages once more at the end to ensure nothing was missed during chunked rendering
-      setPdfPageImages(metaPages);
-      toast.success(`PDF processed: ${pdf.numPages} pages`);
-
+      toast.success(`PDF fully processed: ${totalPages} pages`);
       setStep('configure');
     } catch (error) {
       console.error('PDF processing error:', error);
