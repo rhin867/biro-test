@@ -113,6 +113,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
 
   const [currentPage, setCurrentPage] = useState(0);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [isCropMode, setIsCropMode] = useState(true);
   const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
   const [currentRegion, setCurrentRegion] = useState<CropRegion | null>(null);
   const [cropRegion, setCropRegion] = useState<CropRegion | null>(null);
@@ -242,9 +243,8 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as any).clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : (e as any).clientY;
 
-    // Pan with multi-touch or drag without shift (and no crop region active)
-    // If not drawing (no shift), we pan
-    if (!e.shiftKey) {
+    // If not in crop mode and not holding shift, we pan
+    if (!isCropMode && !e.shiftKey) {
       setIsPanning(true);
       setPanStart({ x: clientX - offset.x, y: clientY - offset.y });
       setIsDrawing(false);
@@ -567,10 +567,35 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
 
             <div className="flex items-center justify-between mb-1 gap-1 flex-wrap px-2">
               <div className="flex gap-1 items-center">
-                <Button variant="ghost" size="sm" className="h-7 px-2 text-muted-foreground hover:text-foreground" onClick={() => onOpenChange(false)}>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-7 px-2 text-muted-foreground hover:text-foreground" 
+                  onClick={() => onOpenChange(false)}
+                >
                   <ChevronLeft className="h-4 w-4 mr-1" /> Back
                 </Button>
                 <div className="h-4 w-[1px] bg-border mx-1" />
+                
+                <div className="flex border rounded-md overflow-hidden bg-background mr-2">
+                  <Button
+                    variant={isCropMode ? "default" : "ghost"}
+                    size="sm"
+                    className="h-7 px-3 rounded-none text-[10px]"
+                    onClick={() => setIsCropMode(true)}
+                  >
+                    <Crop className="h-3.5 w-3.5 mr-1" /> Crop
+                  </Button>
+                  <Button
+                    variant={!isCropMode ? "default" : "ghost"}
+                    size="sm"
+                    className="h-7 px-3 rounded-none text-[10px]"
+                    onClick={() => setIsCropMode(false)}
+                  >
+                    <ImageIcon className="h-3.5 w-3.5 mr-1" /> Pan
+                  </Button>
+                </div>
+
                 <Button variant="outline" size="sm" className="h-7 px-2" disabled={currentPage === 0}
                         onClick={() => { setCurrentPage(p => p - 1); setCropRegion(null); setIsImgLoaded(false); }}>
                   <ChevronLeft className="h-3.5 w-3.5" />
@@ -644,7 +669,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                   transition: 'opacity 0.2s ease-in-out',
                   minWidth: '100px',
                   minHeight: '100px',
-                  cursor: isPanning ? 'grabbing' : (isDrawing ? 'crosshair' : 'grab')
+                  cursor: isPanning ? 'grabbing' : (isDrawing ? 'crosshair' : (isCropMode ? 'crosshair' : 'grab'))
                 }}
                 onMouseDown={handleStart} onMouseMove={handleMove}
                 onMouseUp={handleEnd} onMouseLeave={handleEnd}
