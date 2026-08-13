@@ -1000,11 +1000,13 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                   <div
                     className="absolute border border-primary/50 bg-primary/10 pointer-events-none"
                     style={{
-                      left: `${(currentRegion.x / (imgRef.current?.naturalWidth || 1)) * 100}%`, 
-                      top: `${(currentRegion.y / (imgRef.current?.naturalHeight || 1)) * 100}%`,
-                      width: `${(currentRegion.width / (imgRef.current?.naturalWidth || 1)) * 100}%`, 
-                      height: `${(currentRegion.height / (imgRef.current?.naturalHeight || 1)) * 100}%`,
-                      zIndex: 20
+                      left: currentRegion.x, 
+                      top: currentRegion.y,
+                      width: currentRegion.width, 
+                      height: currentRegion.height,
+                      transform: `scale(${zoom})`,
+                      transformOrigin: 'top left',
+                      zIndex: 30
                     }}
                   />
                 )}
