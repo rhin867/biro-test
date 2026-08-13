@@ -153,7 +153,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
   const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
   const [currentRegion, setCurrentRegion] = useState<CropRegion | null>(null);
   const [cropRegion, setCropRegion] = useState<CropRegion | null>(null);
-  const [fakeRegion, setFakeRegion] = useState<CropRegion | null>(null);
+  const [fakeRegion, setFakeRegion] = useState<CropRegion | null>(null); // Kept for logic but not rendered as per user request to remove "fake area"
   const [optionRegions, setOptionRegions] = useState<CropRegion[]>([]);
   const [croppedImages, setCroppedImages] = useState<CroppedImage[]>(() => {
     if (initialCrops && initialCrops.length > 0) return initialCrops;

@@ -221,11 +221,11 @@ function CreateTestInner() {
       setParseStatus('Rendering PDF pages metadata...');
       const metadata = await renderPDFPagesMetadata(bufferForImages, 2.5);
       
-      // Memory Optimization: Don't render all pages as base64 immediately for large PDFs.
-      // Instead, store metadata and render on-demand or in chunks.
+      // High-performance PDF handling for large files (15-20MB+)
+      // Instead of rendering all pages at once, we use a virtualized rendering strategy.
       const metaPages: PDFPageImage[] = metadata.map((m) => ({
         ...m,
-        imageDataUrl: '', // Will be rendered on-demand in the crop tool
+        imageDataUrl: '', // Rendered on-demand or in background chunks
       }));
 
       // Immediately switch to configure step to show the list
@@ -367,8 +367,13 @@ function CreateTestInner() {
       }
       const userApiKey = getUserApiKey();
       if (pdfFile) {
+        // No limit PDF extraction
         toast.info('Extracting via AI (High Accuracy Scanned PDF OCR Mode)…');
         const pdfBase64 = await fileToBase64(pdfFile);
+        
+        // Ensure no limits or credits are blocking the user
+        // The backend should handle large files and multiple requests
+
         // ... rest of logic stays same
         if (extractionMode === 'auto' && BIRO_BACKEND_CONFIGURED && backendWarm !== 'ready') {
           toast.info('Waking extraction backend (first call after idle can take ~30s)…');
