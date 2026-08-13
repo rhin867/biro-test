@@ -257,9 +257,16 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
   }, [open, initialCrops]);
   
   useEffect(() => {
-    if (croppedImages.length > 0) {
-      localStorage.setItem('biro_autosave_crops', JSON.stringify(croppedImages));
+    localStorage.setItem('biro_last_page', currentPage.toString());
+    localStorage.setItem('biro_last_zoom', zoom.toString());
+  }, [currentPage, zoom]);
+
+  useEffect(() => {
+    if (historyIndex === -1 && croppedImages.length >= 0) {
+      setHistory([[...croppedImages]]);
+      setHistoryIndex(0);
     }
+    localStorage.setItem('biro_autosave_crops', JSON.stringify(croppedImages));
   }, [croppedImages]);
 
   const getRelativeCoords = useCallback((e: React.MouseEvent | React.TouchEvent | { clientX: number, clientY: number }) => {
