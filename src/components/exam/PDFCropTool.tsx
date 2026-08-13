@@ -384,7 +384,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
       const dy = touchEnd.clientY - touchStartPos.current.y;
       
       // Threshold for swipe: 50px horizontal, less than 30px vertical
-      if (Math.abs(dx) > 70 && Math.abs(dy) < 50) {
+      if (Math.abs(dx) > 70 && Math.abs(dy) < 50 && !isFullscreen) {
         if (dx > 0 && currentPage > 0) {
           setCurrentPage(p => p - 1);
           setIsImgLoaded(false);
