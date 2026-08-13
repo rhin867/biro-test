@@ -281,7 +281,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
       const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
       const delta = dist / lastTouchDist;
       
-      const newZoom = Math.min(4, Math.max(0.5, zoom * delta));
+      const newZoom = Math.min(10, Math.max(0.1, zoom * delta));
       setZoom(newZoom);
       setLastTouchDist(dist);
       return;
@@ -295,7 +295,17 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
       return;
     }
 
-    if (!isDrawing || !cropStart) return;
+    if (!isDrawing || !cropStart) {
+      // Swipe handling: if not drawing/panning and it's a touchmove, we could implement swipe to change pages
+      // But usually in a cropper, we prefer manual page switching or very intentional swiping.
+      // Let's at least ensure smooth panning during single-touch if not in crop mode.
+      if ('touches' in e && e.touches.length === 1 && !isCropMode) {
+        setIsPanning(true);
+        setPanStart({ x: clientX - offset.x, y: clientY - offset.y });
+      }
+      return;
+    }
+    
     const c = getRelativeCoords(e);
     const region = {
       x: Math.min(cropStart.x, c.x), y: Math.min(cropStart.y, c.y),
@@ -304,11 +314,10 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
     
     setCurrentRegion(region);
     
-    // In drawing mode (Shift held), update the temporary selection or the main crop
     if (!e.shiftKey) {
       setCropRegion(region);
     }
-  }, [isDrawing, isPanning, cropStart, getRelativeCoords, lastTouchDist, zoom, panStart]);
+  }, [isDrawing, isPanning, cropStart, getRelativeCoords, lastTouchDist, zoom, panStart, isCropMode, offset]);
 
   const handleEnd = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (isDrawing && cropStart) {
