@@ -838,7 +838,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
               <div
                 className="relative inline-block select-none outline-none focus-within:ring-2 ring-primary/20 bg-white"
                 tabIndex={0}
-                onKeyDown={handleKeyDown}
+                onKeyDown={(e) => handleKeyDown(e.nativeEvent)}
                 style={{ 
                   touchAction: 'none', 
                   transformOrigin: 'top center',
