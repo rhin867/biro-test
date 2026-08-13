@@ -950,11 +950,14 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                   <div
                     className="absolute border-2 border-primary bg-primary/20 pointer-events-none"
                     style={{
-                      left: `${(cropRegion.x / (imgRef.current?.naturalWidth || 1)) * 100}%`, 
-                      top: `${(cropRegion.y / (imgRef.current?.naturalHeight || 1)) * 100}%`,
-                      width: `${(cropRegion.width / (imgRef.current?.naturalWidth || 1)) * 100}%`, 
-                      height: `${(cropRegion.height / (imgRef.current?.naturalHeight || 1)) * 100}%`,
+                      left: cropRegion.x, 
+                      top: cropRegion.y,
+                      width: cropRegion.width, 
+                      height: cropRegion.height,
                       borderStyle: 'dashed',
+                      transform: `scale(${zoom})`,
+                      transformOrigin: 'top left',
+                      zIndex: 20
                     }}
                   >
                     <div className="absolute -top-5 left-0 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap">
