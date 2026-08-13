@@ -118,7 +118,13 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
   const [currentRegion, setCurrentRegion] = useState<CropRegion | null>(null);
   const [cropRegion, setCropRegion] = useState<CropRegion | null>(null);
   const [optionRegions, setOptionRegions] = useState<CropRegion[]>([]);
-  const [croppedImages, setCroppedImages] = useState<CroppedImage[]>(initialCrops || []);
+  const [croppedImages, setCroppedImages] = useState<CroppedImage[]>(() => {
+    if (initialCrops && initialCrops.length > 0) return initialCrops;
+    try {
+      const saved = localStorage.getItem('biro_autosave_crops');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [subject, setSubject] = useState<string>(initialCrops?.[0]?.subject || 'Maths');
   const [section, setSection] = useState<string>(initialCrops?.[0]?.section || 'Section 1');
   const [qType, setQType] = useState<CropQType>(initialCrops?.[0]?.qType || 'MCQ');
