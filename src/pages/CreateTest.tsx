@@ -228,11 +228,28 @@ function CreateTestInner() {
         imageDataUrl: '', // Will be rendered on-demand in the crop tool
       }));
 
-      // Render all pages for preview visibility
-      const pagesToRender = metaPages.length;
-      for (let i = 0; i < pagesToRender; i++) {
-        metaPages[i].imageDataUrl = await renderSinglePage(bufferForImages, i + 1, 1.8);
-        setParseProgress(30 + Math.round((i / pagesToRender) * 60)); // Spend most progress on rendering
+      // Immediately switch to configure step to show the list
+      setStep('configure');
+      setPdfPageImages(metaPages);
+
+      // Render pages in chunks to keep UI responsive
+      const renderPage = async (i: number) => {
+        const url = await renderSinglePage(bufferForImages, i + 1, 1.8);
+        setPdfPageImages(prev => {
+          const next = [...prev];
+          if (next[i]) next[i] = { ...next[i], imageDataUrl: url };
+          return next;
+        });
+        setParseProgress(30 + Math.round((i / metaPages.length) * 60));
+      };
+
+      // Concurrent rendering with a small pool to avoid memory spikes
+      for (let i = 0; i < metaPages.length; i += 3) {
+        const batch = [];
+        for (let j = 0; j < 3 && i + j < metaPages.length; j++) {
+          batch.push(renderPage(i + j));
+        }
+        await Promise.all(batch);
       }
 
 
