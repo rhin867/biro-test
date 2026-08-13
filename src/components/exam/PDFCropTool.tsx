@@ -218,6 +218,12 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
       if (initialCrops && initialCrops.length) setCroppedImages(initialCrops);
     }
   }, [open, initialCrops]);
+  
+  useEffect(() => {
+    if (croppedImages.length > 0) {
+      localStorage.setItem('biro_autosave_crops', JSON.stringify(croppedImages));
+    }
+  }, [croppedImages]);
 
   const getRelativeCoords = useCallback((e: React.MouseEvent | React.TouchEvent | { clientX: number, clientY: number }) => {
     const img = imgRef.current;
