@@ -567,10 +567,35 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
 
             <div className="flex items-center justify-between mb-1 gap-1 flex-wrap px-2">
               <div className="flex gap-1 items-center">
-                <Button variant="ghost" size="sm" className="h-7 px-2 text-muted-foreground hover:text-foreground" onClick={() => onOpenChange(false)}>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-7 px-2 text-muted-foreground hover:text-foreground" 
+                  onClick={() => onOpenChange(false)}
+                >
                   <ChevronLeft className="h-4 w-4 mr-1" /> Back
                 </Button>
                 <div className="h-4 w-[1px] bg-border mx-1" />
+                
+                <div className="flex border rounded-md overflow-hidden bg-background mr-2">
+                  <Button
+                    variant={isCropMode ? "default" : "ghost"}
+                    size="sm"
+                    className="h-7 px-3 rounded-none text-[10px]"
+                    onClick={() => setIsCropMode(true)}
+                  >
+                    <Crop className="h-3.5 w-3.5 mr-1" /> Crop
+                  </Button>
+                  <Button
+                    variant={!isCropMode ? "default" : "ghost"}
+                    size="sm"
+                    className="h-7 px-3 rounded-none text-[10px]"
+                    onClick={() => setIsCropMode(false)}
+                  >
+                    <ImageIcon className="h-3.5 w-3.5 mr-1" /> Pan
+                  </Button>
+                </div>
+
                 <Button variant="outline" size="sm" className="h-7 px-2" disabled={currentPage === 0}
                         onClick={() => { setCurrentPage(p => p - 1); setCropRegion(null); setIsImgLoaded(false); }}>
                   <ChevronLeft className="h-3.5 w-3.5" />
