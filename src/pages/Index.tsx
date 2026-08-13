@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-// Build log: Linear 1-100% upload progress added, full page loading before success implemented, fixed unpkg worker issue to prevent crashes.
+// Build Log: 2026-08-13 07:22 UTC - PDF size limit increased to 25MB, improved memory management to prevent Aw Snap crashes, and added detailed error reporting for PDF processing.
 
 import { useNavigate } from "react-router-dom";
 
