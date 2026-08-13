@@ -325,41 +325,6 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
     }
   }, [isDrawing, isPanning, cropStart, getRelativeCoords, lastTouchDist, zoom, panStart, isCropMode, offset]);
 
-  const touchStartPos = useRef<{ x: number, y: number } | null>(null);
-
-  const handleStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if ('touches' in e && e.touches.length === 2) {
-      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      setLastTouchDist(dist);
-      setIsDrawing(false);
-      setIsPanning(false);
-      return;
-    }
-
-    const clientX = 'touches' in e ? e.touches[0].clientX : (e as any).clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : (e as any).clientY;
-    
-    if ('touches' in e) {
-      touchStartPos.current = { x: clientX, y: clientY };
-    }
-
-    // If not in crop mode and not holding shift, we pan
-    if (!isCropMode && !e.shiftKey) {
-      setIsPanning(true);
-      setPanStart({ x: clientX - offset.x, y: clientY - offset.y });
-      setIsDrawing(false);
-      return;
-    }
-
-    const c = getRelativeCoords(e); 
-    setCropStart(c); 
-    if (!e.shiftKey) {
-      setCropRegion(null); 
-      setOptionRegions([]);
-    }
-    setIsDrawing(true);
-    setIsPanning(false);
-  }, [getRelativeCoords, isCropMode, offset]);
 
   const handleEnd = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     // Swipe detection
