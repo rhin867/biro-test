@@ -1,4 +1,6 @@
 import { useEffect } from "react";
+// Build log: Linear 1-100% upload progress added, full page loading before success implemented, fixed unpkg worker issue to prevent crashes.
+
 import { useNavigate } from "react-router-dom";
 
 /**
