@@ -121,7 +121,7 @@ export function PDFCropTool({
     setPageData(prev => prev.map(p => p.pageNumber === pageNumber ? { ...p, imageDataUrl: dataUrl } : p));
   }, []);
 
-  const displayImage = currentPage ? (highResCache[currentPage.pageNumber] || currentPage.imageDataUrl) : undefined;
+  const displayImage = currentPage && (highResCache[currentPage.pageNumber] || currentPage.imageDataUrl) ? (highResCache[currentPage.pageNumber] || currentPage.imageDataUrl) : undefined;
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
