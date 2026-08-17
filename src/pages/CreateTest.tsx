@@ -87,7 +87,7 @@ export default function CreateTest() {
       toast.success(`Loaded ${meta.length} pages`);
     } catch (error) {
       console.error(error);
-      toast.error('Failed to process PDF');
+      toast.error(`Failed to process PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
