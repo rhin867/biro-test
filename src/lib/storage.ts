@@ -189,6 +189,20 @@ export async function saveTestPdfFile(testId: string, file: File | ArrayBuffer):
 }
 
 export async function loadTestPdfFile(testId: string): Promise<ArrayBuffer | null> {
+  // Try loading from chunks first (new format)
+  const meta = await get(`${STORAGE_KEYS.PDF_PREFIX}${testId}_metadata`);
+  if (meta && meta.chunks) {
+    const buffer = new Uint8Array(meta.totalSize);
+    for (let i = 0; i < meta.chunks; i++) {
+      const chunk = await get(`${STORAGE_KEYS.PDF_PREFIX}${testId}_chunk_${i}`);
+      if (chunk) {
+        buffer.set(new Uint8Array(chunk), i * (1024 * 1024));
+      }
+    }
+    return buffer.buffer;
+  }
+  
+  // Fallback to old single-blob format
   return await get(`${STORAGE_KEYS.PDF_PREFIX}${testId}`) || null;
 }
 
