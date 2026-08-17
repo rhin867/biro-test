@@ -113,13 +113,26 @@ export default function CreateTest() {
     setLoading(true);
     try {
       const testId = generateId();
+      
+      // Save images to binary store and replace with local identifiers for JSON test data
+      const questionImages: Record<string, string> = {};
+      const processedQuestions = extractedQuestions.map(q => {
+        if (q.croppedImageUrl) {
+          questionImages[q.id] = q.croppedImageUrl;
+          // Keep base64 in the object for now if it's small, 
+          // or we can remove it to keep localStorage light.
+          // For now, let's keep it but ensure saveTestQuestionImages handles it.
+        }
+        return q;
+      });
+
       const newTest: Test = {
         id: testId,
         name: testConfig.name,
         createdAt: new Date().toISOString(),
         duration: testConfig.duration,
         totalMarks: testConfig.totalMarks,
-        questions: extractedQuestions,
+        questions: processedQuestions,
         subjects: testConfig.subjects,
         positiveMarking: 4,
         negativeMarking: -1,
@@ -130,6 +143,8 @@ export default function CreateTest() {
         await saveTestPdfFile(testId, file);
       }
       
+      const { saveTestQuestionImages } = await import('@/lib/storage');
+      await saveTestQuestionImages(testId, questionImages);
       saveTest(newTest);
       toast.success('Test created successfully!');
       navigate('/tests');
