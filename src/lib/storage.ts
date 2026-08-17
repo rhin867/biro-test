@@ -216,10 +216,27 @@ export async function loadTestPdfFile(testId: string): Promise<ArrayBuffer | nul
 }
 
 export async function saveTestPdfPageImages(testId: string, images: any[]): Promise<void> {
-  await set(`${STORAGE_KEYS.PAGES_PREFIX}${testId}`, images);
+  const CHUNK_SIZE = 5; // Save in chunks of 5 pages to keep IndexedDB operations manageable
+  const chunks = Math.ceil(images.length / CHUNK_SIZE);
+  
+  for (let i = 0; i < chunks; i++) {
+    const chunk = images.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+    await set(`${STORAGE_KEYS.PAGES_PREFIX}${testId}_chunk_${i}`, chunk);
+  }
+  
+  await set(`${STORAGE_KEYS.PAGES_PREFIX}${testId}_metadata`, { chunks, total: images.length });
 }
 
 export async function loadTestPdfPageImages(testId: string): Promise<any[]> {
+  const meta = await get(`${STORAGE_KEYS.PAGES_PREFIX}${testId}_metadata`);
+  if (meta && meta.chunks) {
+    const allImages = [];
+    for (let i = 0; i < meta.chunks; i++) {
+      const chunk = await get(`${STORAGE_KEYS.PAGES_PREFIX}${testId}_chunk_${i}`);
+      if (chunk) allImages.push(...chunk);
+    }
+    return allImages;
+  }
   return await get(`${STORAGE_KEYS.PAGES_PREFIX}${testId}`) || [];
 }
 

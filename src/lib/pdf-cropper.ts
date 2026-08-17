@@ -3,8 +3,8 @@ import * as pdfjsLib from 'pdfjs-dist';
 // Use local worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
-const MAX_CONCURRENT_PAGES = 3;
-const RENDER_TIMEOUT = 15000; // 15 seconds timeout per page
+const MAX_CONCURRENT_PAGES = 2; // Reduced further for 20MB+ stability
+const RENDER_TIMEOUT = 20000; // 20 seconds timeout per page for large files
 
 export interface PDFPageMetadata {
   pageNumber: number;

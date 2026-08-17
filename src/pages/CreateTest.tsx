@@ -56,19 +56,20 @@ export default function CreateTest() {
       setMetadata(meta);
       setProgress(50);
       
-      // Load first 5 pages for extraction preview in sequence
+      // Load pages sequentially with memory cleanup
       const firstPages = [];
-      const loadCount = Math.min(5, meta.length);
+      const loadCount = Math.min(8, meta.length); // Load a few more for better UX
       for (let i = 1; i <= loadCount; i++) {
         try {
-          const url = await renderSinglePage(selectedFile, i, 1.2);
+          // Use lower scale for initial preview to save memory
+          const url = await renderSinglePage(selectedFile, i, 1.0, 'image/jpeg', 0.5);
           firstPages.push({
             pageNumber: i,
             imageDataUrl: url,
             width: meta[i-1].width,
             height: meta[i-1].height
           });
-          setProgress(50 + (i / loadCount) * 40);
+          setProgress(50 + (i / loadCount) * 45);
         } catch (err) {
           console.error(`Error loading page ${i}:`, err);
         }
