@@ -23,7 +23,7 @@ export function LazyPDFPage({
   const { ref, inView } = useInView({
     triggerOnce: false,
     threshold: 0.1,
-    rootMargin: '200px 0px',
+    rootMargin: '400px 0px',
   });
 
   useEffect(() => {
