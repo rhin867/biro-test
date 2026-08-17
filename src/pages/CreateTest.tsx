@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { saveTest, generateId, saveTestPdfPageImages, saveTestQuestionImages, saveTestPdfFile } from '@/lib/storage';
 import { Test, Question, Subject, QuestionType } from '@/types/exam';
 import { supabase } from '@/integrations/supabase/client';
-import { renderPDFPagesMetadata, renderSinglePage, fileToBase64, PDFPageImage } from '@/lib/pdf-cropper';
+import { renderPDFPagesMetadata, renderSinglePage, fileToBase64, PDFPageImage, revokeObjectURLs } from '@/lib/pdf-cropper';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { PDFCropTool } from '@/components/exam/PDFCropTool';
 import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Crop, RefreshCw, Download, FileUp, Lock, Eye, EyeOff, Pencil, Trash2, ImageIcon } from 'lucide-react';
@@ -254,11 +254,17 @@ function CreateTestInner() {
 
       const renderPage = async (i: number) => {
         try {
-          // Slightly lower scale for preview to save memory on large PDFs
-          const url = await renderSinglePage(bufferForImages, i + 1, 1.5);
+          // Optimized scale for preview visibility vs memory pressure
+          const url = await renderSinglePage(bufferForImages, i + 1, 1.2);
           setPdfPageImages(prev => {
             const next = [...prev];
-            if (next[i]) next[i] = { ...next[i], imageDataUrl: url };
+            if (next[i]) {
+              // Revoke old URL if it exists to prevent memory leaks
+              if (next[i].imageDataUrl && next[i].imageDataUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(next[i].imageDataUrl);
+              }
+              next[i] = { ...next[i], imageDataUrl: url };
+            }
             return next;
           });
           setParseProgress(30 + Math.round((i / totalPages) * 70));
@@ -267,11 +273,13 @@ function CreateTestInner() {
         }
       };
 
-      // Linear sequential rendering for stability without heavy virtualization
-      for (let i = 0; i < totalPages; i++) {
-        await renderPage(i);
-        // Small delay to prevent UI thread lock but keep it fast
-        if (i % 2 === 0) await new Promise(r => setTimeout(r, 20));
+      // Batch sequential rendering for stability and performance
+      const BATCH_SIZE = 5;
+      for (let i = 0; i < totalPages; i += BATCH_SIZE) {
+        const batch = Array.from({ length: Math.min(BATCH_SIZE, totalPages - i) }, (_, k) => i + k);
+        await Promise.all(batch.map(pageIdx => renderPage(pageIdx)));
+        // Explicit memory signal and UI yield
+        await new Promise(r => setTimeout(r, 100));
       }
 
       setParseProgress(100);
@@ -285,6 +293,8 @@ function CreateTestInner() {
       setParseStatus(`Error: ${errorMsg}`);
     } finally {
       setIsProcessing(false);
+      // Final memory cleanup signal
+      revokeObjectURLs();
     }
   }, []);
   const extractQuestions = useCallback(async () => {

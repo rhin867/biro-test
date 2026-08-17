@@ -21,6 +21,15 @@ export interface PDFPageImage {
   height: number;
 }
 
+const activeObjectURLs = new Set<string>();
+
+export function revokeObjectURLs() {
+  activeObjectURLs.forEach(url => {
+    try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ }
+  });
+  activeObjectURLs.clear();
+}
+
 /**
  * Render all PDF pages metadata for large files.
  */
@@ -66,7 +75,12 @@ export async function renderSinglePage(
     viewport: viewport,
   }).promise;
 
-  return canvas.toDataURL('image/jpeg', 0.95);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+  if (!blob) return canvas.toDataURL('image/jpeg', 0.9);
+  
+  const url = URL.createObjectURL(blob);
+  activeObjectURLs.add(url);
+  return url;
 }
 
 /**

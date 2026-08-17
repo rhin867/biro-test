@@ -383,7 +383,7 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <Card className="border-primary/20 bg-primary/5">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center justify-between">
