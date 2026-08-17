@@ -64,9 +64,8 @@ export default function MyTests() {
     doSync();
   }, []);
 
-  const handleDeleteTest = (testId: string) => {
-
-    deleteTest(testId);
+  const handleDeleteTest = async (testId: string) => {
+    await deleteTest(testId);
     setTests(getTests());
     toast.success('Test deleted');
   };
