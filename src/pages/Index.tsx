@@ -39,7 +39,7 @@ export default function Index() {
           <Card className="bg-card/50 border-primary/10 hover:border-primary/30 transition-all group">
             <CardHeader>
               <Zap className="h-8 w-8 text-primary mb-2 group-hover:scale-110 transition-transform" />
-              <CardTitle className="text-lg">Smart Extraction</h10:
+              <CardTitle className="text-lg">Smart Extraction</CardTitle>
               <CardDescription>Convert any PDF question paper into a digital CBT test in seconds.</CardDescription>
             </CardHeader>
           </Card>
