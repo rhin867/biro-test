@@ -151,19 +151,46 @@ export function PDFCropTool({
         const page = pageImages.find(p => p.pageNumber === crop.pageNumber);
         if (!page) continue;
 
-        // Use canvas to extract the cropped area
+        // Use canvas to extract the cropped area with better quality
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         const img = new Image();
+        img.crossOrigin = "anonymous";
         img.src = page.imageDataUrl;
         
-        await new Promise(resolve => img.onload = resolve);
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = () => reject(new Error(`Failed to load page ${page.pageNumber}`));
+        });
         
-        canvas.width = crop.width;
-        canvas.height = crop.height;
-        ctx?.drawImage(img, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
+        // Scale factor if any (we use the original page dimensions)
+        const scaleX = img.naturalWidth / page.width;
+        const scaleY = img.naturalHeight / page.height;
+
+        canvas.width = crop.width * scaleX;
+        canvas.height = crop.height * scaleY;
         
-        results[crop.id] = canvas.toDataURL('image/jpeg', 0.9);
+        if (ctx) {
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(
+            img, 
+            crop.x * scaleX, 
+            crop.y * scaleY, 
+            crop.width * scaleX, 
+            crop.height * scaleY, 
+            0, 
+            0, 
+            canvas.width, 
+            canvas.height
+          );
+        }
+        
+        results[crop.id] = canvas.toDataURL('image/jpeg', 0.95);
+        
+        // Cleanup canvas
+        canvas.width = 0;
+        canvas.height = 0;
       }
       
       onSaveCrops(results);

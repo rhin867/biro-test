@@ -863,7 +863,17 @@ export default function AdminPanel() {
                             <Badge variant="outline" className="text-[9px] uppercase">{q.type}</Badge>
                             <span className="text-[10px] text-muted-foreground">{new Date(q.created_at).toLocaleDateString()}</span>
                           </div>
-                          <div className="text-xs line-clamp-2 truncate">{q.content}</div>
+                          <div className="text-xs line-clamp-2 truncate mb-2">{q.content}</div>
+                          {q.image_url && (
+                            <div className="mt-2 relative w-20 h-20 rounded border overflow-hidden bg-white">
+                              <img 
+                                src={q.image_url} 
+                                alt="DHQ Preview" 
+                                className="w-full h-full object-contain"
+                                crossOrigin="anonymous"
+                              />
+                            </div>
+                          )}
                         </div>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => handleEditQuestion(q)}>
