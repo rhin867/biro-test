@@ -57,9 +57,18 @@ export async function deleteTest(id: string): Promise<void> {
   setLocalItem(STORAGE_KEYS.TESTS, tests);
   
   // Clean up large binary data
-  await del(`${STORAGE_KEYS.PDF_PREFIX}${id}`);
-  await del(`${STORAGE_KEYS.PAGES_PREFIX}${id}`);
-  await del(`${STORAGE_KEYS.QUES_IMAGES_PREFIX}${id}`);
+  const allKeys = await keys();
+  const prefixes = [
+    `${STORAGE_KEYS.PDF_PREFIX}${id}`,
+    `${STORAGE_KEYS.PAGES_PREFIX}${id}`,
+    `${STORAGE_KEYS.QUES_IMAGES_PREFIX}${id}`
+  ];
+  
+  for (const key of allKeys) {
+    if (typeof key === 'string' && prefixes.some(p => key.startsWith(p))) {
+      await del(key);
+    }
+  }
 }
 
 // Attempts
