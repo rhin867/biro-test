@@ -99,8 +99,11 @@ export function PDFCropTool({
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
+  const currentPage = pageData[currentPageIndex];
+
   useEffect(() => {
-    const pageNum = pageData[currentPageIndex].pageNumber;
+    if (!currentPage) return;
+    const pageNum = currentPage.pageNumber;
     if (!highResCache[pageNum]) {
       setFullPageLoading(true);
       renderSinglePage(pdfFile, pageNum, 1.8, 'image/jpeg', 0.8)
@@ -112,14 +115,13 @@ export function PDFCropTool({
         })
         .finally(() => setFullPageLoading(false));
     }
-  }, [currentPageIndex, pageData, pdfFile, highResCache]);
+  }, [currentPage, pdfFile, highResCache]);
 
   const handlePageThumbnailLoaded = useCallback((pageNumber: number, dataUrl: string) => {
     setPageData(prev => prev.map(p => p.pageNumber === pageNumber ? { ...p, imageDataUrl: dataUrl } : p));
   }, []);
 
-  const currentPage = pageData[currentPageIndex];
-  const displayImage = highResCache[currentPage.pageNumber] || currentPage.imageDataUrl;
+  const displayImage = currentPage ? (highResCache[currentPage.pageNumber] || currentPage.imageDataUrl) : undefined;
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
