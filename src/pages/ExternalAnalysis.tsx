@@ -71,7 +71,11 @@ export default function ExternalAnalysis() {
     toast.info('Processing test and answers (20-40 seconds)...');
 
     try {
-      const testBase64 = await fileToBase64(testFile);
+      const testBase64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(testFile);
+      });
       const mimeType = testFile.type || 'application/pdf';
 
       const { data: testData, error: testError } = await supabase.functions.invoke('extract-questions', {
@@ -82,7 +86,11 @@ export default function ExternalAnalysis() {
       // Extract answer key
       let answerKey: Record<string, string> = {};
       if (ansFile) {
-        const ansBase64 = await fileToBase64(ansFile);
+        const ansBase64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(ansFile);
+        });
         const { data: ansData } = await supabase.functions.invoke('extract-questions', {
           body: {
             pdfBase64: ansBase64, mimeType: ansFile.type,
@@ -97,7 +105,11 @@ export default function ExternalAnalysis() {
       
       if (userAnswerFile) {
         // Extract answers from uploaded image/PDF
-        const uaBase64 = await fileToBase64(userAnswerFile);
+        const uaBase64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(userAnswerFile);
+        });
         const { data: uaData } = await supabase.functions.invoke('extract-questions', {
           body: {
             pdfBase64: uaBase64, mimeType: userAnswerFile.type,

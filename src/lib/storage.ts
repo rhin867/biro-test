@@ -1,4 +1,4 @@
-import { Test, TestAttempt, TestResult, MistakeBookEntry, WeeklyPlan, AnswerKey } from '@/types/exam';
+import { Test, TestAttempt, TestResult, MistakeBookEntry, WeeklyPlan, AnswerKey, ExamStore } from '@/types/exam';
 
 const STORAGE_KEYS = {
   TESTS: 'jee_cbt_tests',
@@ -105,11 +105,13 @@ export function removeFromMistakeBook(id: string): void {
   setItem(STORAGE_KEYS.MISTAKE_BOOK, book);
 }
 
-export function updateMistakeBookEntry(entry: MistakeBookEntry): void {
+export function updateMistakeBookEntry(id: string, updates: Partial<MistakeBookEntry>): void {
   const book = getMistakeBook();
-  const idx = book.findIndex(e => e.id === entry.id);
-  if (idx >= 0) book[idx] = entry;
-  setItem(STORAGE_KEYS.MISTAKE_BOOK, book);
+  const idx = book.findIndex(e => e.id === id);
+  if (idx >= 0) {
+    book[idx] = { ...book[idx], ...updates };
+    setItem(STORAGE_KEYS.MISTAKE_BOOK, book);
+  }
 }
 
 // Weekly Plans
@@ -139,12 +141,12 @@ export function generateShareCode(testId: string): string {
 }
 
 // PDF Stubs
-export async function saveTestPdfPageImages() {}
-export async function loadTestPdfPageImages() { return []; }
-export async function saveTestQuestionImages() {}
-export async function loadTestQuestionImages() { return {}; }
-export async function saveTestPdfFile() {}
-export async function loadTestPdfFile() { return null; }
+export async function saveTestPdfPageImages(testId: string, images: any[]) {}
+export async function loadTestPdfPageImages(testId: string) { return []; }
+export async function saveTestQuestionImages(testId: string, images: Record<string, string>) {}
+export async function loadTestQuestionImages(testId: string) { return {}; }
+export async function saveTestPdfFile(testId: string, file: File | ArrayBuffer) {}
+export async function loadTestPdfFile(testId: string) { return null; }
 
 export function updateTestAnswerKey(testId: string, answerKey: AnswerKey): void {
   const tests = getTests();
@@ -155,14 +157,26 @@ export function updateTestAnswerKey(testId: string, answerKey: AnswerKey): void 
   }
 }
 
-export function exportStore() {
-  return JSON.stringify(localStorage);
+export function exportStore(): string {
+  const data: ExamStore = {
+    tests: getTests(),
+    attempts: getAttempts(),
+    results: getResults(),
+    mistakeBook: getMistakeBook(),
+    weeklyPlans: getItem<WeeklyPlan[]>(STORAGE_KEYS.WEEKLY_PLANS, []),
+    currentAttempt: getCurrentAttempt(),
+  };
+  return JSON.stringify(data);
 }
 
-export function importStore(data: string) {
+export function importStore(data: ExamStore | string) {
   try {
-    const parsed = JSON.parse(data);
-    Object.keys(parsed).forEach(k => localStorage.setItem(k, parsed[k]));
+    const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+    if (parsed.tests) setItem(STORAGE_KEYS.TESTS, parsed.tests);
+    if (parsed.attempts) setItem(STORAGE_KEYS.ATTEMPTS, parsed.attempts);
+    if (parsed.results) setItem(STORAGE_KEYS.RESULTS, parsed.results);
+    if (parsed.mistakeBook) setItem(STORAGE_KEYS.MISTAKE_BOOK, parsed.mistakeBook);
+    if (parsed.weeklyPlans) setItem(STORAGE_KEYS.WEEKLY_PLANS, parsed.weeklyPlans);
   } catch (e) {}
 }
 
