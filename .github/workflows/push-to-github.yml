@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - 'edit/**'
   workflow_dispatch:
 
 jobs:
