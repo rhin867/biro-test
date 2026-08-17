@@ -99,7 +99,7 @@ export function PDFCropTool({
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
-  const currentPage = pageData[currentPageIndex];
+  const currentPage = pageData && currentPageIndex >= 0 && currentPageIndex < pageData.length ? pageData[currentPageIndex] : null;
 
   useEffect(() => {
     if (!currentPage) return;
@@ -138,8 +138,10 @@ export function PDFCropTool({
     const x = (e.clientX - rect.left) / zoom;
     const y = (e.clientY - rect.top) / zoom;
 
+    if (!currentPage) return;
+
     setCurrentCrop({
-      pageNumber: currentPage!.pageNumber,
+      pageNumber: currentPage.pageNumber,
       x,
       y,
       width: 0,
@@ -171,14 +173,14 @@ export function PDFCropTool({
 
   const handleMouseUp = () => {
     setIsPanning(false);
-    if (!currentCrop || !currentCrop.width || !currentCrop.height) {
+    if (!currentCrop || !currentCrop.width || !currentCrop.height || !currentPage) {
       setCurrentCrop(null);
       return;
     }
 
     const newCrop: CropArea = {
       id: Math.random().toString(36).substr(2, 9),
-      pageNumber: currentPage!.pageNumber,
+      pageNumber: currentPage.pageNumber,
       x: currentCrop.x || 0,
       y: currentCrop.y || 0,
       width: currentCrop.width || 0,

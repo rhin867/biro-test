@@ -77,7 +77,7 @@ const renderSemaphore = new Semaphore(MAX_CONCURRENT_PAGES);
 
 // High-speed single page rendering with aggressive cleanup
 export async function renderSinglePage(
-  pdfFile: File | ArrayBuffer,
+  pdfFile: File | ArrayBuffer | string,
   pageNumber: number,
   scale = 1.5,
   format: 'image/jpeg' | 'image/png' = 'image/jpeg',
@@ -89,7 +89,8 @@ export async function renderSinglePage(
   let canvas: HTMLCanvasElement | null = null;
   
   try {
-    const data = pdfFile instanceof File ? await pdfFile.arrayBuffer() : pdfFile;
+    const data = pdfFile instanceof File ? await pdfFile.arrayBuffer() : 
+                 (typeof pdfFile === 'string' ? await (await fetch(pdfFile)).arrayBuffer() : pdfFile);
     loadingTask = pdfjsLib.getDocument({ 
       data,
       cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
