@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { 
   FileUp, Loader2, Plus, Trash2, LayoutGrid, List, 
-  Settings2, AlertCircle, CheckCircle2, Info
+  Settings2, AlertCircle, CheckCircle2, Info, X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { renderPDFPagesMetadata, renderSinglePage } from '@/lib/pdf-cropper';
