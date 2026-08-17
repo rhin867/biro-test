@@ -208,8 +208,9 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
           
           const isMobile = window.innerWidth < 768;
           // Scale dynamically based on device and zoom to prevent memory pressure
-          const baseScale = isMobile ? 1.4 : 1.8;
-          const renderScale = Math.min(2.5, baseScale * zoom);
+          const baseScale = isMobile ? 1.5 : 2.0;
+          const renderScale = baseScale; // Keep fixed high resolution for crop tool quality
+
           
           const viewport = pageObj.getViewport({ scale: renderScale });
           

@@ -267,16 +267,11 @@ function CreateTestInner() {
         }
       };
 
-      // Concurrent batch rendering with small delay for GC
-      const batchSize = window.innerWidth < 768 ? 2 : 4;
-      for (let i = 0; i < totalPages; i += batchSize) {
-        const batch = [];
-        for (let j = i; j < Math.min(i + batchSize, totalPages); j++) {
-          batch.push(renderPage(j));
-        }
-        await Promise.all(batch);
-        // Breathing room for Garbage Collection to prevent Aw Snap
-        await new Promise(r => setTimeout(r, 150));
+      // Linear sequential rendering for stability without heavy virtualization
+      for (let i = 0; i < totalPages; i++) {
+        await renderPage(i);
+        // Small delay to prevent UI thread lock but keep it fast
+        if (i % 2 === 0) await new Promise(r => setTimeout(r, 20));
       }
 
       setParseProgress(100);
