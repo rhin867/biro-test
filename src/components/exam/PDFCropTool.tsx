@@ -83,7 +83,7 @@ export function PDFCropTool({
 }: PDFCropToolProps) {
   const [pageData, setPageData] = useState(initialPageImages);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(0.8);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isCropMode, setIsCropMode] = useState(true);
   const [crops, setCrops] = useState<CropArea[]>([]);
@@ -92,6 +92,9 @@ export function PDFCropTool({
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [fullPageLoading, setFullPageLoading] = useState(false);
   const [highResCache, setHighResCache] = useState<Record<number, string>>({});
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
 
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -119,7 +122,15 @@ export function PDFCropTool({
   const displayImage = highResCache[currentPage.pageNumber] || currentPage.imageDataUrl;
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (!isCropMode || !imageRef.current) return;
+    if (e.button !== 0) return;
+    
+    if (!isCropMode) {
+      setIsPanning(true);
+      setLastMousePos({ x: e.clientX, y: e.clientY });
+      return;
+    }
+
+    if (!imageRef.current) return;
 
     const rect = imageRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / zoom;
@@ -135,6 +146,14 @@ export function PDFCropTool({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (isPanning) {
+      const dx = e.clientX - lastMousePos.x;
+      const dy = e.clientY - lastMousePos.y;
+      setPanPosition(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+      setLastMousePos({ x: e.clientX, y: e.clientY });
+      return;
+    }
+
     if (!currentCrop || !imageRef.current) return;
 
     const rect = imageRef.current.getBoundingClientRect();
@@ -149,6 +168,7 @@ export function PDFCropTool({
   };
 
   const handleMouseUp = () => {
+    setIsPanning(false);
     if (!currentCrop || !currentCrop.width || !currentCrop.height) {
       setCurrentCrop(null);
       return;
@@ -324,14 +344,17 @@ export function PDFCropTool({
 
       <div className="flex-1 flex gap-4 overflow-hidden">
         {/* Page Sidebar */}
-        <div className="w-20 md:w-48 overflow-y-auto border rounded-lg bg-card p-2 hidden sm:block">
+        <div className="w-16 md:w-32 overflow-y-auto border rounded-lg bg-card p-1 hidden sm:block">
           {pageData.map((page, idx) => (
             <PDFPageItem
               key={page.pageNumber}
               page={page}
               pdfFile={pdfFile}
               isActive={currentPageIndex === idx}
-              onClick={() => setCurrentPageIndex(idx)}
+              onClick={() => {
+                setCurrentPageIndex(idx);
+                setPanPosition({ x: 0, y: 0 });
+              }}
               onPageLoaded={handlePageThumbnailLoaded}
             />
           ))}
@@ -343,8 +366,14 @@ export function PDFCropTool({
             <Button variant="secondary" size="icon" onClick={() => setZoom(z => Math.min(z + 0.2, 4))}>
               <ZoomIn className="h-4 w-4" />
             </Button>
-            <Button variant="secondary" size="icon" onClick={() => setZoom(z => Math.max(z - 0.2, 0.5))}>
+            <Button variant="secondary" size="icon" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}>
               <ZoomOut className="h-4 w-4" />
+            </Button>
+            <Button variant="secondary" size="icon" onClick={() => {
+              setZoom(0.8);
+              setPanPosition({ x: 0, y: 0 });
+            }}>
+              <RotateCcw className="h-4 w-4" />
             </Button>
             <Button variant="secondary" size="icon" onClick={() => setIsFullScreen(!isFullScreen)}>
               {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
@@ -354,13 +383,22 @@ export function PDFCropTool({
           <div 
             ref={containerRef}
             className={cn(
-              "flex-1 overflow-auto p-8 flex items-center justify-center scrollbar-hide",
+              "flex-1 overflow-hidden p-8 flex items-center justify-center relative",
               isCropMode ? "cursor-crosshair" : "cursor-grab active:cursor-grabbing"
             )}
+            onWheel={(e) => {
+              if (e.ctrlKey) {
+                e.preventDefault();
+                setZoom(z => Math.max(0.2, Math.min(4, z - e.deltaY * 0.005)));
+              }
+            }}
           >
             <div 
-              className="relative shadow-2xl transition-transform duration-200 ease-out origin-center"
-              style={{ transform: `scale(${zoom})` }}
+              className="relative shadow-2xl transition-transform duration-100 ease-out origin-center"
+              style={{ 
+                transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoom})`,
+                touchAction: 'none'
+              }}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}

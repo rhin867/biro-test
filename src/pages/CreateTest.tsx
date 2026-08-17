@@ -56,25 +56,33 @@ export default function CreateTest() {
       setMetadata(meta);
       setProgress(50);
       
-      // Load pages sequentially with memory cleanup
+      // Load first 15 pages for "immediate" preview feel
       const firstPages = [];
-      const loadCount = Math.min(8, meta.length); // Load a few more for better UX
-      for (let i = 1; i <= loadCount; i++) {
-        try {
-          // Use lower scale for initial preview to save memory
-          const url = await renderSinglePage(selectedFile, i, 1.0, 'image/jpeg', 0.5);
-          firstPages.push({
-            pageNumber: i,
-            imageDataUrl: url,
-            width: meta[i-1].width,
-            height: meta[i-1].height
-          });
-          setProgress(50 + (i / loadCount) * 45);
-        } catch (err) {
-          console.error(`Error loading page ${i}:`, err);
+      const loadCount = Math.min(15, meta.length); 
+      
+      // Load in small concurrent batches for speed without crashing
+      const batchSize = 3;
+      for (let i = 0; i < loadCount; i += batchSize) {
+        const batch = [];
+        for (let j = 0; j < batchSize && (i + j) < loadCount; j++) {
+          const pageNum = i + j + 1;
+          batch.push(
+            renderSinglePage(selectedFile, pageNum, 1.2, 'image/jpeg', 0.6)
+              .then(url => ({
+                pageNumber: pageNum,
+                imageDataUrl: url,
+                width: meta[pageNum - 1].width,
+                height: meta[pageNum - 1].height
+              }))
+          );
         }
+        const results = await Promise.all(batch);
+        firstPages.push(...results);
+        setProgress(50 + ((i + batchSize) / loadCount) * 50);
+        
+        // Update state as we go for perceived speed
+        setPageImages([...firstPages]);
       }
-      setPageImages(firstPages);
       setProgress(100);
       toast.success(`Loaded ${meta.length} pages`);
     } catch (error) {
@@ -257,21 +265,16 @@ export default function CreateTest() {
                   <CardDescription>{metadata.length} pages total</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    {metadata.slice(0, 12).map((p) => (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    {metadata.map((p) => (
                       <LazyPDFPage 
                         key={p.pageNumber}
                         pdfFile={file}
                         pageNumber={p.pageNumber}
-                        className="w-full"
+                        className="w-full border border-primary/10 rounded overflow-hidden hover:border-primary/50 transition-colors"
                       />
                     ))}
                   </div>
-                  {metadata.length > 12 && (
-                    <p className="text-center text-sm text-muted-foreground py-4">
-                      And {metadata.length - 12} more pages...
-                    </p>
-                  )}
                 </CardContent>
               </Card>
             </div>
