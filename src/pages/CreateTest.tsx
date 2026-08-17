@@ -56,18 +56,22 @@ export default function CreateTest() {
       setMetadata(meta);
       setProgress(50);
       
-      // Pre-load first 5 pages for extraction preview
+      // Load first 5 pages for extraction preview in sequence
       const firstPages = [];
       const loadCount = Math.min(5, meta.length);
       for (let i = 1; i <= loadCount; i++) {
-        const url = await renderSinglePage(selectedFile, i);
-        firstPages.push({
-          pageNumber: i,
-          imageDataUrl: url,
-          width: meta[i-1].width,
-          height: meta[i-1].height
-        });
-        setProgress(50 + (i / loadCount) * 40);
+        try {
+          const url = await renderSinglePage(selectedFile, i, 1.2);
+          firstPages.push({
+            pageNumber: i,
+            imageDataUrl: url,
+            width: meta[i-1].width,
+            height: meta[i-1].height
+          });
+          setProgress(50 + (i / loadCount) * 40);
+        } catch (err) {
+          console.error(`Error loading page ${i}:`, err);
+        }
       }
       setPageImages(firstPages);
       setProgress(100);
