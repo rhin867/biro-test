@@ -60,6 +60,7 @@ export async function renderSinglePage(
   
   await page.render({
     canvasContext: context,
+    canvas: canvas,
     viewport: viewport,
     intent: 'print'
   }).promise;
@@ -70,7 +71,7 @@ export async function renderSinglePage(
   canvas.width = 0;
   canvas.height = 0;
   page.cleanup();
-  await pdfDoc.destroy();
+  await loadingTask.destroy();
   
   return imageDataUrl;
 }
