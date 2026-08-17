@@ -139,7 +139,7 @@ export function PDFCropTool({
     const y = (e.clientY - rect.top) / zoom;
 
     setCurrentCrop({
-      pageNumber: currentPage.pageNumber,
+      pageNumber: currentPage!.pageNumber,
       x,
       y,
       width: 0,
@@ -178,7 +178,7 @@ export function PDFCropTool({
 
     const newCrop: CropArea = {
       id: Math.random().toString(36).substr(2, 9),
-      pageNumber: currentPage.pageNumber,
+      pageNumber: currentPage!.pageNumber,
       x: currentCrop.x || 0,
       y: currentCrop.y || 0,
       width: currentCrop.width || 0,
@@ -426,7 +426,7 @@ export function PDFCropTool({
               )}
 
               {/* Render Existing Crops */}
-              {crops.filter(c => c.pageNumber === currentPage.pageNumber).map(crop => (
+              {crops.filter(c => c.pageNumber === currentPage?.pageNumber).map(crop => (
                 <div
                   key={crop.id}
                   className="absolute border-2 border-primary bg-primary/10 group"
