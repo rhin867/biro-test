@@ -20,15 +20,11 @@ jobs:
       - name: Push to GitHub
         run: |
           if [ -z "$GH_REPO_URL" ]; then
-            echo "::error::GH_REPO_URL secret is missing. Add it to GitHub Settings > Secrets > Actions."
-            echo "Format: https://YOUR_TOKEN@github.com/rhin867/biro-test.git"
+            echo "::error::GH_REPO_URL secret is missing in Lovable settings."
             exit 1
           fi
           
-          echo "Setting up remote..."
           git remote add target "$GH_REPO_URL"
-          
-          echo "Pushing current branch: ${GITHUB_REF_NAME}..."
           git push target "HEAD:main" --force
         env:
           GH_REPO_URL: ${{ secrets.GH_REPO_URL }}
