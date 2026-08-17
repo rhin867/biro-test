@@ -320,22 +320,22 @@ export default function AdminPanel() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("Image too large (max 2MB)");
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image too large (max 5MB)");
       return;
     }
 
     setIsUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-      const filePath = `dhq/${fileName}`;
+      const fileName = `dhq-${Date.now()}.${fileExt}`;
+      const filePath = `hot-questions/${fileName}`;
 
       const { data, error: uploadError } = await supabase.storage
         .from('biro-test-images')
         .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
+          cacheControl: '0',
+          upsert: true
         });
 
       if (uploadError) throw uploadError;
@@ -344,11 +344,11 @@ export default function AdminPanel() {
         .from('biro-test-images')
         .getPublicUrl(filePath);
 
-      setHotQuestionImageUrl(publicUrl);
+      setHotQuestionImageUrl(`${publicUrl}?t=${Date.now()}`);
       toast.success("Image uploaded!");
     } catch (error: any) {
       console.error('Upload error:', error);
-      toast.error("Failed to upload image: " + error.message);
+      toast.error("Upload failed: " + error.message);
     } finally {
       setIsUploading(false);
     }
@@ -788,50 +788,19 @@ export default function AdminPanel() {
                     onChange={e => setHotQuestionImageUrl(e.target.value || null)} 
                     placeholder="https://example.com/question.png"
                   />
-                  <Button variant="outline" type="button" className="flex-1 gap-2" disabled={isUploading} onClick={() => {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = 'image/*';
-                    input.onchange = async (e) => {
-                      const file = (e.target as HTMLInputElement).files?.[0];
-                      if (file) {
-                        if (file.size > 2 * 1024 * 1024) {
-                          toast.error("Image too large (max 2MB)");
-                          return;
-                        }
-                        
-                        setIsUploading(true);
-                        toast.info('Uploading image...');
-                        try {
-                          const fileExt = file.name.split('.').pop();
-                          const fileName = `hot-q-${Date.now()}.${fileExt}`;
-                          const filePath = `hot-questions/${fileName}`;
-                          
-                          const { data, error } = await supabase.storage
-                            .from('biro-test-images')
-                            .upload(filePath, file, {
-                              cacheControl: '0', 
-                              upsert: true
-                            });
-                          
-                          if (error) throw error;
-                          
-                          const { data: { publicUrl } } = supabase.storage
-                            .from('biro-test-images')
-                            .getPublicUrl(filePath);
-                          
-                          setHotQuestionImageUrl(`${publicUrl}?t=${Date.now()}`);
-                          toast.success('Image uploaded!');
-                        } catch (err: any) {
-                          console.error('Upload error details:', err);
-                          toast.error('Upload failed: ' + err.message);
-                        } finally {
-                          setIsUploading(false);
-                        }
-                      }
-                    };
-                    input.click();
-                  }}>
+                  <Button 
+                    variant="outline" 
+                    type="button" 
+                    className="flex-1 gap-2" 
+                    disabled={isUploading} 
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.onchange = (e) => handleImageUpload(e as any);
+                      input.click();
+                    }}
+                  >
                     {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
                     {hotQuestionImageUrl ? 'Change Image' : 'Upload Image'}
                   </Button>
@@ -894,7 +863,17 @@ export default function AdminPanel() {
                             <Badge variant="outline" className="text-[9px] uppercase">{q.type}</Badge>
                             <span className="text-[10px] text-muted-foreground">{new Date(q.created_at).toLocaleDateString()}</span>
                           </div>
-                          <div className="text-xs line-clamp-2 truncate">{q.content}</div>
+                          <div className="text-xs line-clamp-2 truncate mb-2">{q.content}</div>
+                          {q.image_url && (
+                            <div className="mt-2 relative w-20 h-20 rounded border overflow-hidden bg-white">
+                              <img 
+                                src={q.image_url} 
+                                alt="DHQ Preview" 
+                                className="w-full h-full object-contain"
+                                crossOrigin="anonymous"
+                              />
+                            </div>
+                          )}
                         </div>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => handleEditQuestion(q)}>

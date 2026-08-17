@@ -138,11 +138,27 @@ export default function ExamInterface() {
 
       if (pages.length || Object.keys(questionImages).length) {
 
-        setTest((current) => current?.id === testId ? {
-          ...current,
-          pdfPageImages: pages,
-          questions: current.questions.map((q) => questionImages[q.id] ? { ...q, croppedImageUrl: questionImages[q.id] } : q),
-        } : current);
+        setTest((current) => {
+          if (!current || current.id !== testId) return current;
+          
+          const updatedQuestions = current.questions.map((q) => {
+            const croppedUrl = questionImages[q.id];
+            if (croppedUrl) {
+              return { 
+                ...q, 
+                croppedImageUrl: croppedUrl,
+                hasDiagram: true // Ensure flag is set if we have a crop
+              };
+            }
+            return q;
+          });
+
+          return {
+            ...current,
+            pdfPageImages: pages,
+            questions: updatedQuestions,
+          };
+        });
       }
 
       // Load the original PDF blob for the "View Original PDF" viewer.
