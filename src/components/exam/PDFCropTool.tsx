@@ -83,7 +83,7 @@ export function PDFCropTool({
 }: PDFCropToolProps) {
   const [pageData, setPageData] = useState(initialPageImages);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(0.8);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isCropMode, setIsCropMode] = useState(true);
   const [crops, setCrops] = useState<CropArea[]>([]);
@@ -92,6 +92,9 @@ export function PDFCropTool({
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [fullPageLoading, setFullPageLoading] = useState(false);
   const [highResCache, setHighResCache] = useState<Record<number, string>>({});
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
 
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -354,13 +357,22 @@ export function PDFCropTool({
           <div 
             ref={containerRef}
             className={cn(
-              "flex-1 overflow-auto p-8 flex items-center justify-center scrollbar-hide",
+              "flex-1 overflow-hidden p-8 flex items-center justify-center relative",
               isCropMode ? "cursor-crosshair" : "cursor-grab active:cursor-grabbing"
             )}
+            onWheel={(e) => {
+              if (e.ctrlKey) {
+                e.preventDefault();
+                setZoom(z => Math.max(0.2, Math.min(4, z - e.deltaY * 0.005)));
+              }
+            }}
           >
             <div 
-              className="relative shadow-2xl transition-transform duration-200 ease-out origin-center"
-              style={{ transform: `scale(${zoom})` }}
+              className="relative shadow-2xl transition-transform duration-100 ease-out origin-center"
+              style={{ 
+                transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoom})`,
+                touchAction: 'none'
+              }}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
