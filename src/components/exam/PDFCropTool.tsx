@@ -367,13 +367,22 @@ export function PDFCropTool({
               onMouseLeave={handleMouseUp}
             >
               {currentPage && (
-                <img 
-                  ref={imageRef}
-                  src={currentPage.imageDataUrl} 
-                  alt="Current Page" 
-                  className="max-w-none select-none"
-                  draggable={false}
-                />
+                <div className="relative">
+                  <img 
+                    ref={imageRef}
+                    src={displayImage} 
+                    alt="Current Page" 
+                    className="max-w-none select-none"
+                    draggable={false}
+                  />
+                  {fullPageLoading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/20 backdrop-blur-[2px] z-10">
+                      <div className="bg-background/80 p-3 rounded-full shadow-lg">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Render Existing Crops */}
