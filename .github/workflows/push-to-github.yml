@@ -1,0 +1,28 @@
+name: Sync to GitHub
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to GitHub
+        run: |
+          if [ -n "$GH_REPO_URL" ]; then
+            git remote add github "$GH_REPO_URL"
+            git push github main --force
+          else
+            echo "GH_REPO_URL secret is not set. Please add it to your repository secrets."
+            exit 1
+          fi
+        env:
+          GH_REPO_URL: ${{ secrets.GH_REPO_URL }}
