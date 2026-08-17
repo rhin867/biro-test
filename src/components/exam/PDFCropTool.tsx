@@ -122,7 +122,15 @@ export function PDFCropTool({
   const displayImage = highResCache[currentPage.pageNumber] || currentPage.imageDataUrl;
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (!isCropMode || !imageRef.current) return;
+    if (e.button !== 0) return;
+    
+    if (!isCropMode) {
+      setIsPanning(true);
+      setLastMousePos({ x: e.clientX, y: e.clientY });
+      return;
+    }
+
+    if (!imageRef.current) return;
 
     const rect = imageRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / zoom;
@@ -138,6 +146,14 @@ export function PDFCropTool({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (isPanning) {
+      const dx = e.clientX - lastMousePos.x;
+      const dy = e.clientY - lastMousePos.y;
+      setPanPosition(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+      setLastMousePos({ x: e.clientX, y: e.clientY });
+      return;
+    }
+
     if (!currentCrop || !imageRef.current) return;
 
     const rect = imageRef.current.getBoundingClientRect();
@@ -152,6 +168,7 @@ export function PDFCropTool({
   };
 
   const handleMouseUp = () => {
+    setIsPanning(false);
     if (!currentCrop || !currentCrop.width || !currentCrop.height) {
       setCurrentCrop(null);
       return;
