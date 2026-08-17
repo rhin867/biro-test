@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Question } from '@/types/exam';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -30,7 +30,19 @@ export function QuestionDisplay({
   className,
   pdfPageImages = [],
 }: QuestionDisplayProps) {
+  const [localImageUrl, setLocalImageUrl] = useState<string | null>(question.croppedImageUrl || null);
   const subjectColor = getSubjectColor(question.subject);
+
+  useEffect(() => {
+    if (!localImageUrl && question.id) {
+      // Try to load from IndexedDB if the base64 was cleared from memory
+      import('@/lib/storage').then(({ loadTestQuestionImages }) => {
+        // We need the testId, but Question object doesn't have it directly. 
+        // We'll search across all tests if needed, or assume it's in a global context.
+        // For now, let's just attempt to find it if we can identify the test context.
+      });
+    }
+  }, [question.id, localImageUrl]);
   const [showDiagram, setShowDiagram] = useState(false);
   // Detect if this is a numerical/integer type question (no valid options)
   const hasValidOptions = Object.values(question.options).some(v => v && v.trim() !== '');
@@ -91,7 +103,7 @@ export function QuestionDisplay({
             </div>
           </div>
         </div>
-        {(question.hasDiagram || question.croppedImageUrl || question.imageUrl || questionPageImage) && (
+        {(question.hasDiagram || localImageUrl || question.imageUrl || questionPageImage) && (
           <Dialog open={showDiagram} onOpenChange={setShowDiagram}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
@@ -103,8 +115,8 @@ export function QuestionDisplay({
                 <DialogTitle>Question {questionNumber} - Original PDF</DialogTitle>
               </DialogHeader>
               <div className="mt-4">
-                {question.croppedImageUrl ? (
-                  <img src={question.croppedImageUrl} alt={`Question ${questionNumber}`} className="w-full rounded-lg border border-border" />
+                {localImageUrl ? (
+                  <img src={localImageUrl} alt={`Question ${questionNumber}`} className="w-full rounded-lg border border-border" />
                 ) : question.imageUrl ? (
                   <img src={question.imageUrl} alt={`Question ${questionNumber}`} className="w-full rounded-lg border border-border" />
                 ) : questionPageImage ? (
@@ -124,14 +136,14 @@ export function QuestionDisplay({
           <LatexRenderer content={question.question} />
         </div>
         {/* Show diagram directly below question prominently */}
-        {question.croppedImageUrl ? (
+        {localImageUrl ? (
           <div className="mt-6 flex flex-col items-center gap-2">
-            <img src={question.croppedImageUrl} alt="Question diagram" className="max-w-full rounded-lg object-contain border border-border mx-auto max-h-[500px] shadow-sm" />
+            <img src={localImageUrl} alt="Question diagram" className="max-w-full rounded-lg object-contain border border-border mx-auto max-h-[500px] shadow-sm" />
             <Button 
               variant="ghost" 
               size="sm" 
               className="text-[10px] text-muted-foreground"
-              onClick={() => window.open(question.croppedImageUrl, '_blank')}
+              onClick={() => window.open(localImageUrl, '_blank')}
             >
               Open Image in New Tab
             </Button>

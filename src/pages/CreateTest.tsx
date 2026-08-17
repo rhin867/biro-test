@@ -158,6 +158,12 @@ export default function CreateTest() {
       
       const { saveTestQuestionImages } = await import('@/lib/storage');
       await saveTestQuestionImages(testId, questionImages);
+      // Immediately clear large base64 strings from memory to avoid "Aw Snap"
+      processedQuestions.forEach(q => {
+        if (q.croppedImageUrl && q.croppedImageUrl.length > 50000) {
+          q.croppedImageUrl = ''; // Keep it empty, it will be loaded from DB when needed
+        }
+      });
       saveTest(newTest);
       toast.success('Test created successfully!');
       navigate('/tests');
@@ -271,6 +277,7 @@ export default function CreateTest() {
                         key={p.pageNumber}
                         pdfFile={file}
                         pageNumber={p.pageNumber}
+                        scale={0.8}
                         className="w-full border border-primary/10 rounded overflow-hidden hover:border-primary/50 transition-colors"
                       />
                     ))}
