@@ -1,7 +1,7 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Use local worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/legacy/build/pdf.worker.min.js`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.mjs`;
 
 const MAX_CONCURRENT_PAGES = 3; 
 const RENDER_TIMEOUT = 15000; 
@@ -26,9 +26,9 @@ export async function renderPDFPagesMetadata(pdfFile: File | ArrayBuffer): Promi
     const data = pdfFile instanceof File ? await pdfFile.arrayBuffer() : pdfFile;
     loadingTask = pdfjsLib.getDocument({ 
       data,
-      cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
+      cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
       cMapPacked: true,
-      standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/standard_fonts/`,
+      standardFontDataUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/standard_fonts/`,
       disableFontFace: true
     });
     const pdfDoc = await loadingTask.promise;
@@ -91,9 +91,9 @@ export async function renderSinglePage(
     const data = pdfFile instanceof File ? await pdfFile.arrayBuffer() : pdfFile;
     loadingTask = pdfjsLib.getDocument({ 
       data,
-      cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
+      cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
       cMapPacked: true,
-      standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/standard_fonts/`,
+      standardFontDataUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/standard_fonts/`,
       stopAtErrors: false
     });
     
