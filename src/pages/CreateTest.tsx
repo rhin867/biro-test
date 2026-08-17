@@ -265,21 +265,16 @@ export default function CreateTest() {
                   <CardDescription>{metadata.length} pages total</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    {metadata.slice(0, 12).map((p) => (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    {metadata.map((p) => (
                       <LazyPDFPage 
                         key={p.pageNumber}
                         pdfFile={file}
                         pageNumber={p.pageNumber}
-                        className="w-full"
+                        className="w-full border border-primary/10 rounded overflow-hidden hover:border-primary/50 transition-colors"
                       />
                     ))}
                   </div>
-                  {metadata.length > 12 && (
-                    <p className="text-center text-sm text-muted-foreground py-4">
-                      And {metadata.length - 12} more pages...
-                    </p>
-                  )}
                 </CardContent>
               </Card>
             </div>
