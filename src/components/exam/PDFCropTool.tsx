@@ -422,8 +422,9 @@ export function PDFCropTool({
             <Button variant="outline" size="icon" onClick={() => setCurrentPageIndex(p => Math.max(0, p - 1))}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm font-medium">Page {currentPage?.pageNumber} / {pageImages.length}</span>
-            <Button variant="outline" size="icon" onClick={() => setCurrentPageIndex(p => Math.min(pageImages.length - 1, p + 1))}>
+            <span className="text-sm font-medium">Page {currentPage?.pageNumber} / {pageData.length}</span>
+            <Button variant="outline" size="icon" onClick={() => setCurrentPageIndex(p => Math.min(pageData.length - 1, p + 1))}>
+
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
