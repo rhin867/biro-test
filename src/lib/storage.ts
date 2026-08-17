@@ -160,7 +160,32 @@ export function generateShareCode(testId: string): string {
 // PDF Binary Storage (IndexedDB)
 export async function saveTestPdfFile(testId: string, file: File | ArrayBuffer): Promise<void> {
   const buffer = file instanceof File ? await file.arrayBuffer() : file;
-  await set(`${STORAGE_KEYS.PDF_PREFIX}${testId}`, buffer);
+  
+  // Clear any existing chunks first
+  const allKeys = await keys();
+  const chunkPrefix = `${STORAGE_KEYS.PDF_PREFIX}${testId}_chunk_`;
+  for (const key of allKeys) {
+    if (typeof key === 'string' && key.startsWith(chunkPrefix)) {
+      await del(key);
+    }
+  }
+
+  // Split into 1MB chunks to avoid IndexedDB size limits on some browsers
+  const CHUNK_SIZE = 1024 * 1024;
+  const chunks = Math.ceil(buffer.byteLength / CHUNK_SIZE);
+  
+  for (let i = 0; i < chunks; i++) {
+    const start = i * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE, buffer.byteLength);
+    const chunk = buffer.slice(start, end);
+    await set(`${chunkPrefix}${i}`, chunk);
+  }
+  
+  await set(`${STORAGE_KEYS.PDF_PREFIX}${testId}_metadata`, { 
+    chunks, 
+    totalSize: buffer.byteLength,
+    timestamp: Date.now()
+  });
 }
 
 export async function loadTestPdfFile(testId: string): Promise<ArrayBuffer | null> {
