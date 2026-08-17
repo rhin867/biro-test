@@ -1,7 +1,7 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Use local worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
 
 const MAX_CONCURRENT_PAGES = 3; 
 const RENDER_TIMEOUT = 15000; 
@@ -26,7 +26,7 @@ export async function renderPDFPagesMetadata(pdfFile: File | ArrayBuffer): Promi
     const data = pdfFile instanceof File ? await pdfFile.arrayBuffer() : pdfFile;
     loadingTask = pdfjsLib.getDocument({ 
       data,
-      cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/cmaps/',
+      cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
       cMapPacked: true,
       disableFontFace: true
     });
@@ -90,7 +90,7 @@ export async function renderSinglePage(
     const data = pdfFile instanceof File ? await pdfFile.arrayBuffer() : pdfFile;
     loadingTask = pdfjsLib.getDocument({ 
       data,
-      cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/cmaps/',
+      cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
       cMapPacked: true,
       stopAtErrors: false
     });
