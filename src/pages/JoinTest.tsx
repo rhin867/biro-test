@@ -4,7 +4,7 @@ import { MainLayout, PageHeader } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getTestByShareCode, saveTest, getTests, generateId } from '@/lib/storage';
+import { getTestByShareCode, saveTest, getTests, generateId, getTestById } from '@/lib/storage';
 import { Test } from '@/types/exam';
 import { Clock, FileText, Target, Play, Copy, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -21,8 +21,13 @@ export default function JoinTest() {
     if (!shareCode) { setIsLoading(false); return; }
 
     const loadTest = async () => {
+      let foundTest: Test | null = null;
+      
       // Try local first
-      let foundTest = getTestByShareCode(shareCode);
+      const testId = getTestByShareCode(shareCode);
+      if (testId) {
+        foundTest = getTestById(testId) || null;
+      }
       
       // If not found locally, try database
       if (!foundTest) {
@@ -133,7 +138,7 @@ export default function JoinTest() {
               {alreadyExists ? (
                 <Button onClick={handleStartDirectly} className="flex-1 gap-2">
                   <Play className="h-4 w-4" /> Start Test
-                </Button>
+                 </Button>
               ) : (
                 <>
                   <Button onClick={handleAddTest} className="flex-1 gap-2">
