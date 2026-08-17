@@ -272,7 +272,7 @@ function openPdfImageDb(): Promise<IDBDatabase> {
   });
 }
 
-const MAX_CHUNK_SIZE = 1024 * 1024; // 1MB chunks
+const MAX_CHUNK_SIZE = 2 * 1024 * 1024; // Increased to 2MB for throughput
 
 export async function saveTestPdfPageImages(testId: string, pages: NonNullable<Test['pdfPageImages']>): Promise<void> {
   if (!pages.length || typeof indexedDB === 'undefined') return;
