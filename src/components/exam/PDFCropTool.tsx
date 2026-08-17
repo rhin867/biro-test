@@ -4,11 +4,13 @@ import { Card } from '@/components/ui/card';
 import { 
   ZoomIn, ZoomOut, RotateCcw, RotateCw, Undo, Redo, 
   Maximize, Minimize, MousePointer2, Crop, Check, X,
-  ChevronLeft, ChevronRight, HelpCircle
+  ChevronLeft, ChevronRight, HelpCircle, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { renderSinglePage } from '@/lib/pdf-cropper';
+import { useInView } from 'react-intersection-observer';
 
 interface PDFCropToolProps {
   pdfFile: File | ArrayBuffer;
