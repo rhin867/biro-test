@@ -353,11 +353,6 @@ export default function AdminPanel() {
       setIsUploading(false);
     }
   };
-      toast.error("Failed to upload image: " + error.message);
-    } finally {
-      setIsUploading(false);
-    }
-  };
 
   const handleEditQuestion = async (q: any) => {
     setEditingQuestionId(q.id);
