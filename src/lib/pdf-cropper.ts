@@ -65,39 +65,50 @@ export async function renderPDFPagesMetadata(
 export async function renderSinglePage(
   pdfData: ArrayBuffer,
   pageNumber: number,
-  scale: number = 1.8
+  scale: number = 1.2 // Reduced default scale for stability
 ): Promise<string> {
-  const pdf = await pdfjsLib.getDocument({ 
-    data: pdfData.slice(0),
-    disableAutoFetch: true,
-    disableStream: true,
-    disableRange: true
-  }).promise;
-  const page = await pdf.getPage(pageNumber);
-  const viewport = page.getViewport({ scale });
-  
-  const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d', { alpha: false, desynchronized: true })!;
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
+  let pdf;
+  try {
+    pdf = await pdfjsLib.getDocument({ 
+      data: pdfData.slice(0),
+      disableAutoFetch: true,
+      disableStream: true,
+      disableRange: true
+    }).promise;
+    
+    const page = await pdf.getPage(pageNumber);
+    const viewport = page.getViewport({ scale });
+    
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d', { 
+      alpha: false, 
+      desynchronized: true,
+      willReadFrequently: false 
+    })!;
+    
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
 
-  await page.render({
-    canvasContext: context,
-    viewport: viewport,
-    intent: 'print' // Using print intent for better quality and stability
-  }).promise;
+    await page.render({
+      canvasContext: context,
+      viewport: viewport,
+      intent: 'print'
+    }).promise;
 
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
-  
-  // Cleanup
-  page.cleanup();
-  await pdf.destroy();
-
-  if (!blob) return canvas.toDataURL('image/jpeg', 0.85);
-  
-  const url = URL.createObjectURL(blob);
-  activeObjectURLs.add(url);
-  return url;
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+    
+    page.cleanup();
+    
+    if (!blob) return canvas.toDataURL('image/jpeg', 0.8);
+    
+    const url = URL.createObjectURL(blob);
+    activeObjectURLs.add(url);
+    return url;
+  } finally {
+    if (pdf) {
+      try { await pdf.destroy(); } catch (e) {}
+    }
+  }
 }
 
 /**

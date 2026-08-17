@@ -122,8 +122,8 @@ function CreateTestInner() {
         return next;
       });
       
-      // Strict memory management: Keep ONLY a sliding window of visible pages
-      const MAX_ACTIVE_PAGES = 10; // Reduced from 20 to 10 for aggressive stability
+      // Aggressive memory management: Keep a sliding window of visible pages
+      const MAX_ACTIVE_PAGES = 15; // Balanced window for visibility vs memory
       setPdfPageImages(prev => {
         const renderedIndices = prev
           .map((p, i) => p.imageDataUrl ? i : -1)
@@ -132,7 +132,7 @@ function CreateTestInner() {
         if (renderedIndices.length > MAX_ACTIVE_PAGES) {
           return prev.map((p, idx) => {
             // If page is far from current visible index, purge it
-            if (p.imageDataUrl && Math.abs(idx - pageIdx) > 5) { // Reduced window to 5
+            if (p.imageDataUrl && Math.abs(idx - pageIdx) > 7) { 
               if (p.imageDataUrl.startsWith('blob:')) {
                 try { URL.revokeObjectURL(p.imageDataUrl); } catch(e) {}
               }
@@ -320,11 +320,23 @@ function CreateTestInner() {
         }
       };
 
-      // Minimal initial rendering to prevent immediate memory pressure
-      const INITIAL_RENDER_COUNT = 3; 
-      for (let i = 0; i < Math.min(INITIAL_RENDER_COUNT, totalPages); i++) {
+      // Step 3: Sequential background rendering to ensure all pages become visible eventually
+      const totalToRender = Math.min(totalPages, 100); // Limit background render to first 100 for safety
+      const INITIAL_BATCH = 5;
+      
+      // Render first few immediately
+      for (let i = 0; i < Math.min(INITIAL_BATCH, totalPages); i++) {
         await renderPage(i);
       }
+
+      // Render the rest in chunks in background
+      setTimeout(async () => {
+        for (let i = INITIAL_BATCH; i < totalToRender; i++) {
+          // Add a small delay between renders to keep main thread free
+          await new Promise(r => setTimeout(r, 100));
+          await renderPage(i);
+        }
+      }, 500);
 
       setParseProgress(100);
       setParseStatus('PDF Ready!');

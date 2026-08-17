@@ -201,15 +201,13 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
           const pdfDoc = await pdfjsLib.getDocument({ 
             data: bufferSlice,
             disableAutoFetch: true,
-            disableStream: true
+            disableStream: true,
+            disableRange: true
           }).promise;
           
           const pageObj = await pdfDoc.getPage(currentPage + 1);
-          
-          const isLowMem = window.innerWidth < 1024;
-          const renderScale = isLowMem ? 1.5 : 2.0; 
-
-
+          const isLowMem = window.innerWidth < 768;
+          const renderScale = isLowMem ? 1.2 : 1.5; 
           
           const viewport = pageObj.getViewport({ scale: renderScale });
           
@@ -217,14 +215,18 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
             const canvas = canvasRef.current;
             const context = canvas.getContext('2d', { 
               alpha: false,
-              willReadFrequently: true 
+              willReadFrequently: false 
             });
             
             if (context) {
               canvas.width = viewport.width;
               canvas.height = viewport.height;
-              await pageObj.render({ canvasContext: context, viewport }).promise;
-              const highResDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+              // Clear canvas to prevent ghosting
+              context.fillStyle = 'white';
+              context.fillRect(0, 0, canvas.width, canvas.height);
+              
+              await pageObj.render({ canvasContext: context, viewport, intent: 'print' }).promise;
+              const highResDataUrl = canvas.toDataURL('image/jpeg', 0.85);
               if (isMounted) {
                 setCurrentPageImage(highResDataUrl);
                 setIsImgLoaded(true);
@@ -232,8 +234,7 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
             }
           }
           pageObj.cleanup();
-          pdfDoc.cleanup();
-          pdfDoc.destroy();
+          await pdfDoc.destroy();
         } catch (error: any) {
           console.error("Failed to render PDF page:", error);
           if (isMounted) {
