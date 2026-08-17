@@ -319,7 +319,7 @@ export default function Dashboard() {
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-xl font-black text-primary">Level {level}</h3>
-                  <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px]">Aspirant</Badge>
+                  <div className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-primary/20 text-primary border-primary/30 text-[10px]">Aspirant</div>
                 </div>
                 <p className="text-sm text-muted-foreground font-bold">{xp} XP Earned</p>
               </div>
