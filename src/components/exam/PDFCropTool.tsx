@@ -206,10 +206,9 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
           
           const pageObj = await pdfDoc.getPage(currentPage + 1);
           
-          const isMobile = window.innerWidth < 768;
-          // Scale dynamically based on device and zoom to prevent memory pressure
-          const baseScale = isMobile ? 1.5 : 2.0;
-          const renderScale = baseScale; // Keep fixed high resolution for crop tool quality
+          const isLowMem = window.innerWidth < 1024;
+          const renderScale = isLowMem ? 1.5 : 2.0; 
+
 
           
           const viewport = pageObj.getViewport({ scale: renderScale });
@@ -1013,7 +1012,8 @@ export function PDFCropTool({ open, onOpenChange, pages, pdfBuffer, onCroppedQue
                       Q.{i + 1} (Pg.{ci.pageNumber})
                     </div>
                     <div className="relative bg-white pt-4">
-                      <img src={ci.dataUrl} alt={`Crop ${i + 1}`} className="w-full max-h-24 object-contain" />
+                      <img src={ci.dataUrl} alt={`Crop ${i + 1}`} className="w-full max-h-24 object-contain" loading="lazy" />
+
                       <div className="absolute top-0.5 left-0.5 bg-primary/90 text-primary-foreground text-[9px] px-1 rounded flex items-center gap-1">
                         Q{i + 1}
                         {ci.qType && <span className="opacity-80">[{ci.qType}]</span>}

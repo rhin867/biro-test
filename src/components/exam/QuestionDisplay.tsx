@@ -91,7 +91,7 @@ export function QuestionDisplay({
             </div>
           </div>
         </div>
-        {(question.hasDiagram || question.croppedImageUrl || questionPageImage) && (
+        {(question.hasDiagram || question.croppedImageUrl || question.imageUrl || questionPageImage) && (
           <Dialog open={showDiagram} onOpenChange={setShowDiagram}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
@@ -105,6 +105,8 @@ export function QuestionDisplay({
               <div className="mt-4">
                 {question.croppedImageUrl ? (
                   <img src={question.croppedImageUrl} alt={`Question ${questionNumber}`} className="w-full rounded-lg border border-border" />
+                ) : question.imageUrl ? (
+                  <img src={question.imageUrl} alt={`Question ${questionNumber}`} className="w-full rounded-lg border border-border" />
                 ) : questionPageImage ? (
                   <img src={questionPageImage.imageDataUrl} alt={`PDF Page ${question.pdfPageNumber}`} className="w-full rounded-lg border border-border" />
                 ) : (
@@ -114,6 +116,7 @@ export function QuestionDisplay({
             </DialogContent>
           </Dialog>
         )}
+
       </div>
       {/* Question Text */}
       <div className="rounded-lg bg-card border border-border p-6">

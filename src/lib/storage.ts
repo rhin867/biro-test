@@ -51,10 +51,18 @@ export function getTests(): Test[] {
 export function saveTest(test: Test): void {
   const tests = getTests();
   const existingIndex = tests.findIndex(t => t.id === test.id);
+  
+  // Strip heavy PDF assets before saving to Supabase (if we ever sync this)
+  // and even for localStorage to keep it under 5MB if possible.
+  const storableTest = {
+    ...test,
+    pdfPageImages: undefined // NEVER store full page renders in the test object itself
+  };
+
   if (existingIndex >= 0) {
-    tests[existingIndex] = test;
+    tests[existingIndex] = storableTest;
   } else {
-    tests.push(test);
+    tests.push(storableTest);
   }
   setItem(STORAGE_KEYS.TESTS, tests);
 }

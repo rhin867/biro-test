@@ -18,10 +18,12 @@ import {
   clearCurrentAttempt,
   generateId,
   getAttempts,
+  saveTest,
   loadTestPdfPageImages,
   loadTestQuestionImages,
   loadTestPdfFile,
 } from '@/lib/storage';
+
 import { calculateTestResult } from '@/lib/exam-utils';
 import { Test, TestAttempt, QuestionAttempt, QuestionStatus, Subject, MistakeType, QuestionType } from '@/types/exam';
 import { supabase } from '@/integrations/supabase/client';
@@ -88,56 +90,99 @@ export default function ExamInterface() {
       navigate('/tests');
       return;
     }
-    const loadedTest = getTestById(testId);
-    if (!loadedTest) {
-      toast.error('Test not found');
-      navigate('/tests');
-      return;
-    }
-    setTest(loadedTest);
-    loadTestPdfPageImages(testId).then(async (pages) => {
-      const questionImages = await loadTestQuestionImages(testId);
+    const initTest = async () => {
+      let loadedTest = getTestById(testId);
+      
+      // If not found locally, try to fetch from Supabase (shared/synced test)
+      if (!loadedTest) {
+        try {
+          const { data: cloudTest, error } = await supabase
+            .from('tests')
+            .select('*')
+            .eq('id', testId)
+            .maybeSingle();
+
+          if (cloudTest) {
+            loadedTest = {
+              id: cloudTest.id,
+              name: cloudTest.name,
+              duration: cloudTest.duration_minutes,
+              positiveMarking: cloudTest.positive_marking,
+              negativeMarking: cloudTest.negative_marking,
+              questions: (cloudTest.questions as any) || [],
+              createdAt: cloudTest.created_at,
+              totalMarks: ((cloudTest.questions as any[])?.length || 0) * cloudTest.positive_marking,
+              subjects: Array.from(new Set(((cloudTest.questions as any[]) || []).map(q => q.subject).filter(Boolean))),
+              hasAnswerKey: ((cloudTest.questions as any[]) || []).some(q => q.correctAnswer),
+            };
+            // Save to local storage so assets (if any) can be added later
+            saveTest(loadedTest);
+          }
+        } catch (err) {
+          console.error('Cloud test fetch failed:', err);
+        }
+      }
+
+      if (!loadedTest) {
+        toast.error('Test not found');
+        navigate('/tests');
+        return;
+      }
+
+      setTest(loadedTest);
+      
+      const [pages, questionImages] = await Promise.all([
+        loadTestPdfPageImages(testId),
+        loadTestQuestionImages(testId)
+      ]);
+
       if (pages.length || Object.keys(questionImages).length) {
+
         setTest((current) => current?.id === testId ? {
           ...current,
           pdfPageImages: pages,
           questions: current.questions.map((q) => questionImages[q.id] ? { ...q, croppedImageUrl: questionImages[q.id] } : q),
         } : current);
       }
-    }).catch(() => {});
-    // Load the original PDF blob for the "View Original PDF" viewer.
-    loadTestPdfFile(testId).then((buf) => {
-      if (!buf) return;
-      const blob = new Blob([buf], { type: 'application/pdf' });
-      setPdfViewerUrl(URL.createObjectURL(blob));
-      setShowPdfViewer(true); // Auto-open PDF viewer if available when test starts
-    }).catch(() => {});
-    // Check for existing attempt
-    const existingAttempt = getCurrentAttempt();
-    if (existingAttempt && existingAttempt.testId === testId && !existingAttempt.isSubmitted) {
-      setAttempt(existingAttempt);
-      setCurrentQuestionIndex(existingAttempt.currentQuestionIndex);
-      setCurrentSubject(existingAttempt.currentSubject);
-    } else {
-      // Calculate attempt number
-      const previousAttempts = getAttempts().filter(a => a.testId === testId && a.isSubmitted);
-      const attemptNumber = previousAttempts.length + 1;
-      // Create new attempt
-      const newAttempt: TestAttempt = {
-        id: generateId(),
-        testId,
-        startedAt: new Date().toISOString(),
-        timeRemaining: loadedTest.duration * 60,
-        attempts: {},
-        currentQuestionIndex: 0,
-        currentSubject: loadedTest.subjects[0] || 'Physics',
-        isSubmitted: false,
-        attemptNumber,
-      };
-      setAttempt(newAttempt);
-      setCurrentAttempt(newAttempt);
-    }
+
+      // Load the original PDF blob for the "View Original PDF" viewer.
+      loadTestPdfFile(testId).then((buf) => {
+        if (!buf) return;
+        const blob = new Blob([buf], { type: 'application/pdf' });
+        setPdfViewerUrl(URL.createObjectURL(blob));
+        setShowPdfViewer(true); // Auto-open PDF viewer if available when test starts
+      }).catch(() => {});
+
+      // Check for existing attempt
+      const existingAttempt = getCurrentAttempt();
+      if (existingAttempt && existingAttempt.testId === testId && !existingAttempt.isSubmitted) {
+        setAttempt(existingAttempt);
+        setCurrentQuestionIndex(existingAttempt.currentQuestionIndex);
+        setCurrentSubject(existingAttempt.currentSubject);
+      } else {
+        // Calculate attempt number
+        const previousAttempts = getAttempts().filter(a => a.testId === testId && a.isSubmitted);
+        const attemptNumber = previousAttempts.length + 1;
+        // Create new attempt
+        const newAttempt: TestAttempt = {
+          id: generateId(),
+          testId,
+          startedAt: new Date().toISOString(),
+          timeRemaining: loadedTest.duration * 60,
+          attempts: {},
+          currentQuestionIndex: 0,
+          currentSubject: loadedTest.subjects[0] || 'Physics',
+          isSubmitted: false,
+          attemptNumber,
+        };
+        setAttempt(newAttempt);
+        setCurrentAttempt(newAttempt);
+      }
+    };
+    initTest();
   }, [testId, navigate]);
+
+
   // Revoke PDF blob URL on unmount to free memory
   useEffect(() => () => { if (pdfViewerUrl) URL.revokeObjectURL(pdfViewerUrl); }, [pdfViewerUrl]);
   // Auto-save attempt periodically

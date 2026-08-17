@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MainLayout, PageHeader } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -7,9 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { TestShareDialog } from '@/components/exam/TestShareDialog';
 import { getTests, getResultsByTestId, deleteTest, generateShareCode, saveTest, loadTestQuestionImages } from '@/lib/storage';
+import { syncTestsFromCloud } from '@/lib/sync';
 import { formatTimeMinutes } from '@/lib/exam-utils';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentDisplayName, getCurrentUserKey } from '@/lib/app-settings';
+
 import {
   Plus, Play, BarChart3, Trash2, Clock, FileText, Target, MoreVertical, Share2, Key, CheckCircle2, Pencil, Globe, FolderLock, MailPlus, History as HistoryIcon
 } from 'lucide-react';
@@ -42,8 +44,28 @@ export default function MyTests() {
   const [shareEmail, setShareEmail] = useState('');
   const [sharePassword, setSharePassword] = useState('');
   const [isSharing, setIsSharing] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    const doSync = async () => {
+      setIsSyncing(true);
+      try {
+        const count = await syncTestsFromCloud();
+        if (count && count > 0) {
+          setTests(getTests());
+          toast.info(`Synced ${count} tests from cloud`);
+        }
+      } catch (e) {
+        // Quietly fail or show small indicator
+      } finally {
+        setIsSyncing(false);
+      }
+    };
+    doSync();
+  }, []);
 
   const handleDeleteTest = (testId: string) => {
+
     deleteTest(testId);
     setTests(getTests());
     toast.success('Test deleted');
