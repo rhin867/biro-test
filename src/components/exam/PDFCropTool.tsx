@@ -29,13 +29,59 @@ interface CropArea {
   height: number;
 }
 
+interface PDFPageItemProps {
+  page: { pageNumber: number; imageDataUrl?: string; width: number; height: number };
+  pdfFile: File | ArrayBuffer;
+  isActive: boolean;
+  onClick: () => void;
+  onPageLoaded: (pageNumber: number, dataUrl: string) => void;
+}
+
+function PDFPageItem({ page, pdfFile, isActive, onClick, onPageLoaded }: PDFPageItemProps) {
+  const { ref, inView } = useInView({ triggerOnce: true });
+  const [loading, setLoading] = useState(false);
+  const [localUrl, setLocalUrl] = useState(page.imageDataUrl || '');
+
+  useEffect(() => {
+    if (inView && !localUrl && !loading) {
+      setLoading(true);
+      renderSinglePage(pdfFile, page.pageNumber, 0.4, 'image/jpeg', 0.5)
+        .then(url => {
+          setLocalUrl(url);
+          onPageLoaded(page.pageNumber, url);
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }
+  }, [inView, localUrl, loading, pdfFile, page.pageNumber, onPageLoaded]);
+
+  return (
+    <button
+      ref={ref}
+      onClick={onClick}
+      className={cn(
+        "w-full mb-2 rounded border overflow-hidden transition-all min-h-[100px] flex flex-col items-center justify-center bg-muted",
+        isActive ? "ring-2 ring-primary border-primary" : "opacity-60 hover:opacity-100"
+      )}
+    >
+      {localUrl ? (
+        <img src={localUrl} alt={`Page ${page.pageNumber}`} className="w-full h-auto" />
+      ) : (
+        <Loader2 className="h-4 w-4 animate-spin opacity-20" />
+      )}
+      <div className="text-[10px] py-1 bg-muted w-full">Page {page.pageNumber}</div>
+    </button>
+  );
+}
+
 export function PDFCropTool({
   pdfFile,
-  pageImages,
+  pageImages: initialPageImages,
   onSaveCrops,
   onCancel,
   initialCrops = {}
 }: PDFCropToolProps) {
+  const [pageData, setPageData] = useState(initialPageImages);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -44,11 +90,33 @@ export function PDFCropTool({
   const [currentCrop, setCurrentCrop] = useState<Partial<CropArea> | null>(null);
   const [history, setHistory] = useState<CropArea[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [fullPageLoading, setFullPageLoading] = useState(false);
+  const [highResCache, setHighResCache] = useState<Record<number, string>>({});
 
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
-  const currentPage = pageImages[currentPageIndex];
+  useEffect(() => {
+    const pageNum = pageData[currentPageIndex].pageNumber;
+    if (!highResCache[pageNum]) {
+      setFullPageLoading(true);
+      renderSinglePage(pdfFile, pageNum, 1.8, 'image/jpeg', 0.8)
+        .then(url => {
+          setHighResCache(prev => ({ ...prev, [pageNum]: url }));
+        })
+        .catch(err => {
+          toast.error("Failed to load high resolution page");
+        })
+        .finally(() => setFullPageLoading(false));
+    }
+  }, [currentPageIndex, pageData, pdfFile, highResCache]);
+
+  const handlePageThumbnailLoaded = useCallback((pageNumber: number, dataUrl: string) => {
+    setPageData(prev => prev.map(p => p.pageNumber === pageNumber ? { ...p, imageDataUrl: dataUrl } : p));
+  }, []);
+
+  const currentPage = pageData[currentPageIndex];
+  const displayImage = highResCache[currentPage.pageNumber] || currentPage.imageDataUrl;
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!isCropMode || !imageRef.current) return;
