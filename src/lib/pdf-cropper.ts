@@ -33,7 +33,7 @@ export async function renderPDFPagesMetadata(pdfFile: File | ArrayBuffer): Promi
     page.cleanup();
   }
 
-  await pdfDoc.destroy();
+  await loadingTask.destroy();
   return metadata;
 }
 
