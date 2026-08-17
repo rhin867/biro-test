@@ -17,8 +17,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { renderPDFPagesMetadata, renderSinglePage, fileToBase64, PDFPageImage, revokeObjectURLs } from '@/lib/pdf-cropper';
 import { LatexRenderer } from '@/components/ui/latex-renderer';
 import { PDFCropTool } from '@/components/exam/PDFCropTool';
+import { LazyPDFPage } from '@/components/exam/LazyPDFPage';
 import { Upload, FileText, Loader2, Sparkles, AlertCircle, CheckCircle, Image, ZoomIn, Crop, RefreshCw, Download, FileUp, Lock, Eye, EyeOff, Pencil, Trash2, ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
 import { fetchQuotaInfo, logTestCreation, QuotaInfo, verifyPassword, isTestCreationUnlocked, markTestCreationUnlocked, getCachedAppSettings } from '@/lib/app-settings';
 import { getUserApiKey, setUserApiKey } from '@/pages/Settings';
 import { extractQuestionsFromPdf, BIRO_BACKEND_CONFIGURED, warmupBackend } from '@/lib/biro-backend';
@@ -103,7 +105,50 @@ function CreateTestInner() {
   const [ownKeySaved, setOwnKeySaved] = useState(() => !!getUserApiKey());
   const [showOwnKey, setShowOwnKey] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  
+  const renderPageOnDemand = useCallback(async (pageIdx: number) => {
+    if (!pdfBuffer || pdfPageImages[pageIdx]?.imageDataUrl) return;
+    
+    try {
+      const url = await renderSinglePage(pdfBuffer, pageIdx + 1, 1.2);
+      setPdfPageImages(prev => {
+        const next = [...prev];
+        if (next[pageIdx]) {
+          if (next[pageIdx].imageDataUrl && next[pageIdx].imageDataUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(next[pageIdx].imageDataUrl);
+          }
+          next[pageIdx] = { ...next[pageIdx], imageDataUrl: url };
+        }
+        return next;
+      });
+      
+      // Strict memory management: Keep ONLY a sliding window of 20 pages
+      const MAX_ACTIVE_PAGES = 20;
+      setPdfPageImages(prev => {
+        const renderedIndices = prev
+          .map((p, i) => p.imageDataUrl ? i : -1)
+          .filter(i => i !== -1);
+          
+        if (renderedIndices.length > MAX_ACTIVE_PAGES) {
+          return prev.map((p, idx) => {
+            // If page is far from current visible index, purge it
+            if (p.imageDataUrl && Math.abs(idx - pageIdx) > 15) {
+              if (p.imageDataUrl.startsWith('blob:')) URL.revokeObjectURL(p.imageDataUrl);
+              return { ...p, imageDataUrl: '' };
+            }
+            return p;
+          });
+        }
+        return prev;
+      });
+    } catch (err) {
+      console.error(`Demand render failed for page ${pageIdx+1}:`, err);
+    }
+  }, [pdfBuffer, pdfPageImages.length]);
+
+
   React.useEffect(() => { fetchQuotaInfo().then(setQuota); }, []);
+
   // Warm the Render dyno as soon as the user opens the page — kills the "unavailable" first-call error.
   React.useEffect(() => {
     if (!BIRO_BACKEND_CONFIGURED) return;
@@ -253,6 +298,7 @@ function CreateTestInner() {
       setPdfPageImages(metaPages);
 
       const renderPage = async (i: number) => {
+        if (pdfPageImages[i]?.imageDataUrl) return; // Already rendered
         try {
           // Optimized scale for preview visibility vs memory pressure
           const url = await renderSinglePage(bufferForImages, i + 1, 1.2);
@@ -267,23 +313,20 @@ function CreateTestInner() {
             }
             return next;
           });
-          setParseProgress(30 + Math.round((i / totalPages) * 70));
         } catch (err) {
           console.error(`Failed to render page ${i+1}:`, err);
         }
       };
 
-      // Batch sequential rendering for stability and performance
-      const BATCH_SIZE = 5;
-      for (let i = 0; i < totalPages; i += BATCH_SIZE) {
-        const batch = Array.from({ length: Math.min(BATCH_SIZE, totalPages - i) }, (_, k) => i + k);
-        await Promise.all(batch.map(pageIdx => renderPage(pageIdx)));
-        // Explicit memory signal and UI yield
-        await new Promise(r => setTimeout(r, 100));
+      // Only render first 5 pages immediately to keep responsiveness
+      const INITIAL_RENDER_COUNT = 5;
+      for (let i = 0; i < Math.min(INITIAL_RENDER_COUNT, totalPages); i++) {
+        await renderPage(i);
       }
 
       setParseProgress(100);
       setParseStatus('PDF Ready!');
+
       toast.success(`PDF fully processed: ${totalPages} pages`);
       setStep('configure');
     } catch (error: any) {
@@ -498,27 +541,55 @@ function CreateTestInner() {
         positiveMarking,
         negativeMarking,
         hasAnswerKey,
-        pdfPageImages: undefined,
+        // pdfPageImages is purposefully excluded from the object to keep it light
       };
+
       try {
         saveTest(test);
         await saveTestQuestionImages(test.id, questionImages);
+        // Local-only storage of heavy assets
         if (pdfPageImages.length > 0) {
           await saveTestPdfPageImages(test.id, pdfPageImages);
         }
         if (pdfFile) {
-          try { await saveTestPdfFile(test.id, await pdfFile.arrayBuffer()); } catch (e) { console.warn('save pdf blob failed', e); }
+          try { 
+            await saveTestPdfFile(test.id, await pdfFile.arrayBuffer()); 
+          } catch (e) { 
+            console.warn('save pdf blob failed', e); 
+          }
         }
+
       } catch (e) {
         console.error('saveTest failed', e);
         toast.error('Could not save test locally (storage full). Try clearing old tests.');
         return;
       }
+      // Sync to backend (Supabase) if user is logged in
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        try {
+          await supabase.from('tests').insert({
+            id: test.id,
+            user_id: user.id,
+            name: test.name,
+            duration_minutes: test.duration,
+            positive_marking: Number(test.positiveMarking),
+            negative_marking: Number(test.negativeMarking),
+            questions: currentQuestions as any, // Include cropped images for cloud sync
+          } as any);
+
+
+        } catch (err) {
+          console.warn('Supabase sync failed, test stays local only:', err);
+        }
+      }
+
       await logTestCreation({ testId: test.id, testName: test.name, aiCalls: extractionMode === 'ai' ? 1 : 0 });
       toast.success(
         `Test saved! Remaining today: ${Math.max(0, quota.dailyRemaining - 1)}/${quota.dailyLimit}`
       );
       navigate(`/exam/${test.id}`);
+
     } catch (e: any) {
       console.error(e);
       toast.error('Failed to save test: ' + (e.message || 'unknown'));
@@ -771,27 +842,19 @@ function CreateTestInner() {
                   </Button>
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-primary/20">
-                  {pdfPageImages.map((page) => (
-                    <div key={page.pageNumber} className="flex-shrink-0 space-y-1">
-                      {page.imageDataUrl ? (
-                        <img 
-                          src={page.imageDataUrl} 
-                          alt={`Page ${page.pageNumber}`}
-                          className="h-28 w-auto rounded border border-border cursor-pointer hover:ring-2 hover:ring-primary shadow-sm transition-all"
-                          onClick={() => setShowPageViewer(true)} 
-                        />
-                      ) : (
-                        <div 
-                          className="h-28 w-20 flex items-center justify-center rounded border border-border bg-muted/50 cursor-wait animate-pulse"
-                          onClick={() => setShowPageViewer(true)}
-                        >
-                          <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
-                        </div>
-                      )}
-                      <p className="text-[10px] text-center text-muted-foreground font-medium">Page {page.pageNumber}</p>
+                  {pdfPageImages.map((page, idx) => (
+                    <div key={page.pageNumber} className="flex-shrink-0 w-24">
+                      <LazyPDFPage
+                        pageNumber={page.pageNumber}
+                        imageDataUrl={page.imageDataUrl}
+                        onVisible={() => renderPageOnDemand(idx)}
+                        className="h-28 border border-border rounded overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                      />
+                      <p className="text-[10px] text-center text-muted-foreground font-medium mt-1">Page {page.pageNumber}</p>
                     </div>
                   ))}
                 </div>
+
               </div>
             )}
             {/* Retry on failure */}

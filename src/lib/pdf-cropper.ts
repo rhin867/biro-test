@@ -37,7 +37,11 @@ export async function renderPDFPagesMetadata(
   pdfData: ArrayBuffer,
   scale: number = 2
 ): Promise<Array<{ pageNumber: number; width: number; height: number }>> {
-  const pdf = await pdfjsLib.getDocument({ data: pdfData.slice(0) }).promise;
+  const pdf = await pdfjsLib.getDocument({ 
+    data: pdfData.slice(0),
+    disableAutoFetch: true,
+    disableStream: true
+  }).promise;
   const metadata = [];
 
   for (let i = 1; i <= pdf.numPages; i++) {
@@ -48,8 +52,10 @@ export async function renderPDFPagesMetadata(
       width: viewport.width,
       height: viewport.height,
     });
+    page.cleanup();
   }
-
+  
+  await pdf.destroy();
   return metadata;
 }
 
@@ -61,12 +67,16 @@ export async function renderSinglePage(
   pageNumber: number,
   scale: number = 1.8
 ): Promise<string> {
-  const pdf = await pdfjsLib.getDocument({ data: pdfData.slice(0) }).promise;
+  const pdf = await pdfjsLib.getDocument({ 
+    data: pdfData.slice(0),
+    disableAutoFetch: true,
+    disableStream: true
+  }).promise;
   const page = await pdf.getPage(pageNumber);
   const viewport = page.getViewport({ scale });
   
   const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d')!;
+  const context = canvas.getContext('2d', { alpha: false })!;
   canvas.width = viewport.width;
   canvas.height = viewport.height;
 
@@ -75,8 +85,13 @@ export async function renderSinglePage(
     viewport: viewport,
   }).promise;
 
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
-  if (!blob) return canvas.toDataURL('image/jpeg', 0.9);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+  
+  // Cleanup
+  page.cleanup();
+  await pdf.destroy();
+
+  if (!blob) return canvas.toDataURL('image/jpeg', 0.85);
   
   const url = URL.createObjectURL(blob);
   activeObjectURLs.add(url);
