@@ -299,7 +299,9 @@ export default function Dashboard() {
             </p>
             <div className="pt-2">
               <Button variant="outline" size="sm" className="h-8 text-[10px] gap-2 hover:bg-primary/10 border-primary/30">
-                <Clock className="h-3 w-3" /> PREVIOUS REPORTS
+                <Clock className="h-3 w-3" /> '''Do not make any visual modifications. The phrases I write are commands to understand what I want, not to be written down. Understand their content well, then execute what is required.'''
+
+                                            Checkout
               </Button>
             </div>
           </div>
