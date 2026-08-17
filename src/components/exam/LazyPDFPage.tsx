@@ -26,18 +26,23 @@ export function LazyPDFPage({ pageNumber, imageDataUrl, onVisible, className }: 
   }, [inView, pageNumber, onVisible]);
 
   return (
-    <div ref={ref} className={className} style={{ minHeight: '300px' }}>
+    <div ref={ref} className={cn("relative transition-all duration-300", className)} style={{ minHeight: '400px' }}>
+      <div className="absolute top-2 right-2 z-10">
+        <Badge variant="secondary" className="bg-black/50 text-white backdrop-blur-sm">
+          Page {pageNumber}
+        </Badge>
+      </div>
       {imageDataUrl ? (
         <img
           src={imageDataUrl}
           alt={`Page ${pageNumber}`}
-          className="w-full h-auto rounded-lg shadow-sm"
+          className="w-full h-auto rounded-lg shadow-md border border-muted"
           loading="lazy"
         />
       ) : (
-        <div className="flex flex-col items-center justify-center h-[400px] bg-muted/30 rounded-lg animate-pulse">
-          <Skeleton className="h-8 w-32 mb-4" />
-          <p className="text-xs text-muted-foreground">Loading Page {pageNumber}...</p>
+        <div className="flex flex-col items-center justify-center h-[500px] bg-muted/20 rounded-lg border-2 border-dashed border-muted">
+          <Loader2 className="h-10 w-10 animate-spin text-primary/40 mb-4" />
+          <p className="text-sm text-muted-foreground font-medium">Rendering Page {pageNumber}...</p>
         </div>
       )}
     </div>

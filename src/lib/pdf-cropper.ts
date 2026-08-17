@@ -70,19 +70,21 @@ export async function renderSinglePage(
   const pdf = await pdfjsLib.getDocument({ 
     data: pdfData.slice(0),
     disableAutoFetch: true,
-    disableStream: true
+    disableStream: true,
+    disableRange: true
   }).promise;
   const page = await pdf.getPage(pageNumber);
   const viewport = page.getViewport({ scale });
   
   const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d', { alpha: false })!;
+  const context = canvas.getContext('2d', { alpha: false, desynchronized: true })!;
   canvas.width = viewport.width;
   canvas.height = viewport.height;
 
   await page.render({
     canvasContext: context,
     viewport: viewport,
+    intent: 'print' // Using print intent for better quality and stability
   }).promise;
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));

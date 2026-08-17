@@ -122,8 +122,8 @@ function CreateTestInner() {
         return next;
       });
       
-      // Strict memory management: Keep ONLY a sliding window of 20 pages
-      const MAX_ACTIVE_PAGES = 20;
+      // Strict memory management: Keep ONLY a sliding window of visible pages
+      const MAX_ACTIVE_PAGES = 10; // Reduced from 20 to 10 for aggressive stability
       setPdfPageImages(prev => {
         const renderedIndices = prev
           .map((p, i) => p.imageDataUrl ? i : -1)
@@ -132,8 +132,10 @@ function CreateTestInner() {
         if (renderedIndices.length > MAX_ACTIVE_PAGES) {
           return prev.map((p, idx) => {
             // If page is far from current visible index, purge it
-            if (p.imageDataUrl && Math.abs(idx - pageIdx) > 15) {
-              if (p.imageDataUrl.startsWith('blob:')) URL.revokeObjectURL(p.imageDataUrl);
+            if (p.imageDataUrl && Math.abs(idx - pageIdx) > 5) { // Reduced window to 5
+              if (p.imageDataUrl.startsWith('blob:')) {
+                try { URL.revokeObjectURL(p.imageDataUrl); } catch(e) {}
+              }
               return { ...p, imageDataUrl: '' };
             }
             return p;
@@ -318,8 +320,8 @@ function CreateTestInner() {
         }
       };
 
-      // Only render first 5 pages immediately to keep responsiveness
-      const INITIAL_RENDER_COUNT = 5;
+      // Minimal initial rendering to prevent immediate memory pressure
+      const INITIAL_RENDER_COUNT = 3; 
       for (let i = 0; i < Math.min(INITIAL_RENDER_COUNT, totalPages); i++) {
         await renderPage(i);
       }
