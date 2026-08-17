@@ -1,6 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useInView } from 'react-intersection-observer';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface LazyPDFPageProps {
   pageNumber: number;
