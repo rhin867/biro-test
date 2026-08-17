@@ -320,22 +320,22 @@ export default function AdminPanel() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("Image too large (max 2MB)");
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image too large (max 5MB)");
       return;
     }
 
     setIsUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-      const filePath = `dhq/${fileName}`;
+      const fileName = `dhq-${Date.now()}.${fileExt}`;
+      const filePath = `hot-questions/${fileName}`;
 
       const { data, error: uploadError } = await supabase.storage
         .from('biro-test-images')
         .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
+          cacheControl: '0',
+          upsert: true
         });
 
       if (uploadError) throw uploadError;
@@ -344,10 +344,15 @@ export default function AdminPanel() {
         .from('biro-test-images')
         .getPublicUrl(filePath);
 
-      setHotQuestionImageUrl(publicUrl);
+      setHotQuestionImageUrl(`${publicUrl}?t=${Date.now()}`);
       toast.success("Image uploaded!");
     } catch (error: any) {
       console.error('Upload error:', error);
+      toast.error("Upload failed: " + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
       toast.error("Failed to upload image: " + error.message);
     } finally {
       setIsUploading(false);
