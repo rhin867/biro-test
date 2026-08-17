@@ -20,25 +20,58 @@ export interface PDFPageImage {
 }
 
 export async function renderPDFPagesMetadata(pdfFile: File | ArrayBuffer): Promise<PDFPageMetadata[]> {
-  const data = pdfFile instanceof File ? await pdfFile.arrayBuffer() : pdfFile;
-  const loadingTask = pdfjsLib.getDocument({ data });
-  const pdfDoc = await loadingTask.promise;
-  const metadata: PDFPageMetadata[] = [];
-
-  for (let i = 1; i <= pdfDoc.numPages; i++) {
-    const page = await pdfDoc.getPage(i);
-    const viewport = page.getViewport({ scale: 1 });
-    metadata.push({
-      pageNumber: i,
-      width: viewport.width,
-      height: viewport.height,
+  let loadingTask = null;
+  try {
+    const data = pdfFile instanceof File ? await pdfFile.arrayBuffer() : pdfFile;
+    loadingTask = pdfjsLib.getDocument({ 
+      data,
+      cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/cmaps/',
+      cMapPacked: true,
+      disableFontFace: true // Performance improvement for some browsers
     });
-    page.cleanup();
-  }
+    const pdfDoc = await loadingTask.promise;
+    const metadata: PDFPageMetadata[] = [];
 
-  await loadingTask.destroy();
-  return metadata;
+    for (let i = 1; i <= pdfDoc.numPages; i++) {
+      const page = await pdfDoc.getPage(i);
+      const viewport = page.getViewport({ scale: 1 });
+      metadata.push({
+        pageNumber: i,
+        width: viewport.width,
+        height: viewport.height,
+      });
+      page.cleanup();
+    }
+
+    return metadata;
+  } finally {
+    if (loadingTask) {
+      await loadingTask.destroy();
+    }
+  }
 }
+
+// Semaphore to limit concurrent page rendering
+class Semaphore {
+  private tasks: (() => void)[] = [];
+  constructor(private count: number) {}
+  async acquire() {
+    if (this.count > 0) {
+      this.count--;
+      return;
+    }
+    await new Promise<void>(resolve => this.tasks.push(resolve));
+  }
+  release() {
+    this.count++;
+    if (this.tasks.length > 0) {
+      this.count--;
+      this.tasks.shift()!();
+    }
+  }
+}
+
+const renderSemaphore = new Semaphore(MAX_CONCURRENT_PAGES);
 
 export async function renderSinglePage(
   pdfFile: File | ArrayBuffer,
