@@ -336,20 +336,20 @@ export default function MyTests() {
                     )}
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="rounded-lg bg-muted p-2">
-                      <FileText className="h-4 w-4 mx-auto text-muted-foreground" />
-                      <p className="text-sm font-medium mt-1">{test.questions.length}</p>
-                      <p className="text-xs text-muted-foreground">Questions</p>
+                    <div className="rounded-lg bg-muted p-2 border border-border/50">
+                      <FileText className="h-4 w-4 mx-auto text-primary" />
+                      <p className="text-sm font-bold mt-1 tracking-tighter">{test.questions.length}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase font-medium">Ques</p>
                     </div>
-                    <div className="rounded-lg bg-muted p-2">
-                      <Clock className="h-4 w-4 mx-auto text-muted-foreground" />
-                      <p className="text-sm font-medium mt-1">{test.duration}</p>
-                      <p className="text-xs text-muted-foreground">Minutes</p>
+                    <div className="rounded-lg bg-muted p-2 border border-border/50">
+                      <Clock className="h-4 w-4 mx-auto text-primary" />
+                      <p className="text-sm font-bold mt-1 tracking-tighter">{test.duration}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase font-medium">Min</p>
                     </div>
-                    <div className="rounded-lg bg-muted p-2">
-                      <Target className="h-4 w-4 mx-auto text-muted-foreground" />
-                      <p className="text-sm font-medium mt-1">{test.totalMarks}</p>
-                      <p className="text-xs text-muted-foreground">Marks</p>
+                    <div className="rounded-lg bg-muted p-2 border border-border/50">
+                      <Target className="h-4 w-4 mx-auto text-primary" />
+                      <p className="text-sm font-bold mt-1 tracking-tighter">{test.totalMarks}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase font-medium">Marks</p>
                     </div>
                   </div>
                   {bestResult && (

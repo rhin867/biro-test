@@ -344,14 +344,17 @@ export function PDFCropTool({
 
       <div className="flex-1 flex gap-4 overflow-hidden">
         {/* Page Sidebar */}
-        <div className="w-20 md:w-48 overflow-y-auto border rounded-lg bg-card p-2 hidden sm:block">
+        <div className="w-16 md:w-32 overflow-y-auto border rounded-lg bg-card p-1 hidden sm:block">
           {pageData.map((page, idx) => (
             <PDFPageItem
               key={page.pageNumber}
               page={page}
               pdfFile={pdfFile}
               isActive={currentPageIndex === idx}
-              onClick={() => setCurrentPageIndex(idx)}
+              onClick={() => {
+                setCurrentPageIndex(idx);
+                setPanPosition({ x: 0, y: 0 });
+              }}
               onPageLoaded={handlePageThumbnailLoaded}
             />
           ))}
@@ -363,8 +366,14 @@ export function PDFCropTool({
             <Button variant="secondary" size="icon" onClick={() => setZoom(z => Math.min(z + 0.2, 4))}>
               <ZoomIn className="h-4 w-4" />
             </Button>
-            <Button variant="secondary" size="icon" onClick={() => setZoom(z => Math.max(z - 0.2, 0.5))}>
+            <Button variant="secondary" size="icon" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}>
               <ZoomOut className="h-4 w-4" />
+            </Button>
+            <Button variant="secondary" size="icon" onClick={() => {
+              setZoom(0.8);
+              setPanPosition({ x: 0, y: 0 });
+            }}>
+              <RotateCcw className="h-4 w-4" />
             </Button>
             <Button variant="secondary" size="icon" onClick={() => setIsFullScreen(!isFullScreen)}>
               {isFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
