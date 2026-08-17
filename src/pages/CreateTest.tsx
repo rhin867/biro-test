@@ -121,6 +121,8 @@ export default function CreateTest() {
         totalMarks: testConfig.totalMarks,
         questions: extractedQuestions,
         subjects: testConfig.subjects,
+        positiveMarking: 4,
+        negativeMarking: -1,
         hasAnswerKey: false
       };
 
