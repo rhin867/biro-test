@@ -81,15 +81,18 @@ export default function CreateTest() {
   };
 
   const handleSaveCrops = (crops: Record<string, string>) => {
-    const newQuestions: Question[] = Object.entries(crops).map(([id, dataUrl]) => ({
+    const newQuestions: Question[] = Object.entries(crops).map(([id, dataUrl], idx) => ({
       id,
-      text: `Question ${extractedQuestions.length + 1}`,
-      type: 'multiple-choice',
-      options: ['A', 'B', 'C', 'D'],
-      correctAnswer: '',
+      questionNumber: extractedQuestions.length + idx + 1,
+      subject: 'General',
+      chapter: 'General',
+      question: `Question ${extractedQuestions.length + idx + 1}`,
+      options: { A: 'A', B: 'B', C: 'C', D: 'D' },
+      correctAnswer: null,
+      type: 'MCQ',
+      level: 'Medium',
       hasDiagram: true,
-      croppedImageUrl: dataUrl,
-      subject: 'General'
+      croppedImageUrl: dataUrl
     }));
 
     setExtractedQuestions(prev => [...prev, ...newQuestions]);
