@@ -218,15 +218,19 @@ export function PDFCropTool({
     try {
       for (let i = 0; i < crops.length; i++) {
         const crop = crops[i];
-        const page = pageImages.find(p => p.pageNumber === crop.pageNumber);
+        const page = pageData.find(p => p.pageNumber === crop.pageNumber);
         if (!page) continue;
+
+        // Use high-res cache for extraction if available
+        const imageSource = highResCache[page.pageNumber] || page.imageDataUrl;
+        if (!imageSource) continue;
 
         // Use canvas to extract the cropped area with better quality
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         const img = new Image();
         img.crossOrigin = "anonymous";
-        img.src = page.imageDataUrl;
+        img.src = imageSource;
         
         await new Promise((resolve, reject) => {
           img.onload = resolve;
