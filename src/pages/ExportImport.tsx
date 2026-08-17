@@ -24,8 +24,7 @@ export default function ExportImport() {
 
   const handleExport = () => {
     try {
-      const store = exportStore();
-      const dataStr = JSON.stringify(store, null, 2);
+      const dataStr = exportStore();
       const blob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
 
