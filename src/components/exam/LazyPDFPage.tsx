@@ -16,7 +16,7 @@ export function LazyPDFPage({ pageNumber, imageDataUrl, onVisible, className }: 
   const { ref, inView } = useInView({
     triggerOnce: false,
     threshold: 0.1,
-    rootMargin: '200px 0px',
+    rootMargin: '400px 0px', // Increased margin for smoother loading
   });
 
   const [hasBeenVisible, setHasBeenVisible] = useState(false);
