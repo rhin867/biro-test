@@ -325,18 +325,15 @@ export function PDFCropTool({
       <div className="flex-1 flex gap-4 overflow-hidden">
         {/* Page Sidebar */}
         <div className="w-20 md:w-48 overflow-y-auto border rounded-lg bg-card p-2 hidden sm:block">
-          {pageImages.map((page, idx) => (
-            <button
+          {pageData.map((page, idx) => (
+            <PDFPageItem
               key={page.pageNumber}
+              page={page}
+              pdfFile={pdfFile}
+              isActive={currentPageIndex === idx}
               onClick={() => setCurrentPageIndex(idx)}
-              className={cn(
-                "w-full mb-2 rounded border overflow-hidden transition-all",
-                currentPageIndex === idx ? "ring-2 ring-primary border-primary" : "opacity-60 hover:opacity-100"
-              )}
-            >
-              <img src={page.imageDataUrl} alt={`Page ${page.pageNumber}`} className="w-full h-auto" />
-              <div className="text-[10px] py-1 bg-muted">Page {page.pageNumber}</div>
-            </button>
+              onPageLoaded={handlePageThumbnailLoaded}
+            />
           ))}
         </div>
 
