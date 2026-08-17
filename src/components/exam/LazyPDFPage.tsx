@@ -34,7 +34,7 @@ export function LazyPDFPage({
       
       setLoading(true);
       try {
-        const dataUrl = await renderSinglePage(pdfFile, pageNumber, scale);
+        const dataUrl = await renderSinglePage(pdfFile, pageNumber, scale, 'image/jpeg', 0.6);
         if (active) {
           setImageSrc(dataUrl);
           onLoad?.(dataUrl);

@@ -57,9 +57,18 @@ export async function deleteTest(id: string): Promise<void> {
   setLocalItem(STORAGE_KEYS.TESTS, tests);
   
   // Clean up large binary data
-  await del(`${STORAGE_KEYS.PDF_PREFIX}${id}`);
-  await del(`${STORAGE_KEYS.PAGES_PREFIX}${id}`);
-  await del(`${STORAGE_KEYS.QUES_IMAGES_PREFIX}${id}`);
+  const allKeys = await keys();
+  const prefixes = [
+    `${STORAGE_KEYS.PDF_PREFIX}${id}`,
+    `${STORAGE_KEYS.PAGES_PREFIX}${id}`,
+    `${STORAGE_KEYS.QUES_IMAGES_PREFIX}${id}`
+  ];
+  
+  for (const key of allKeys) {
+    if (typeof key === 'string' && prefixes.some(p => key.startsWith(p))) {
+      await del(key);
+    }
+  }
 }
 
 // Attempts
@@ -160,18 +169,74 @@ export function generateShareCode(testId: string): string {
 // PDF Binary Storage (IndexedDB)
 export async function saveTestPdfFile(testId: string, file: File | ArrayBuffer): Promise<void> {
   const buffer = file instanceof File ? await file.arrayBuffer() : file;
-  await set(`${STORAGE_KEYS.PDF_PREFIX}${testId}`, buffer);
+  
+  // Clear any existing chunks first
+  const allKeys = await keys();
+  const chunkPrefix = `${STORAGE_KEYS.PDF_PREFIX}${testId}_chunk_`;
+  for (const key of allKeys) {
+    if (typeof key === 'string' && key.startsWith(chunkPrefix)) {
+      await del(key);
+    }
+  }
+
+  // Split into 1MB chunks to avoid IndexedDB size limits on some browsers
+  const CHUNK_SIZE = 1024 * 1024;
+  const chunks = Math.ceil(buffer.byteLength / CHUNK_SIZE);
+  
+  for (let i = 0; i < chunks; i++) {
+    const start = i * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE, buffer.byteLength);
+    const chunk = buffer.slice(start, end);
+    await set(`${chunkPrefix}${i}`, chunk);
+  }
+  
+  await set(`${STORAGE_KEYS.PDF_PREFIX}${testId}_metadata`, { 
+    chunks, 
+    totalSize: buffer.byteLength,
+    timestamp: Date.now()
+  });
 }
 
 export async function loadTestPdfFile(testId: string): Promise<ArrayBuffer | null> {
+  // Try loading from chunks first (new format)
+  const meta = await get(`${STORAGE_KEYS.PDF_PREFIX}${testId}_metadata`);
+  if (meta && meta.chunks) {
+    const buffer = new Uint8Array(meta.totalSize);
+    for (let i = 0; i < meta.chunks; i++) {
+      const chunk = await get(`${STORAGE_KEYS.PDF_PREFIX}${testId}_chunk_${i}`);
+      if (chunk) {
+        buffer.set(new Uint8Array(chunk), i * (1024 * 1024));
+      }
+    }
+    return buffer.buffer;
+  }
+  
+  // Fallback to old single-blob format
   return await get(`${STORAGE_KEYS.PDF_PREFIX}${testId}`) || null;
 }
 
 export async function saveTestPdfPageImages(testId: string, images: any[]): Promise<void> {
-  await set(`${STORAGE_KEYS.PAGES_PREFIX}${testId}`, images);
+  const CHUNK_SIZE = 5; // Save in chunks of 5 pages to keep IndexedDB operations manageable
+  const chunks = Math.ceil(images.length / CHUNK_SIZE);
+  
+  for (let i = 0; i < chunks; i++) {
+    const chunk = images.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+    await set(`${STORAGE_KEYS.PAGES_PREFIX}${testId}_chunk_${i}`, chunk);
+  }
+  
+  await set(`${STORAGE_KEYS.PAGES_PREFIX}${testId}_metadata`, { chunks, total: images.length });
 }
 
 export async function loadTestPdfPageImages(testId: string): Promise<any[]> {
+  const meta = await get(`${STORAGE_KEYS.PAGES_PREFIX}${testId}_metadata`);
+  if (meta && meta.chunks) {
+    const allImages = [];
+    for (let i = 0; i < meta.chunks; i++) {
+      const chunk = await get(`${STORAGE_KEYS.PAGES_PREFIX}${testId}_chunk_${i}`);
+      if (chunk) allImages.push(...chunk);
+    }
+    return allImages;
+  }
   return await get(`${STORAGE_KEYS.PAGES_PREFIX}${testId}`) || [];
 }
 

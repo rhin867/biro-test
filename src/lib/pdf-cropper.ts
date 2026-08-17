@@ -1,7 +1,10 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Use local worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+const MAX_CONCURRENT_PAGES = 2; // Reduced further for 20MB+ stability
+const RENDER_TIMEOUT = 20000; // 20 seconds timeout per page for large files
 
 export interface PDFPageMetadata {
   pageNumber: number;
@@ -17,63 +20,121 @@ export interface PDFPageImage {
 }
 
 export async function renderPDFPagesMetadata(pdfFile: File | ArrayBuffer): Promise<PDFPageMetadata[]> {
-  const data = pdfFile instanceof File ? await pdfFile.arrayBuffer() : pdfFile;
-  const loadingTask = pdfjsLib.getDocument({ data });
-  const pdfDoc = await loadingTask.promise;
-  const metadata: PDFPageMetadata[] = [];
-
-  for (let i = 1; i <= pdfDoc.numPages; i++) {
-    const page = await pdfDoc.getPage(i);
-    const viewport = page.getViewport({ scale: 1 });
-    metadata.push({
-      pageNumber: i,
-      width: viewport.width,
-      height: viewport.height,
+  let loadingTask = null;
+  try {
+    const data = pdfFile instanceof File ? await pdfFile.arrayBuffer() : pdfFile;
+    loadingTask = pdfjsLib.getDocument({ 
+      data,
+      cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/cmaps/',
+      cMapPacked: true,
+      disableFontFace: true // Performance improvement for some browsers
     });
-    page.cleanup();
-  }
+    const pdfDoc = await loadingTask.promise;
+    const metadata: PDFPageMetadata[] = [];
 
-  await loadingTask.destroy();
-  return metadata;
+    for (let i = 1; i <= pdfDoc.numPages; i++) {
+      const page = await pdfDoc.getPage(i);
+      const viewport = page.getViewport({ scale: 1 });
+      metadata.push({
+        pageNumber: i,
+        width: viewport.width,
+        height: viewport.height,
+      });
+      page.cleanup();
+    }
+
+    return metadata;
+  } finally {
+    if (loadingTask) {
+      await loadingTask.destroy();
+    }
+  }
 }
+
+// Semaphore to limit concurrent page rendering
+class Semaphore {
+  private tasks: (() => void)[] = [];
+  constructor(private count: number) {}
+  async acquire() {
+    if (this.count > 0) {
+      this.count--;
+      return;
+    }
+    await new Promise<void>(resolve => this.tasks.push(resolve));
+  }
+  release() {
+    this.count++;
+    if (this.tasks.length > 0) {
+      this.count--;
+      this.tasks.shift()!();
+    }
+  }
+}
+
+const renderSemaphore = new Semaphore(MAX_CONCURRENT_PAGES);
 
 export async function renderSinglePage(
   pdfFile: File | ArrayBuffer,
   pageNumber: number,
   scale = 1.5,
   format: 'image/jpeg' | 'image/png' = 'image/jpeg',
-  quality = 0.8
+  quality = 0.7 // Reduced quality for memory
 ): Promise<string> {
-  const data = pdfFile instanceof File ? await pdfFile.arrayBuffer() : pdfFile;
-  const loadingTask = pdfjsLib.getDocument({ data });
-  const pdfDoc = await loadingTask.promise;
-  const page = await pdfDoc.getPage(pageNumber);
+  await renderSemaphore.acquire();
   
-  const viewport = page.getViewport({ scale });
-  const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d');
+  let loadingTask = null;
+  let canvas: HTMLCanvasElement | null = null;
   
-  if (!context) throw new Error('Could not create canvas context');
-  
-  canvas.height = viewport.height;
-  canvas.width = viewport.width;
-  
-  await page.render({
-    canvasContext: context,
-    canvas: canvas,
-    viewport: viewport,
-    intent: 'print'
-  }).promise;
-  
-  const imageDataUrl = canvas.toDataURL(format, quality);
-  
-  // Aggressive cleanup
-  canvas.width = 0;
-  canvas.height = 0;
-  page.cleanup();
-  await loadingTask.destroy();
-  
-  return imageDataUrl;
+  try {
+    const data = pdfFile instanceof File ? await pdfFile.arrayBuffer() : pdfFile;
+    loadingTask = pdfjsLib.getDocument({ 
+      data,
+      cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/cmaps/',
+      cMapPacked: true
+    });
+    const pdfDoc = await loadingTask.promise;
+    const page = await pdfDoc.getPage(pageNumber);
+    
+    const viewport = page.getViewport({ scale });
+    canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d', { alpha: false }); // Disable alpha for perf
+    
+    if (!context) throw new Error('Could not create canvas context');
+    
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+    
+    // Timeout for rendering to prevent hanging
+    const renderPromise = page.render({
+      canvasContext: context,
+      viewport: viewport,
+      intent: 'print'
+    }).promise;
+
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Render timeout')), RENDER_TIMEOUT)
+    );
+
+    await Promise.race([renderPromise, timeoutPromise]);
+    
+    const imageDataUrl = canvas.toDataURL(format, quality);
+    
+    page.cleanup();
+    return imageDataUrl;
+  } catch (err) {
+    console.error(`Page ${pageNumber} render failed:`, err);
+    throw err;
+  } finally {
+    if (canvas) {
+      canvas.width = 0;
+      canvas.height = 0;
+      canvas = null;
+    }
+    if (loadingTask) {
+      await loadingTask.destroy();
+    }
+    renderSemaphore.release();
+  }
 }
 
 export async function fileToBase64(file: File): Promise<string> {

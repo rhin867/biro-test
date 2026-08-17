@@ -4,11 +4,13 @@ import { Card } from '@/components/ui/card';
 import { 
   ZoomIn, ZoomOut, RotateCcw, RotateCw, Undo, Redo, 
   Maximize, Minimize, MousePointer2, Crop, Check, X,
-  ChevronLeft, ChevronRight, HelpCircle
+  ChevronLeft, ChevronRight, HelpCircle, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { renderSinglePage } from '@/lib/pdf-cropper';
+import { useInView } from 'react-intersection-observer';
 
 interface PDFCropToolProps {
   pdfFile: File | ArrayBuffer;
@@ -27,13 +29,59 @@ interface CropArea {
   height: number;
 }
 
+interface PDFPageItemProps {
+  page: { pageNumber: number; imageDataUrl?: string; width: number; height: number };
+  pdfFile: File | ArrayBuffer;
+  isActive: boolean;
+  onClick: () => void;
+  onPageLoaded: (pageNumber: number, dataUrl: string) => void;
+}
+
+function PDFPageItem({ page, pdfFile, isActive, onClick, onPageLoaded }: PDFPageItemProps) {
+  const { ref, inView } = useInView({ triggerOnce: true });
+  const [loading, setLoading] = useState(false);
+  const [localUrl, setLocalUrl] = useState(page.imageDataUrl || '');
+
+  useEffect(() => {
+    if (inView && !localUrl && !loading) {
+      setLoading(true);
+      renderSinglePage(pdfFile, page.pageNumber, 0.4, 'image/jpeg', 0.5)
+        .then(url => {
+          setLocalUrl(url);
+          onPageLoaded(page.pageNumber, url);
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }
+  }, [inView, localUrl, loading, pdfFile, page.pageNumber, onPageLoaded]);
+
+  return (
+    <button
+      ref={ref}
+      onClick={onClick}
+      className={cn(
+        "w-full mb-2 rounded border overflow-hidden transition-all min-h-[100px] flex flex-col items-center justify-center bg-muted",
+        isActive ? "ring-2 ring-primary border-primary" : "opacity-60 hover:opacity-100"
+      )}
+    >
+      {localUrl ? (
+        <img src={localUrl} alt={`Page ${page.pageNumber}`} className="w-full h-auto" />
+      ) : (
+        <Loader2 className="h-4 w-4 animate-spin opacity-20" />
+      )}
+      <div className="text-[10px] py-1 bg-muted w-full">Page {page.pageNumber}</div>
+    </button>
+  );
+}
+
 export function PDFCropTool({
   pdfFile,
-  pageImages,
+  pageImages: initialPageImages,
   onSaveCrops,
   onCancel,
   initialCrops = {}
 }: PDFCropToolProps) {
+  const [pageData, setPageData] = useState(initialPageImages);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -42,11 +90,33 @@ export function PDFCropTool({
   const [currentCrop, setCurrentCrop] = useState<Partial<CropArea> | null>(null);
   const [history, setHistory] = useState<CropArea[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [fullPageLoading, setFullPageLoading] = useState(false);
+  const [highResCache, setHighResCache] = useState<Record<number, string>>({});
 
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
-  const currentPage = pageImages[currentPageIndex];
+  useEffect(() => {
+    const pageNum = pageData[currentPageIndex].pageNumber;
+    if (!highResCache[pageNum]) {
+      setFullPageLoading(true);
+      renderSinglePage(pdfFile, pageNum, 1.8, 'image/jpeg', 0.8)
+        .then(url => {
+          setHighResCache(prev => ({ ...prev, [pageNum]: url }));
+        })
+        .catch(err => {
+          toast.error("Failed to load high resolution page");
+        })
+        .finally(() => setFullPageLoading(false));
+    }
+  }, [currentPageIndex, pageData, pdfFile, highResCache]);
+
+  const handlePageThumbnailLoaded = useCallback((pageNumber: number, dataUrl: string) => {
+    setPageData(prev => prev.map(p => p.pageNumber === pageNumber ? { ...p, imageDataUrl: dataUrl } : p));
+  }, []);
+
+  const currentPage = pageData[currentPageIndex];
+  const displayImage = highResCache[currentPage.pageNumber] || currentPage.imageDataUrl;
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!isCropMode || !imageRef.current) return;
@@ -148,15 +218,19 @@ export function PDFCropTool({
     try {
       for (let i = 0; i < crops.length; i++) {
         const crop = crops[i];
-        const page = pageImages.find(p => p.pageNumber === crop.pageNumber);
+        const page = pageData.find(p => p.pageNumber === crop.pageNumber);
         if (!page) continue;
+
+        // Use high-res cache for extraction if available
+        const imageSource = highResCache[page.pageNumber] || page.imageDataUrl;
+        if (!imageSource) continue;
 
         // Use canvas to extract the cropped area with better quality
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         const img = new Image();
         img.crossOrigin = "anonymous";
-        img.src = page.imageDataUrl;
+        img.src = imageSource;
         
         await new Promise((resolve, reject) => {
           img.onload = resolve;
@@ -251,18 +325,15 @@ export function PDFCropTool({
       <div className="flex-1 flex gap-4 overflow-hidden">
         {/* Page Sidebar */}
         <div className="w-20 md:w-48 overflow-y-auto border rounded-lg bg-card p-2 hidden sm:block">
-          {pageImages.map((page, idx) => (
-            <button
+          {pageData.map((page, idx) => (
+            <PDFPageItem
               key={page.pageNumber}
+              page={page}
+              pdfFile={pdfFile}
+              isActive={currentPageIndex === idx}
               onClick={() => setCurrentPageIndex(idx)}
-              className={cn(
-                "w-full mb-2 rounded border overflow-hidden transition-all",
-                currentPageIndex === idx ? "ring-2 ring-primary border-primary" : "opacity-60 hover:opacity-100"
-              )}
-            >
-              <img src={page.imageDataUrl} alt={`Page ${page.pageNumber}`} className="w-full h-auto" />
-              <div className="text-[10px] py-1 bg-muted">Page {page.pageNumber}</div>
-            </button>
+              onPageLoaded={handlePageThumbnailLoaded}
+            />
           ))}
         </div>
 
@@ -296,13 +367,22 @@ export function PDFCropTool({
               onMouseLeave={handleMouseUp}
             >
               {currentPage && (
-                <img 
-                  ref={imageRef}
-                  src={currentPage.imageDataUrl} 
-                  alt="Current Page" 
-                  className="max-w-none select-none"
-                  draggable={false}
-                />
+                <div className="relative">
+                  <img 
+                    ref={imageRef}
+                    src={displayImage} 
+                    alt="Current Page" 
+                    className="max-w-none select-none"
+                    draggable={false}
+                  />
+                  {fullPageLoading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/20 backdrop-blur-[2px] z-10">
+                      <div className="bg-background/80 p-3 rounded-full shadow-lg">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Render Existing Crops */}
@@ -351,8 +431,9 @@ export function PDFCropTool({
             <Button variant="outline" size="icon" onClick={() => setCurrentPageIndex(p => Math.max(0, p - 1))}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm font-medium">Page {currentPage?.pageNumber} / {pageImages.length}</span>
-            <Button variant="outline" size="icon" onClick={() => setCurrentPageIndex(p => Math.min(pageImages.length - 1, p + 1))}>
+            <span className="text-sm font-medium">Page {currentPage?.pageNumber} / {pageData.length}</span>
+            <Button variant="outline" size="icon" onClick={() => setCurrentPageIndex(p => Math.min(pageData.length - 1, p + 1))}>
+
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
