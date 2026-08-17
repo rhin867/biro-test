@@ -14,14 +14,22 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GH_TOKEN || github.token }}
 
       - name: Push to GitHub
         run: |
+          # The GH_REPO_URL should be in the format: https://<token>@github.com/<user>/<repo>.git
           if [ -n "$GH_REPO_URL" ]; then
-            git remote add github "$GH_REPO_URL"
-            git push github main --force
+            echo "Attempting to push to $GH_REPO_URL"
+            # Extract domain and path for cleaner remote setup
+            REMOTE_URL=$(echo "$GH_REPO_URL" | sed 's|https://.*@|https://|')
+            TOKEN=$(echo "$GH_REPO_URL" | grep -oP 'https://\K[^@]+(?=@)')
+            
+            git remote add target "$GH_REPO_URL"
+            git push target main --force
           else
-            echo "GH_REPO_URL secret is not set. Please add it to your repository secrets."
+            echo "CRITICAL: GH_REPO_URL secret is not set in GitHub Settings > Secrets and variables > Actions."
+            echo "Please add it with the format: https://YOUR_GITHUB_TOKEN@github.com/rhin867/biro-test.git"
             exit 1
           fi
         env:
