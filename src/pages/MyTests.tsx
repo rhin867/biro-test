@@ -253,7 +253,7 @@ export default function MyTests() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredTests.map((test) => {
             const results = getResultsByTestId(test.id);
             const bestResult = results.length > 0
@@ -261,8 +261,8 @@ export default function MyTests() {
               : null;
 
             return (
-              <Card key={test.id} className="group hover:border-primary/50 transition-all">
-                <CardHeader className="pb-3">
+              <Card key={test.id} className="group hover:border-primary/50 transition-all border-primary/10 bg-primary/5">
+                <CardHeader className="pb-2 pt-4 px-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <CardTitle className="text-lg line-clamp-1 flex items-center gap-2">

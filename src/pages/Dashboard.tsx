@@ -285,9 +285,9 @@ export default function Dashboard() {
         </div>
       </PageHeader>
 
-      <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <DailyHotQuestionPreview />
-        <Card className="border-primary/20 bg-primary/5 flex flex-col items-center justify-center p-6 min-h-[160px] relative overflow-hidden group">
+        <Card className="border-primary/20 bg-primary/5 flex flex-col items-center justify-center p-6 min-h-[160px] relative overflow-hidden group hover:border-primary/50 transition-all cursor-pointer" onClick={() => navigate('/history')}>
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-50" />
           <div className="text-center space-y-2 relative z-10">
             <div className="flex items-center justify-center gap-2 mb-1">
@@ -295,14 +295,29 @@ export default function Dashboard() {
               <p className="text-sm font-bold text-primary tracking-widest uppercase">Performance Analysis</p>
             </div>
             <p className="text-xs text-muted-foreground max-w-[200px] mx-auto leading-relaxed">
-              Your behavioral metrics, heatmaps, and difficulty trends will unlock here.
+              Behavioral metrics, heatmaps, and difficulty trends.
             </p>
             <div className="pt-2">
-              <Link to="/history">
-                <Button variant="outline" size="sm" className="h-8 text-[10px] gap-2 hover:bg-primary/10 border-primary/30">
-                  <Clock className="h-3 w-3" /> PREVIOUS REPORTS
-                </Button>
-              </Link>
+              <Button variant="outline" size="sm" className="h-8 text-[10px] gap-2 hover:bg-primary/10 border-primary/30">
+                <Clock className="h-3 w-3" /> PREVIOUS REPORTS
+              </Button>
+            </div>
+          </div>
+        </Card>
+        <Card className="border-primary/20 bg-primary/5 flex flex-col items-center justify-center p-6 min-h-[160px] relative overflow-hidden group hover:border-primary/50 transition-all cursor-pointer" onClick={() => navigate('/plan')}>
+          <div className="absolute inset-0 bg-gradient-to-br from-secondary/5 to-transparent opacity-50" />
+          <div className="text-center space-y-2 relative z-10">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Target className="h-4 w-4 text-primary animate-pulse" />
+              <p className="text-sm font-bold text-primary tracking-widest uppercase">Study Planner</p>
+            </div>
+            <p className="text-xs text-muted-foreground max-w-[200px] mx-auto leading-relaxed">
+              AI-generated weekly improvement plans.
+            </p>
+            <div className="pt-2">
+              <Button variant="outline" size="sm" className="h-8 text-[10px] gap-2 hover:bg-primary/10 border-primary/30">
+                <BarChart className="h-3 w-3" /> VIEW PLAN
+              </Button>
             </div>
           </div>
         </Card>
