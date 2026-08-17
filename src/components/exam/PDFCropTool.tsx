@@ -99,8 +99,11 @@ export function PDFCropTool({
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
+  const currentPage = pageData[currentPageIndex];
+
   useEffect(() => {
-    const pageNum = pageData[currentPageIndex].pageNumber;
+    if (!currentPage) return;
+    const pageNum = currentPage.pageNumber;
     if (!highResCache[pageNum]) {
       setFullPageLoading(true);
       renderSinglePage(pdfFile, pageNum, 1.8, 'image/jpeg', 0.8)
@@ -112,14 +115,13 @@ export function PDFCropTool({
         })
         .finally(() => setFullPageLoading(false));
     }
-  }, [currentPageIndex, pageData, pdfFile, highResCache]);
+  }, [currentPage, pdfFile, highResCache]);
 
   const handlePageThumbnailLoaded = useCallback((pageNumber: number, dataUrl: string) => {
     setPageData(prev => prev.map(p => p.pageNumber === pageNumber ? { ...p, imageDataUrl: dataUrl } : p));
   }, []);
 
-  const currentPage = pageData[currentPageIndex];
-  const displayImage = highResCache[currentPage.pageNumber] || currentPage.imageDataUrl;
+  const displayImage = currentPage ? (highResCache[currentPage.pageNumber] || currentPage.imageDataUrl) : undefined;
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
@@ -137,7 +139,7 @@ export function PDFCropTool({
     const y = (e.clientY - rect.top) / zoom;
 
     setCurrentCrop({
-      pageNumber: currentPage.pageNumber,
+      pageNumber: currentPage!.pageNumber,
       x,
       y,
       width: 0,
@@ -176,7 +178,7 @@ export function PDFCropTool({
 
     const newCrop: CropArea = {
       id: Math.random().toString(36).substr(2, 9),
-      pageNumber: currentPage.pageNumber,
+      pageNumber: currentPage!.pageNumber,
       x: currentCrop.x || 0,
       y: currentCrop.y || 0,
       width: currentCrop.width || 0,
@@ -424,7 +426,7 @@ export function PDFCropTool({
               )}
 
               {/* Render Existing Crops */}
-              {crops.filter(c => c.pageNumber === currentPage.pageNumber).map(crop => (
+              {crops.filter(c => c.pageNumber === currentPage?.pageNumber).map(crop => (
                 <div
                   key={crop.id}
                   className="absolute border-2 border-primary bg-primary/10 group"

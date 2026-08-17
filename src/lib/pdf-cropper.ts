@@ -1,9 +1,8 @@
 import * as pdfjsLib from 'pdfjs-dist';
+// Bundle the worker locally so it always matches the installed pdfjs version.
+import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-// Try to use the local entry point for the worker if possible, otherwise fallback to CDN
-// In a Vite environment, we can sometimes import it directly if configured, 
-// but for absolute stability across environments, a matched CDN version is safest.
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = PdfWorker;
 
 const MAX_CONCURRENT_PAGES = 3; 
 const RENDER_TIMEOUT = 15000; 
