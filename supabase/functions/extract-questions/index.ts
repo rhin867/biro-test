@@ -164,7 +164,7 @@ async function callLovableAI(apiKey: string, systemPrompt: string, pdfText?: str
       "X-Lovable-AIG-SDK": "manual-fetch",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.0-flash-exp",
+      model: "google/gemini-2.5-flash",
       messages,
       temperature: 0.05,
       max_tokens: 65536,
@@ -182,7 +182,7 @@ async function callLovableAI(apiKey: string, systemPrompt: string, pdfText?: str
 }
 
 async function callGeminiDirect(apiKey: string, promptContent: string, pdfText?: string, pdfBase64?: string, mimeType?: string): Promise<string> {
-  const models = ["gemini-2.0-flash-exp", "gemini-1.5-flash"];
+  const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
   const parts: any[] = [
     { text: promptContent + "\n\nReturn STRICT JSON only, no markdown." }
   ];
